@@ -1,0 +1,72 @@
+# macOS System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# MATLAB Files
+*.asv          # MATLAB autosave files
+*.m~           # MATLAB backup files
+*.mex*         # MEX files (compiled MATLAB functions)
+*.mat          # MATLAB data files (comment out if you want to track some .mat files)
+*.fig          # MATLAB figure files
+*.slx.autosave # Simulink autosave files
+*.slxc         # Simulink cache files
+slprj/         # Simulink project files
+*.slx.original # Simulink backup files
+
+# MATLAB Code Generation
+codegen/
+*.prj          # MATLAB project files
+*.mltbx        # MATLAB toolbox files
+*.mlappinstall # MATLAB app installer files
+*.mlpkginstall # MATLAB package installer files
+
+# MATLAB Profiler
+profile_results/
+
+# MATLAB Live Scripts
+*.mlx~         # Live script backup files
+
+# MATLAB Temporary Files
+*.tmp
+*~
+
+# Log Files
+*.log
+
+# Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Compiled Files
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Archive Files
+*.zip
+*.tar.gz
+*.rar
+
+# Output Directories (customize based on your project)
+figures/
+data/
+
+# Large Data Files (uncomment if you want to exclude large datasets)
+# *.csv
+# *.xlsx
+# *.h5
+# *.hdf5
+
+# Custom: Project-specific exclusions
+# Add any project-specific files or directories you want to ignore 
