@@ -1,7 +1,14 @@
 % --- Main script to estimate the Lyapunov spectrum of the Lorenz system ---
-% Using QR decomposition method
+% Using QR decomposition method OR Benettin's algorithm
 clear; clc; close all;
 rng(42,'twister') % For reproducibility
+
+% --- METHOD SELECTION ---
+% Choose computation method:
+% 'qr'       - QR decomposition method (full Lyapunov spectrum)
+% 'benettin' - Benettin's algorithm (largest Lyapunov exponent only)
+% 'none'     - No Lyapunov computation (trajectory only)
+method = 'qr'; % Change this to switch methods
 
 % --- 1. Lorenz System Parameters ---
 sigma = 10.0;
@@ -30,6 +37,9 @@ t = linspace(T(1), T(2), nt)'; % Plotting time vector
 
 lya_dt = 0.1; % Rescaling time interval for Lyapunov calculation (tau_lya) (s)
 
+% Benettin-specific parameters
+d0 = 1e-4; % Initial separation magnitude for Benettin's algorithm
+
 % --- 4. ODE solver options and fiducial trajectory integration ---
 ode_options = odeset('RelTol', 1e-10, 'AbsTol', 1e-13, 'MaxStep', 0.1*dt, 'InitialStep', 0.05*dt);
 
@@ -39,84 +49,179 @@ ode_options = odeset('RelTol', 1e-10, 'AbsTol', 1e-13, 'MaxStep', 0.1*dt, 'Initi
 assert(all(abs(t_ode - t) < 1e-12), 'ODE solver did not return results exactly at the requested times for fiducial trajectory.');
 clear t_ode % t_ode is same as t
 
-% --- 5. Lyapunov Spectrum Calculation (QR Method) -----------------
-[LE_spectrum, local_LE_spectrum_t, finite_LE_spectrum_t, t_lya] = ...
-    lyapunov_spectrum_qr(X_fid_traj, t, lya_dt, params, ode_options, @lorenz_jacobian_eqs, T, N_states, fs);
+% --- 5. Lyapunov Calculation Based on Selected Method ---
+switch lower(method)
+    case 'qr'
+        fprintf('Computing full Lyapunov spectrum using QR decomposition method...\n');
+        
+        [LE_spectrum, local_LE_spectrum_t, finite_LE_spectrum_t, t_lya] = ...
+            lyapunov_spectrum_qr(X_fid_traj, t, lya_dt, params, ode_options, @lorenz_jacobian_eqs, T, N_states, fs);
 
-% Display the estimated Lyapunov Spectrum
-fprintf('----------------------------------------------------\n');
-fprintf('Estimated Lyapunov Spectrum (Global):\n');
-for i = 1:N_states
-    fprintf('  LE(%d): %f\n', i, LE_spectrum(i));
+        % Display the estimated Lyapunov Spectrum
+        fprintf('----------------------------------------------------\n');
+        fprintf('Estimated Lyapunov Spectrum (Global):\n');
+        for i = 1:N_states
+            fprintf('  LE(%d): %f\n', i, LE_spectrum(i));
+        end
+        fprintf('Sum of exponents: %f (should be < 0 for dissipative systems like Lorenz)\n', sum(LE_spectrum));
+        fprintf('Kaplan-Yorke Dimension: %f\n', calculate_kaplan_yorke_dimension(LE_spectrum));
+        fprintf('----------------------------------------------------\n');
+        
+    case 'benettin'
+        fprintf('Computing largest Lyapunov exponent using Benettin''s algorithm...\n');
+        
+        [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X_fid_traj, t, dt, fs, d0, T, lya_dt, params, ode_options, @lorenz_eqs);
+
+        fprintf('----------------------------------------------------\n');
+        fprintf('Estimated Largest Lyapunov Exponent (LLE): %f\n', LLE);
+        fprintf('----------------------------------------------------\n');
+        
+    case 'none'
+        fprintf('Skipping Lyapunov calculation - trajectory only.\n');
+        
+    otherwise
+        error('Unknown method: %s. Choose ''qr'', ''benettin'', or ''none''.', method);
 end
-fprintf('Sum of exponents: %f (should be < 0 for dissipative systems like Lorenz)\n', sum(LE_spectrum));
-fprintf('Kaplan-Yorke Dimension: %f\n', calculate_kaplan_yorke_dimension(LE_spectrum));
-fprintf('----------------------------------------------------\n');
 
-% --- Plot State Variables and Lyapunov Exponents ---
-figure('Position', [100, 100, 800, 1000]); % Adjusted figure size
-ax = gobjects(N_states + 1, 1); % Axes for states + spectrum
+% --- 6. Plotting ---
+if strcmpi(method, 'qr')
+    % Plot State Variables and Lyapunov Exponents (QR Method)
+    figure('Position', [100, 100, 800, 1000]); % Adjusted figure size
+    ax = gobjects(N_states + 1, 1); % Axes for states + spectrum
 
-% Plot state variables
-state_names = {'x(t)', 'y(t)', 'z(t)'};
-for i = 1:N_states
-    ax(i) = subplot(N_states + 1, 1, i);
-    plot(t, X_fid_traj(:,i));
+    % Plot state variables
+    state_names = {'x(t)', 'y(t)', 'z(t)'};
+    for i = 1:N_states
+        ax(i) = subplot(N_states + 1, 1, i);
+        plot(t, X_fid_traj(:,i));
+        xlabel('Time (t)');
+        ylabel(state_names{i});
+        title(['State Variable ', state_names{i}(1)]);
+        grid on;
+    end
+
+    % Subplot for Lyapunov Spectrum
+    ax(N_states + 1) = subplot(N_states + 1, 1, N_states + 1);
+    colors = lines(N_states); % Get distinct colors for each exponent
+
+    % Plot local Lyapunov exponents
+    for i = 1:N_states
+        plot(t_lya, local_LE_spectrum_t(:,i), '--', 'Color', colors(i,:), 'DisplayName', sprintf('Local LE(%d)', i));
+        hold on;
+    end
+
+    % Plot finite-time Lyapunov exponents
+    for i = 1:N_states
+        plot(t_lya, finite_LE_spectrum_t(:,i), '-', 'Color', colors(i,:), 'LineWidth', 1.5, 'DisplayName', sprintf('Finite LE(%d)', i));
+    end
+
+    % Plot global Lyapunov exponents as horizontal lines
+    for i = 1:N_states
+        plot([t_lya(1) t_lya(end)], [LE_spectrum(i) LE_spectrum(i)], ':', 'Color', colors(i,:), 'LineWidth', 2, 'DisplayName', sprintf('Global LE(%d): %.4f', i, LE_spectrum(i)));
+    end
+    hold off;
     xlabel('Time (t)');
-    ylabel(state_names{i});
-    title(['State Variable ', state_names{i}(1)]);
+    ylabel('Lyapunov Exponent Value');
+    title('Lyapunov Exponent Spectrum Estimates (Local, Finite-time, Global)');
+    legend('show', 'Location', 'bestoutside', 'NumColumns', ceil(N_states/2));
     grid on;
-end
+    ylim([-max(abs(ylim)) max(abs(ylim))]); % Symmetrize y-axis if appropriate or set manually
 
-% Subplot for Lyapunov Spectrum
-ax(N_states + 1) = subplot(N_states + 1, 1, N_states + 1);
-colors = lines(N_states); % Get distinct colors for each exponent
+    linkaxes(ax, 'x'); % Link x-axes of all subplots
 
-% Plot local Lyapunov exponents
-for i = 1:N_states
-    plot(t_lya, local_LE_spectrum_t(:,i), '--', 'Color', colors(i,:), 'DisplayName', sprintf('Local LE(%d)', i));
+    % Plot convergence of Finite-Time Lyapunov Exponents
+    figure('Position', [950, 100, 800, 600]);
     hold on;
+    for i = 1:N_states
+        % Plot only for t >= 0 where finite-time exponents are meaningfully accumulated
+        valid_indices_finite = t_lya >= 0 & ~isnan(finite_LE_spectrum_t(:,i)) & ~isinf(finite_LE_spectrum_t(:,i));
+        plot(t_lya(valid_indices_finite), finite_LE_spectrum_t(valid_indices_finite,i), '-', 'Color', colors(i,:), 'LineWidth', 1.5, 'DisplayName', sprintf('Finite LE(%d)', i));
+        % Plot global LE line for comparison
+        plot([0, T(2)], [LE_spectrum(i), LE_spectrum(i)], ':', 'Color', colors(i,:), 'LineWidth', 2, 'DisplayName', sprintf('Global LE(%d): %.4f', i, LE_spectrum(i)));
+    end
+    hold off;
+    xlabel('Time (t)');
+    ylabel('Lyapunov Exponent Estimate');
+    title('Convergence of Finite-Time Lyapunov Exponents (for t \geq 0)');
+    legend('show', 'Location', 'best');
+    grid on;
+    ylim_current = ylim;
+    ylim_max_abs = max(abs(ylim_current));
+    ylim([-ylim_max_abs, ylim_max_abs]); % Adjust y-limits for better visualization
+
+elseif strcmpi(method, 'benettin')
+    % Plot State Variables and Lyapunov Exponents (Benettin Method)
+    figure('Position', [100, 100, 800, 800]);
+    ax = gobjects(4,1); % Preallocate array for axes handles
+
+    % Subplot 1: Time vs. x-state
+    ax(1) = subplot(4,1,1);
+    plot(t, X_fid_traj(:,1));
+    xlabel('Time (t)');
+    ylabel('x(t)');
+    title('State Variable x');
+    grid on;
+
+    % Subplot 2: Time vs. y-state
+    ax(2) = subplot(4,1,2);
+    plot(t, X_fid_traj(:,2));
+    xlabel('Time (t)');
+    ylabel('y(t)');
+    title('State Variable y');
+    grid on;
+
+    % Subplot 3: Time vs. z-state
+    ax(3) = subplot(4,1,3);
+    plot(t, X_fid_traj(:,3));
+    xlabel('Time (t)');
+    ylabel('z(t)');
+    title('State Variable z');
+    grid on;
+
+    % Subplot 4: Time vs. Lyapunov Exponents
+    ax(4) = subplot(4,1,4);
+    plot(t_lya, local_lya, 'DisplayName', 'Local LLE');
+    hold on;
+    plot(t_lya, finite_lya, 'DisplayName', 'Finite-time LLE');
+    plot([t_lya(1) t_lya(end)], [LLE LLE], 'r--', 'DisplayName', sprintf('Final LLE: %.4f', LLE));
+    hold off;
+    xlabel('Time (t)');
+    ylabel('Lyapunov Exponent');
+    title('Lyapunov Exponent Estimates (Benettin Method)');
+    legend('show', 'Location', 'best');
+    grid on;
+
+    linkaxes(ax, 'x'); % Link x-axes of all subplots
+
+    % Plot convergence of LLE
+    figure('Position', [950, 100, 800, 600]);
+    plot(t_lya, finite_lya);
+    xlabel('Total Time (t)');
+    ylabel('Largest Lyapunov Exponent Estimate (\lambda_1)');
+    title('Convergence of the Largest Lyapunov Exponent (Benettin Method)');
+    grid on;
+    hold on;
+    plot([0, T(2)], [LLE, LLE], 'r--', 'LineWidth', 1.5, 'DisplayName', sprintf('Final LLE: %.4f', LLE));
+    legend('show', 'Location', 'best');
+    hold off;
+
+else
+    % Plot only state variables (no Lyapunov calculation)
+    figure('Position', [100, 100, 800, 600]);
+    ax = gobjects(3,1);
+    
+    state_names = {'x(t)', 'y(t)', 'z(t)'};
+    for i = 1:N_states
+        ax(i) = subplot(3,1,i);
+        plot(t, X_fid_traj(:,i));
+        xlabel('Time (t)');
+        ylabel(state_names{i});
+        title(['State Variable ', state_names{i}(1)]);
+        grid on;
+    end
+    
+    linkaxes(ax, 'x');
 end
-
-% Plot finite-time Lyapunov exponents
-for i = 1:N_states
-    plot(t_lya, finite_LE_spectrum_t(:,i), '-', 'Color', colors(i,:), 'LineWidth', 1.5, 'DisplayName', sprintf('Finite LE(%d)', i));
-end
-
-% Plot global Lyapunov exponents as horizontal lines
-for i = 1:N_states
-    plot([t_lya(1) t_lya(end)], [LE_spectrum(i) LE_spectrum(i)], ':', 'Color', colors(i,:), 'LineWidth', 2, 'DisplayName', sprintf('Global LE(%d): %.4f', i, LE_spectrum(i)));
-end
-hold off;
-xlabel('Time (t)');
-ylabel('Lyapunov Exponent Value');
-title('Lyapunov Exponent Spectrum Estimates (Local, Finite-time, Global)');
-legend('show', 'Location', 'bestoutside', 'NumColumns', ceil(N_states/2));
-grid on;
-ylim([-max(abs(ylim)) max(abs(ylim))]); % Symmetrize y-axis if appropriate or set manually
-
-linkaxes(ax, 'x'); % Link x-axes of all subplots
-
-% --- 6. Plot convergence of Finite-Time Lyapunov Exponents ---
-figure('Position', [950, 100, 800, 600]);
-hold on;
-for i = 1:N_states
-    % Plot only for t >= 0 where finite-time exponents are meaningfully accumulated
-    valid_indices_finite = t_lya >= 0 & ~isnan(finite_LE_spectrum_t(:,i)) & ~isinf(finite_LE_spectrum_t(:,i));
-    plot(t_lya(valid_indices_finite), finite_LE_spectrum_t(valid_indices_finite,i), '-', 'Color', colors(i,:), 'LineWidth', 1.5, 'DisplayName', sprintf('Finite LE(%d)', i));
-    % Plot global LE line for comparison
-    plot([0, T(2)], [LE_spectrum(i), LE_spectrum(i)], ':', 'Color', colors(i,:), 'LineWidth', 2, 'DisplayName', sprintf('Global LE(%d): %.4f', i, LE_spectrum(i)));
-end
-hold off;
-xlabel('Time (t)');
-ylabel('Lyapunov Exponent Estimate');
-title('Convergence of Finite-Time Lyapunov Exponents (for t \geq 0)');
-legend('show', 'Location', 'best');
-grid on;
-ylim_current = ylim;
-ylim_max_abs = max(abs(ylim_current));
-ylim([-ylim_max_abs, ylim_max_abs]); % Adjust y-limits for better visualization
-
 
 % --- Lorenz System Equations Function ---
 function dXdt = lorenz_eqs(~, X, params)
@@ -144,6 +249,60 @@ function J = lorenz_jacobian_eqs(~, X, params)
     J(1,1) = -sigma; J(1,2) = sigma;  J(1,3) = 0;
     J(2,1) = rho - z;J(2,2) = -1;     J(2,3) = -x;
     J(3,1) = y;      J(3,2) = x;      J(3,3) = -beta;
+end
+
+% --- Benettin's Algorithm ---
+function [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X, t, dt, fs, d0, T, lya_dt, params, ode_options, dynamics_func)
+    % Benettin's algorithm to compute the largest Lyapunov exponent
+    % reshoots small segments to compute the divergence rate along the system trajectory in X
+    deci_lya = round(lya_dt*fs);     % samples per Lyapunov interval
+    tau_lya = dt*deci_lya;    % Lyapunov rescaling time interval (integration time between rescalings)
+    t_lya    = t(1:deci_lya:end);     % direct decimation of `t`
+
+    if t_lya(end) + tau_lya > T(2)    % keep segments fully inside [T(1),T(2)]
+        t_lya(end) = [];
+    end
+    nt_lya  = numel(t_lya);           % number of Lyapunov intervals
+
+    local_lya  = zeros(nt_lya,1);
+    finite_lya = zeros(nt_lya,1);
+    sum_log_stretching_factors = 0;
+
+    % Initial perturbation
+    rnd_IC = randn(3,1);
+    pert = (rnd_IC./norm(rnd_IC)).*d0;
+
+    for k = 1:nt_lya
+        idx_start = (k-1)*deci_lya + 1;      % index of t_lya(k) in `t`
+        idx_end   = idx_start + deci_lya;    % => t_lya(k) + tau_lya
+
+        X_start = X(idx_start,:).';      % fiducial state at t_lya(k)
+
+        X_k_pert = X_start + pert; % Rescale perturbation from previous normalized delta
+
+        % Integrate ONLY the perturbed trajectory over [t_lya(k), t_lya(k)+tau_lya]
+        t_seg = t_lya(k) + [0, tau_lya];
+        [~, X_pert_seg] = ode45(@(tt,XX) dynamics_func(tt,XX,params), t_seg, X_k_pert, ode_options);
+        
+        X_pert_end = X_pert_seg(end,:).';
+
+        X_end   = X(idx_end,:).';        % fiducial state tau_lya later
+
+        % Local exponent
+        delta   = X_pert_end - X_end;
+        d_k     = norm(delta);
+        local_lya(k) = log(d_k/d0)/tau_lya;
+
+        pert = (delta./d_k).*d0; % rescaled perturbation for next step
+
+        % Accumulate stretching only from t >= 0
+        if t_lya(k) >= 0
+            sum_log_stretching_factors = sum_log_stretching_factors + log(d_k/d0);
+            finite_lya(k,1) = sum_log_stretching_factors / max(t_lya(k)+tau_lya, eps);
+        end
+    end
+
+    LLE = sum_log_stretching_factors / T(2);  % finite-time estimate from t = 0 to T(2)
 end
 
 % --- Lyapunov Spectrum QR Algorithm ---
