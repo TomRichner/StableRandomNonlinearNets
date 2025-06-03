@@ -23,6 +23,22 @@ The model consists of **n neurons** with the following variable dimensions:
 - **r** and **p** are derived quantities from the state variables
 - **c_SFA**, **c_STD**, **τ_d**, and **τ_STD** are typically scalars, but **c_SFA** and **c_STD** are set to zero for inhibitory neurons
 
+## Adaptation Control Parameters
+
+The model now includes explicit control over which adaptation mechanisms are applied to each neuron through two key parameters:
+
+- **c_SFA**: Controls the strength of **Spike Frequency Adaptation (SFA)** for each neuron. This parameter determines the bias adaptation component, where higher values lead to stronger adaptation of the neuron's bias term in response to sustained activity.
+
+- **F_STD**: Controls the strength of **Short-Term Depression (STD)** for each neuron. This parameter determines the weight adaptation component, where higher values lead to stronger adaptation of synaptic efficacy in response to presynaptic activity.
+
+These parameters allow for fine-grained control over the adaptation profile of individual neurons:
+- Setting **c_SFA = 0** disables spike frequency adaptation for that neuron
+- Setting **F_STD = 0** disables short-term depression for that neuron  
+- Both parameters are typically set to zero for **inhibitory neurons**, ensuring adaptation only occurs in excitatory populations
+- The parameters can be neuron-specific vectors, allowing heterogeneous adaptation profiles across the network
+
+This explicit parameterization enables systematic investigation of how different combinations of adaptation mechanisms affect network dynamics and stability properties.
+
 ## Research Questions
 
 Our primary research focus examines:
