@@ -1,4 +1,4 @@
-# Dual Adaptation Random Matrix Theory
+# StableRandomNonlinearNets
 
 This is a theoretical neuroscience project investigating two forms of adaptation found in the brain: (1) weight adaptation and (2) bias adaptation. Mechanistically these most closely align with short-term synaptic depression and spike frequency adaptation, respectively. We model the effect of dual adaptation on continuous time recurrent neural networks.
 
@@ -8,6 +8,20 @@ Our neural network model includes:
 - **Excitatory and inhibitory neurons** obeying Dale's principle
 - **Rectifying (ReLU) neurons** with nonlinear dynamics
 - **Adaptation only in excitatory neurons** - when there is high activity, weight and bias adaptation reduce the output of the E neurons, allowing the I neurons to "win" (i.e., dynamically balance the E neurons)
+
+## Model Equations
+
+![Model Equations](equations.png)
+
+The model consists of **n neurons** with the following variable dimensions:
+- **r**, **u_d**, **u_ex**, and **p** are **n × 1 vectors**
+- **M** is an **n × n** connectivity matrix
+- Each neuron has **k** adaptation state variables **a_k** 
+- Each neuron has **m** bias adaptation state variables **b_m**
+- Each neuron has **one dendrite state variable u_d**
+- The **total state size** is therefore **n × k + n × m + n × 1**
+- **r** and **p** are derived quantities from the state variables
+- **c_SFA**, **c_STD**, **τ_d**, and **τ_STD** are typically scalars, but **c_SFA** and **c_STD** are set to zero for inhibitory neurons
 
 ## Research Questions
 
