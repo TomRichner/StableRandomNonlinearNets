@@ -9,11 +9,11 @@ function [dX_dt] = SRNN(~, X, u_ex, params)
 
     tau_d = params.tau_d; % s, scalar
 
-    n = params.n_neurons;
-    M = params.M;
+    n = params.n; % n neurons
+    M = params.M; % connection matrix
     
-    c_SFA = params.c_SFA; % n_neurons x 1, 0 for I neurons
-    F_STD = params.F_STD; % n_neurons x 1, 0 for I neurons
+    c_SFA = params.c_SFA; % n x 1, 0 for I neurons
+    F_STD = params.F_STD; % n x 1, 0 for I neurons
     tau_STD = params.tau_STD; % scalar
 
     %% index state variables.
@@ -21,7 +21,7 @@ function [dX_dt] = SRNN(~, X, u_ex, params)
 
     % ---------- SFA (a–states) ----------
     if n_a > 0
-        a = reshape(X(1:idx_a_end), n, n_a);      % n_neurons × n_a
+        a = reshape(X(1:idx_a_end), n, n_a);      % n × n_a
     else
         a = [];                                   % no SFA states
     end
@@ -31,7 +31,7 @@ function [dX_dt] = SRNN(~, X, u_ex, params)
     idx_b_end   = idx_a_end + n * n_b;
 
     if n_b > 0
-        b = reshape(X(idx_b_start:idx_b_end), n, n_b); % n_neurons × n_b
+        b = reshape(X(idx_b_start:idx_b_end), n, n_b); % n × n_b
     else
         b = [];                                   % no STD states
     end

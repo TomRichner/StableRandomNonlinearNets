@@ -1,0 +1,52 @@
+function [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X, t, dt, fs, d0, T, lya_dt, params, ode_options, dynamics_func)
+    % Benettin's algorithm to compute the largest Lyapunov exponent
+    % reshoots small segments to compute the divergence rate along the system trajectory in X
+    deci_lya = round(lya_dt*fs);     % samples per Lyapunov interval
+    tau_lya = dt*deci_lya;    % Lyapunov rescaling time interval (integration time between rescalings)
+    t_lya    = t(1:deci_lya:end);     % direct decimation of `t`
+
+    if t_lya(end) + tau_lya > T(2)    % keep segments fully inside [T(1),T(2)]
+        t_lya(end) = [];
+    end
+    nt_lya  = numel(t_lya);           % number of Lyapunov intervals
+
+    local_lya  = zeros(nt_lya,1);
+    finite_lya = zeros(nt_lya,1);
+    sum_log_stretching_factors = 0;
+
+    % Initial perturbation
+    rnd_IC = randn(3,1);
+    pert = (rnd_IC./norm(rnd_IC)).*d0;
+
+    for k = 1:nt_lya
+        idx_start = (k-1)*deci_lya + 1;      % index of t_lya(k) in `t`
+        idx_end   = idx_start + deci_lya;    % => t_lya(k) + tau_lya
+
+        X_start = X(idx_start,:).';      % fiducial state at t_lya(k)
+
+        X_k_pert = X_start + pert; % Rescale perturbation from previous normalized delta
+
+        % Integrate ONLY the perturbed trajectory over [t_lya(k), t_lya(k)+tau_lya]
+        t_seg = t_lya(k) + [0, tau_lya];
+        [~, X_pert_seg] = ode45(@(tt,XX) dynamics_func(tt,XX,params), t_seg, X_k_pert, ode_options);
+        
+        X_pert_end = X_pert_seg(end,:).';
+
+        X_end   = X(idx_end,:).';        % fiducial state tau_lya later
+
+        % Local exponent
+        delta   = X_pert_end - X_end;
+        d_k     = norm(delta);
+        local_lya(k) = log(d_k/d0)/tau_lya;
+
+        pert = (delta./d_k).*d0; % rescaled perturbation for next step
+
+        % Accumulate stretching only from t >= 0
+        if t_lya(k) >= 0
+            sum_log_stretching_factors = sum_log_stretching_factors + log(d_k/d0);
+            finite_lya(k,1) = sum_log_stretching_factors / max(t_lya(k)+tau_lya, eps);
+        end
+    end
+
+    LLE = sum_log_stretching_factors / T(2);  % finite-time estimate from t = 0 to T(2)
+end
