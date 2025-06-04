@@ -4,18 +4,24 @@ close all
 clear
 clc
 
+tic
+
+%% 
+seed = 7;
+rng(seed,'twister');
+
 %% Network
 n = 10; % number of neurons
 
 Lya_method = 'benettin'; % 'benettin', 'qr', or 'none
 
-mean_in_out_degree = 5; % desired mean number of connections in and out
+mean_in_out_degree = 4; % desired mean number of connections in and out
 density = mean_in_out_degree/(n-1); % each neuron can make up to n-1 connections with other neurons
 sparsity = 1-density;
 
 EI = 0.7;
 scale = 0.5/0.79782; % overall scaling factor of weights
-w.EE = scale*1; % E to E. Change to scale*2 for bursting
+w.EE = scale*2; % E to E. Change to scale*2 for bursting
 w.EI = scale*1; % E to I connections
 w.IE = scale*1; % I to E
 w.II = scale*.5; % I to I
@@ -26,9 +32,9 @@ w.selfI = 0;    % self connections of I neurons
 EI_vec = EI_vec(:); % make it a column
 
 %% Time
-fs = 200; %Plotting sample frequency
+fs = 250; %Plotting sample frequency
 dt = 1/fs;
-T = [-10 30];
+T = [-10 100];
 
 % Validate time interval
 if not( T(1)<=0 && 0<T(2) )
@@ -48,24 +54,27 @@ f_sin = 1.*ones(1,fs*dur);
 % f_sin = logspace(log10(0.5),log10(3),fs*5);
 u_ex(1,-t(1)*fs+fs*1+(1:fix(fs*dur))) = stim_b0+amp.*sign(sin(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))'));
 u_ex(1,-t(1)*fs+fix(fs*5)+(1:fix(fs*dur))) = stim_b0+amp.*-cos(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))');
-u_ex = u_ex*2;
+u_ex = u_ex*1;
 u_ex = u_ex(:,1:nt);
-DC = 0.1;
+DC = 0.001;
 u_ex = u_ex+DC;
+% u_ex(:,1:fs) = u_ex(:,1:fs)+10./fs.*randn(n,fs); % noise in the first second to help the network get off the trivial saddle node from ICs
+u_ex = u_ex+0.001./fs.*randn(n,nt); % a tiny bit of noise to help the network get off the trivial saddle node from ICs
+
 
 %% parameters
 
 n_a = 3; % number of SFA timescales per neuron
-n_b = 2; % number of STD timescales per neuron
+n_b = 1; % number of STD timescales per neuron
 
-tau_a = logspace(log10(0.3), log10(30), n_a); % s, 1 x n_a, time constants of SFA
-tau_b = logspace(log10(0.6), log10(9), n_b);  % s, 1 x n_b, time constants of STD
+tau_a = logspace(log10(0.3), log10(6), n_a); % s, 1 x n_a, time constants of SFA
+tau_b = logspace(log10(0.6), log10(9), n_b);  % s, 1 x n_b, time constants of STD, n_b == 1, then it takes the last value log10(9)
 
 tau_d = 0.01; % s, scalar
 
 c_SFA = 1 * double(EI_vec == 1); % n x 1, 0 for I neurons bc no SFA
 F_STD = 1 * double(EI_vec == 1); % n x 1, 0 for I neurons bc no STD
-tau_STD = 0.5; % scalar, time constant of synaptic depression
+tau_STD = 1; % scalar, time constant of synaptic depression
 
 params = package_params(n_a, n_b, tau_a, tau_b, tau_d, n, M, c_SFA, F_STD, tau_STD);
 
@@ -90,9 +99,11 @@ N_sys_eqs = size(X_0,1); % Number of system equations / states
 
 %% Integrate with ODE solver
 
-ode_options = odeset('RelTol', 1e-10, 'AbsTol', 1e-13, 'MaxStep', 0.002, 'InitialStep', 0.0005);
+ode_options = odeset('RelTol', 1e-8, 'AbsTol', 1e-10, 'MaxStep', dt, 'InitialStep', min(0.001, 0.2*dt));
 
-[t_ode, X] = ode45(@(tt,XX) SRNN(tt,XX,u_ex,params), t, X_0, ode_options);
+SRNN_wrapper = @(tt,XX) SRNN(tt,XX,t,u_ex,params); % inline wrapper function to add t, u_ex, and params
+
+[t_ode, X] = ode15s(SRNN_wrapper, t, X_0, ode_options);
 
 assert(all(abs(t_ode - t) < 1e-12), 'ODE solver did not return results exactly at the requested times for fiducial trajectory.');
 clear t_ode % t_ode is same as t
@@ -124,7 +135,7 @@ switch lower(Lya_method)
         fprintf('Computing largest Lyapunov exponent using Benettin''s algorithm...\n');
         
         d0 = 1e-4; % Initial separation magnitude for Benettin's algorithm
-        [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X, t, dt, fs, d0, T, lya_dt, params, ode_options, @SRNN);
+        [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X, t, dt, fs, d0, T, lya_dt, params, ode_options, @SRNN, t, u_ex);
 
         fprintf('----------------------------------------------------\n');
         fprintf('Estimated Largest Lyapunov Exponent (LLE): %f\n', LLE);
@@ -138,7 +149,7 @@ switch lower(Lya_method)
 end
 
 %% Convert X to named variables
-[a, b, u_d] = unpack_SRNN_states(X, n, n_a, n_b);
+[a, b, u_d] = unpack_SRNN_state(X, n, n_a, n_b);
 
 % compute dependent variables r and p
 %% Compute dependent variables r and p using a subfunction
@@ -170,7 +181,6 @@ else
     plot(t_display, zeros(length(t_display),1)); % Plot zeros if no stim
 end
 ylabel('u_{ex}');
-title('External Input');
 box off;
 set(gca, 'XTickLabel', []);
 
@@ -186,7 +196,6 @@ if ~isempty(E_neurons_idx)
 end
 hold off;
 ylabel('r');
-title('Firing Rates');
 box off;
 set(gca, 'XTickLabel', []);
 
@@ -209,8 +218,7 @@ if ~isempty(E_neurons_idx) && params.n_a > 0
     plot(t_display, a_sum_plot(E_neurons_idx, plot_indices)');
 end
 hold off;
-ylabel('$\sum_k a_k$ (SFA)', 'Interpreter', 'latex');
-title('Summed SFA Variables');
+ylabel('$\\sum_k a_k$ (SFA)', 'Interpreter', 'latex');
 box off;
 set(gca, 'XTickLabel', []);
 
@@ -233,8 +241,7 @@ if ~isempty(E_neurons_idx) && params.n_b > 0
     plot(t_display, b_prod_plot(E_neurons_idx, plot_indices)');
 end
 hold off;
-ylabel('$\prod_k b_k$ (STD)', 'Interpreter', 'latex');
-title('Product of STD Variables');
+ylabel('$\\prod_k b_k$ (STD)', 'Interpreter', 'latex');
 box off;
 ylim([0 1.1]); % STD factors are typically between 0 and 1
 set(gca, 'XTickLabel', []);
@@ -251,7 +258,6 @@ if ~isempty(E_neurons_idx)
 end
 hold off;
 ylabel('u_d');
-title('Dendritic Potentials');
 box off;
 if num_subplots == 5
     xlabel('Time (s)');
@@ -264,17 +270,16 @@ if ~strcmpi(Lya_method, 'none')
     ax_handles(6) = subplot(num_subplots, 1, 6);
     hold on;
     if strcmpi(Lya_method, 'benettin')
-        if exist('t_lya', 'var') && exist('local_lya', 'var') && ~isempty(t_lya)
-            plot(t_lya, local_lya, '--', 'DisplayName', 'Local LLE');
-        end
-        if exist('t_lya', 'var') && exist('finite_lya', 'var') && ~isempty(t_lya)
-            plot(t_lya, finite_lya, '-', 'LineWidth', 1.5, 'DisplayName', 'Finite-time LLE');
-        end
         if exist('LLE', 'var') && exist('t_lya', 'var') && ~isempty(t_lya)
-            plot([t_lya(1) t_lya(end)], [LLE LLE], 'k:', 'LineWidth', 2, 'DisplayName', sprintf('Global LLE: %.4f', LLE));
+            plot([t_lya(1) t_lya(end)], [LLE LLE], 'k', 'LineWidth', 3, 'DisplayName', sprintf('Global LLE: %.4f', LLE));
         end
-        title('Largest Lyapunov Exponent (Benettin)');
-        
+            if exist('t_lya', 'var') && exist('finite_lya', 'var') && ~isempty(t_lya)
+            plot(t_lya, finite_lya, 'r', 'LineWidth', 2, 'DisplayName', 'Finite-time LLE');
+        end
+        if exist('t_lya', 'var') && exist('local_lya', 'var') && ~isempty(t_lya)
+            plot(t_lya, local_lya, 'b', 'LineWidth', 1, 'DisplayName', 'Local LLE');
+        end
+        ylim([-.5 .5])
     elseif strcmpi(Lya_method, 'qr')
         if exist('LE_spectrum', 'var') && exist('t_lya', 'var') && ~isempty(t_lya)
             colors = lines(N_sys_eqs);
@@ -294,29 +299,32 @@ if ~strcmpi(Lya_method, 'none')
             for i = 1:N_sys_eqs
                 plot([t_lya(1) t_lya(end)], [LE_spectrum(i) LE_spectrum(i)], ':', 'Color', colors(i,:), 'LineWidth', 2, 'DisplayName', sprintf('Global LE(%d): %.4f', i, LE_spectrum(i)));
             end
-            title('Lyapunov Exponent Spectrum (QR)');
         else
              plot(0,0); % Placeholder if Lya vars are missing
-             title('Lyapunov Exponents (QR - Data missing)');
         end
     end
     hold off;
     ylabel('Lyapunov Exp.');
     xlabel('Time (s)');
-    legend('show', 'Location', 'bestoutside');
+    legend('show');
     grid on;
     box off;
 end
 
 % Link axes and set limits
 linkaxes(ax_handles, 'x');
-if exist('t_lya','var') && ~isempty(t_lya) && ~strcmpi(Lya_method, 'none')
-    xlim_min = min(t(1), t_lya(1));
-    xlim_max = max(t(end), t_lya(end));
-    xlim([xlim_min xlim_max]);
-else
-    xlim([t(1) t(end)]);
+xlim(T);
+
+if n <= 50
+    figure(2)
+    clf
+    set(gcf,'Position',[100   1009 500 500])
+    [h_digraph, dgA] = plot_network_graph_widthRange_color_R(M,1,EI_vec);
+    box off
+    axis equal
+    axis off
 end
 
-sgtitle('SRNN Simulation Results'); % Super title for the entire figure
+sim_dur = toc
 
+sim_t_dived_by_rt = sim_dur./(T(2)-T(1))

@@ -1,4 +1,4 @@
-function [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X, t, dt, fs, d0, T, lya_dt, params, ode_options, dynamics_func)
+function [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X, t, dt, fs, d0, T, lya_dt, params, ode_options, dynamics_func, t_ex, u_ex)
     % Benettin's algorithm to compute the largest Lyapunov exponent
     % reshoots small segments to compute the divergence rate along the system trajectory in X
     deci_lya = round(lya_dt*fs);     % samples per Lyapunov interval
@@ -15,7 +15,8 @@ function [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X, t, dt, fs, 
     sum_log_stretching_factors = 0;
 
     % Initial perturbation
-    rnd_IC = randn(3,1);
+    n_state = size(X,2);
+    rnd_IC = randn(n_state,1);
     pert = (rnd_IC./norm(rnd_IC)).*d0;
 
     for k = 1:nt_lya
@@ -28,7 +29,7 @@ function [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X, t, dt, fs, 
 
         % Integrate ONLY the perturbed trajectory over [t_lya(k), t_lya(k)+tau_lya]
         t_seg = t_lya(k) + [0, tau_lya];
-        [~, X_pert_seg] = ode45(@(tt,XX) dynamics_func(tt,XX,params), t_seg, X_k_pert, ode_options);
+        [~, X_pert_seg] = ode15s(@(tt,XX) dynamics_func(tt,XX,t_ex,u_ex,params), t_seg, X_k_pert, ode_options);
         
         X_pert_end = X_pert_seg(end,:).';
 
