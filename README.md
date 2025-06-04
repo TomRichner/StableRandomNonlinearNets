@@ -11,7 +11,7 @@ Our neural network model includes:
 
 ## Model Equations
 
-![Model Equations](equations.png)
+<img src="equations.png" alt="Model Equations" width="300"/>
 
 The model consists of **n neurons** with the following variable dimensions:
 - **r**, **u_d**, **u_ex**, and **p** are **n × 1 vectors**
