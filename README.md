@@ -21,7 +21,7 @@ The model consists of **n neurons** with the following variable dimensions:
 - Each neuron has **one dendrite state variable u_d**
 - The **total state size** is therefore **n × k + n × m + n × 1**
 - **r** and **p** are derived quantities from the state variables
-- **c_SFA**, **c_STD**, **τ_d**, and **τ_STD** are typically scalars, but **c_SFA** and **c_STD** are set to zero for inhibitory neurons
+- **c_SFA**, **F_STD**, **τ_d**, and **τ_STD** are typically scalars, but **c_SFA** and **F_STD** are set to zero for inhibitory neurons
 
 ## Adaptation Control Parameters
 

@@ -88,8 +88,9 @@ set(gca, 'XTickLabel', []);
 % Subplot 3: SFA sum (from variable 'a')
 ax_handles(3) = subplot(num_subplots, 1, 3);
 if params.n_a > 0
-    a_reshaped_plotting = reshape(a, n, params.n_a, nt); % a is (n*n_a) x nt
-    a_sum_plot = squeeze(sum(a_reshaped_plotting, 2)); % n x nt
+    % a is n x n_a x nt from unpack_SRNN_state when called with full X
+    % sum(a, 2) results in n x 1 x nt. We want n x nt.
+    a_sum_plot = squeeze_dim(sum(a, 2), 2); % Use squeeze_dim to remove singleton 2nd dim
 else
     a_sum_plot = zeros(n, nt);
 end
@@ -111,8 +112,9 @@ set(gca, 'XTickLabel', []);
 % Subplot 4: STD product (from variable 'b')
 ax_handles(4) = subplot(num_subplots, 1, 4);
 if params.n_b > 0
-    b_reshaped_plotting = reshape(b, n, params.n_b, nt); % b is (n*n_b) x nt
-    b_prod_plot = squeeze(prod(b_reshaped_plotting, 2)); % n x nt
+    % b is n x n_b x nt from unpack_SRNN_state when called with full X
+    % prod(b, 2) results in n x 1 x nt. We want n x nt.
+    b_prod_plot = squeeze_dim(prod(b, 2), 2); % Use squeeze_dim to remove singleton 2nd dim
 else
     b_prod_plot = ones(n, nt);
 end

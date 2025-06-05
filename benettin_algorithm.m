@@ -1,7 +1,17 @@
 function [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X, t, dt, fs, d0, T, lya_dt, params, ode_options, dynamics_func, t_ex, u_ex, ode_solver)
     % Benettin's algorithm to compute the largest Lyapunov exponent
     % reshoots small segments to compute the divergence rate along the system trajectory in X
+
+    % Input Validations
+    if ~isscalar(lya_dt) || ~isnumeric(lya_dt) || lya_dt <= 0
+        error('benettin_algorithm:InvalidLyaDt', 'lya_dt must be a positive scalar.');
+    end
+
     deci_lya = round(lya_dt*fs);     % samples per Lyapunov interval
+    if deci_lya < 1
+        error('benettin_algorithm:InvalidDeciLya', 'lya_dt * fs must result in at least 1 sample per Lyapunov interval (deci_lya >= 1). Check lya_dt and fs values.');
+    end
+
     tau_lya = dt*deci_lya;    % Lyapunov rescaling time interval (integration time between rescalings)
     t_lya    = t(1:deci_lya:end);     % direct decimation of `t`
 
