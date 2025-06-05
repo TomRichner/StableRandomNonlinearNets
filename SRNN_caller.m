@@ -11,9 +11,9 @@ seed = 7;
 rng(seed,'twister');
 
 %% Network
-n = 10; % number of neurons
+n = 8; % number of neurons
 
-Lya_method = 'benettin'; % 'benettin', 'qr', or 'none
+Lya_method = 'benettin'; % 'benettin', 'qr', or 'none'
 
 mean_in_out_degree = 4; % desired mean number of connections in and out
 density = mean_in_out_degree/(n-1); % each neuron can make up to n-1 connections with other neurons
@@ -21,7 +21,7 @@ sparsity = 1-density;
 
 EI = 0.7;
 scale = 0.5/0.79782; % overall scaling factor of weights
-w.EE = scale*2; % E to E. Change to scale*2 for bursting
+w.EE = scale*1; % E to E. Change to scale*2 for bursting
 w.EI = scale*1; % E to I connections
 w.IE = scale*1; % I to E
 w.II = scale*.5; % I to I
@@ -32,9 +32,9 @@ w.selfI = 0;    % self connections of I neurons
 EI_vec = EI_vec(:); % make it a column
 
 %% Time
-fs = 250; %Plotting sample frequency
+fs = 500; %Plotting sample frequency
 dt = 1/fs;
-T = [-10 100];
+T = [-10 10];
 
 % Validate time interval
 if not( T(1)<=0 && 0<T(2) )
@@ -56,10 +56,15 @@ u_ex(1,-t(1)*fs+fs*1+(1:fix(fs*dur))) = stim_b0+amp.*sign(sin(2*pi*f_sin(1:fix(f
 u_ex(1,-t(1)*fs+fix(fs*5)+(1:fix(fs*dur))) = stim_b0+amp.*-cos(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))');
 u_ex = u_ex*1;
 u_ex = u_ex(:,1:nt);
-DC = 0.001;
+DC = 0.1;
 u_ex = u_ex+DC;
-% u_ex(:,1:fs) = u_ex(:,1:fs)+10./fs.*randn(n,fs); % noise in the first second to help the network get off the trivial saddle node from ICs
+
+u_ex(:,0.2*fs:0.3*fs) = u_ex(:,0.2*fs:0.3*fs) + 0.1; % a pulse to help Lyapunov exponent to find the direction.
+u_ex(:,1:fs) = u_ex(:,1:fs)+1./fs.*randn(n,fs); % noise in the first second to help the network get off the trivial saddle node from ICs
 u_ex = u_ex+0.001./fs.*randn(n,nt); % a tiny bit of noise to help the network get off the trivial saddle node from ICs
+
+% noise_density = 0.02; % Define the density for sparse noise application
+% u_ex = u_ex + (0.001./fs .* randn(n, nt)) .* (rand(1, nt) < noise_density); % Apply sparse noise (density ~0.02) to help the network get off the trivial saddle node from ICs
 
 
 %% parameters
@@ -68,7 +73,7 @@ n_a = 3; % number of SFA timescales per neuron
 n_b = 1; % number of STD timescales per neuron
 
 tau_a = logspace(log10(0.3), log10(6), n_a); % s, 1 x n_a, time constants of SFA
-tau_b = logspace(log10(0.6), log10(9), n_b);  % s, 1 x n_b, time constants of STD, n_b == 1, then it takes the last value log10(9)
+tau_b = logspace(log10(0.6), log10(1), n_b);  % s, 1 x n_b, time constants of STD, n_b == 1, then it takes the last value log10(9)
 
 tau_d = 0.01; % s, scalar
 
@@ -99,7 +104,8 @@ N_sys_eqs = size(X_0,1); % Number of system equations / states
 
 %% Integrate with ODE solver
 
-ode_options = odeset('RelTol', 1e-8, 'AbsTol', 1e-10, 'MaxStep', dt, 'InitialStep', min(0.001, 0.2*dt));
+% ode_options = odeset('RelTol', 1e-9, 'AbsTol', 1e-9, 'MaxStep', 0.5*dt, 'InitialStep', min(0.001, 0.2*dt)); % accurate
+ode_options = odeset('RelTol', 1e-5, 'AbsTol', 1e-6, 'MaxStep', 0.5*dt, 'InitialStep', min(0.001, 0.2*dt)); % fast
 
 SRNN_wrapper = @(tt,XX) SRNN(tt,XX,t,u_ex,params); % inline wrapper function to add t, u_ex, and params
 
@@ -110,7 +116,7 @@ clear t_ode % t_ode is same as t
 
 %% comput LLE or Lyapunov spectrum
 
-lya_dt = 0.1; % Rescaling time interval for Lyapunov calculation (tau_lya) (s)
+lya_dt = 0.05; % Rescaling time interval for Lyapunov calculation (tau_lya) (s)
 
 switch lower(Lya_method)
     case 'qr'
@@ -134,7 +140,7 @@ switch lower(Lya_method)
     case 'benettin'
         fprintf('Computing largest Lyapunov exponent using Benettin''s algorithm...\n');
         
-        d0 = 1e-4; % Initial separation magnitude for Benettin's algorithm
+        d0 = 1e-3; % Initial separation magnitude for Benettin's algorithm
         [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X, t, dt, fs, d0, T, lya_dt, params, ode_options, @SRNN, t, u_ex);
 
         fprintf('----------------------------------------------------\n');
@@ -155,174 +161,30 @@ end
 %% Compute dependent variables r and p using a subfunction
 [r, p] = compute_dependent_variables(a, b, u_d, n_a, n_b, c_SFA);
 
-%% Make plots
+%% Make plots using the plotting function
 
-figure('Position', [100, 100, 900, 1200]); % Adjusted figure size
-
-num_subplots = 5;
+% Prepare Lyapunov results structure if needed
+lya_results = struct();
 if ~strcmpi(Lya_method, 'none')
-    num_subplots = 6;
-end
-ax_handles = gobjects(num_subplots, 1);
-
-% Define plot indices for manageable number of points
-plot_indices = round(linspace(1, nt, min(nt, 2000)));
-t_display = t(plot_indices);
-
-E_neurons_idx = find(EI_vec == 1);
-I_neurons_idx = find(EI_vec == -1);
-
-% Subplot 1: External input u_ex
-ax_handles(1) = subplot(num_subplots, 1, 1);
-has_stim = any(abs(u_ex) > 1e-6, 2); % Find neurons that actually receive stimulus
-if any(has_stim)
-    plot(t_display, u_ex(has_stim, plot_indices)');
-else
-    plot(t_display, zeros(length(t_display),1)); % Plot zeros if no stim
-end
-ylabel('u_{ex}');
-box off;
-set(gca, 'XTickLabel', []);
-
-% Subplot 2: Firing rates r
-ax_handles(2) = subplot(num_subplots, 1, 2);
-hold on;
-if ~isempty(I_neurons_idx)
-    plot(t_display, r(I_neurons_idx, plot_indices)', 'r');
-end
-if ~isempty(E_neurons_idx)
-    set(gca,'ColorOrderIndex',1); % Reset color index if I neurons were plotted
-    plot(t_display, r(E_neurons_idx, plot_indices)');
-end
-hold off;
-ylabel('r');
-box off;
-set(gca, 'XTickLabel', []);
-
-% Subplot 3: SFA sum (from variable 'a')
-ax_handles(3) = subplot(num_subplots, 1, 3);
-if params.n_a > 0
-    a_reshaped_plotting = reshape(a, n, params.n_a, nt); % a is (n*n_a) x nt
-    a_sum_plot = squeeze(sum(a_reshaped_plotting, 2)); % n x nt
-else
-    a_sum_plot = zeros(n, nt);
-end
-hold on;
-if ~isempty(I_neurons_idx) && params.n_a > 0 % Assuming SFA can apply to I neurons based on c_SFA
-    if any(params.c_SFA(I_neurons_idx) ~= 0) % Only plot if SFA is active for I neurons
-         plot(t_display, a_sum_plot(I_neurons_idx, plot_indices)', 'r');
-    end
-end
-if ~isempty(E_neurons_idx) && params.n_a > 0
-    set(gca,'ColorOrderIndex',1);
-    plot(t_display, a_sum_plot(E_neurons_idx, plot_indices)');
-end
-hold off;
-ylabel('$\\sum_k a_k$ (SFA)', 'Interpreter', 'latex');
-box off;
-set(gca, 'XTickLabel', []);
-
-% Subplot 4: STD product (from variable 'b')
-ax_handles(4) = subplot(num_subplots, 1, 4);
-if params.n_b > 0
-    b_reshaped_plotting = reshape(b, n, params.n_b, nt); % b is (n*n_b) x nt
-    b_prod_plot = squeeze(prod(b_reshaped_plotting, 2)); % n x nt
-else
-    b_prod_plot = ones(n, nt);
-end
-hold on;
-if ~isempty(I_neurons_idx) && params.n_b > 0 % Assuming STD can apply to I neurons based on F_STD
-    if any(params.F_STD(I_neurons_idx) ~= 0) % Only plot if STD is active for I neurons
-        plot(t_display, b_prod_plot(I_neurons_idx, plot_indices)', 'r');
-    end
-end
-if ~isempty(E_neurons_idx) && params.n_b > 0
-    set(gca,'ColorOrderIndex',1);
-    plot(t_display, b_prod_plot(E_neurons_idx, plot_indices)');
-end
-hold off;
-ylabel('$\\prod_k b_k$ (STD)', 'Interpreter', 'latex');
-box off;
-ylim([0 1.1]); % STD factors are typically between 0 and 1
-set(gca, 'XTickLabel', []);
-
-% Subplot 5: Dendritic potential u_d
-ax_handles(5) = subplot(num_subplots, 1, 5);
-hold on;
-if ~isempty(I_neurons_idx)
-    plot(t_display, u_d(I_neurons_idx, plot_indices)', 'r');
-end
-if ~isempty(E_neurons_idx)
-    set(gca,'ColorOrderIndex',1);
-    plot(t_display, u_d(E_neurons_idx, plot_indices)');
-end
-hold off;
-ylabel('u_d');
-box off;
-if num_subplots == 5
-    xlabel('Time (s)');
-else
-    set(gca, 'XTickLabel', []);
-end
-
-% Subplot 6: Lyapunov Exponents (if calculated)
-if ~strcmpi(Lya_method, 'none')
-    ax_handles(6) = subplot(num_subplots, 1, 6);
-    hold on;
     if strcmpi(Lya_method, 'benettin')
-        if exist('LLE', 'var') && exist('t_lya', 'var') && ~isempty(t_lya)
-            plot([t_lya(1) t_lya(end)], [LLE LLE], 'k', 'LineWidth', 3, 'DisplayName', sprintf('Global LLE: %.4f', LLE));
-        end
-            if exist('t_lya', 'var') && exist('finite_lya', 'var') && ~isempty(t_lya)
-            plot(t_lya, finite_lya, 'r', 'LineWidth', 2, 'DisplayName', 'Finite-time LLE');
-        end
-        if exist('t_lya', 'var') && exist('local_lya', 'var') && ~isempty(t_lya)
-            plot(t_lya, local_lya, 'b', 'LineWidth', 1, 'DisplayName', 'Local LLE');
-        end
-        ylim([-.5 .5])
+        if exist('LLE', 'var'), lya_results.LLE = LLE; end
+        if exist('local_lya', 'var'), lya_results.local_lya = local_lya; end
+        if exist('finite_lya', 'var'), lya_results.finite_lya = finite_lya; end
+        if exist('t_lya', 'var'), lya_results.t_lya = t_lya; end
     elseif strcmpi(Lya_method, 'qr')
-        if exist('LE_spectrum', 'var') && exist('t_lya', 'var') && ~isempty(t_lya)
-            colors = lines(N_sys_eqs);
-            % Plot local Lyapunov exponents
-            if exist('local_LE_spectrum_t', 'var') && ~isempty(local_LE_spectrum_t)
-                for i = 1:N_sys_eqs
-                    plot(t_lya, local_LE_spectrum_t(:,i), '--', 'Color', colors(i,:), 'DisplayName', sprintf('Local LE(%d)', i));
-                end
-            end
-            % Plot finite-time Lyapunov exponents
-            if exist('finite_LE_spectrum_t', 'var') && ~isempty(finite_LE_spectrum_t)
-                for i = 1:N_sys_eqs
-                    plot(t_lya, finite_LE_spectrum_t(:,i), '-', 'Color', colors(i,:), 'LineWidth', 1.5, 'DisplayName', sprintf('Finite LE(%d)', i));
-                end
-            end
-            % Plot global Lyapunov exponents as horizontal lines
-            for i = 1:N_sys_eqs
-                plot([t_lya(1) t_lya(end)], [LE_spectrum(i) LE_spectrum(i)], ':', 'Color', colors(i,:), 'LineWidth', 2, 'DisplayName', sprintf('Global LE(%d): %.4f', i, LE_spectrum(i)));
-            end
-        else
-             plot(0,0); % Placeholder if Lya vars are missing
-        end
+        if exist('LE_spectrum', 'var'), lya_results.LE_spectrum = LE_spectrum; end
+        if exist('local_LE_spectrum_t', 'var'), lya_results.local_LE_spectrum_t = local_LE_spectrum_t; end
+        if exist('finite_LE_spectrum_t', 'var'), lya_results.finite_LE_spectrum_t = finite_LE_spectrum_t; end
+        if exist('t_lya', 'var'), lya_results.t_lya = t_lya; end
+        if exist('N_sys_eqs', 'var'), lya_results.N_sys_eqs = N_sys_eqs; end
     end
-    hold off;
-    ylabel('Lyapunov Exp.');
-    xlabel('Time (s)');
-    legend('show');
-    grid on;
-    box off;
 end
 
-% Link axes and set limits
-linkaxes(ax_handles, 'x');
-xlim(T);
-
-if n <= 50
-    figure(2)
-    clf
-    set(gcf,'Position',[100   1009 500 500])
-    [h_digraph, dgA] = plot_network_graph_widthRange_color_R(M,1,EI_vec);
-    box off
-    axis equal
-    axis off
+% Call the plotting function
+if ~strcmpi(Lya_method, 'none') && ~isempty(fieldnames(lya_results))
+    SRNN_tseries_plot(t, u_ex, r, a, b, u_d, params, EI_vec, T, n, M, Lya_method, lya_results);
+else
+    SRNN_tseries_plot(t, u_ex, r, a, b, u_d, params, EI_vec, T, n, M, Lya_method);
 end
 
 sim_dur = toc
