@@ -13,7 +13,7 @@ rng(seed,'twister');
 %% Network
 n = 6; % number of neurons
 
-Lya_method = 'qr'; % 'benettin', 'qr', or 'none'
+Lya_method = 'benettin'; % 'benettin', 'qr', or 'none'
 
 mean_in_out_degree = 3; % desired mean number of connections in and out
 density = mean_in_out_degree/(n-1); % each neuron can make up to n-1 connections with other neurons
@@ -34,7 +34,7 @@ EI_vec = EI_vec(:); % make it a column
 %% Time
 fs = 1000; %Plotting sample frequency
 dt = 1/fs;
-T = [-10 20];
+T = [-3 7];
 
 % Validate time interval
 if not( T(1)<=0 && 0<T(2) )
@@ -49,7 +49,7 @@ t = linspace(T(1), T(2), nt)'; % Plotting time vector
 u_ex = zeros(n, nt);
 % sine and square wave stim
 stim_b0 = 0.5; amp = 0.5;
-dur = 8; % duration of sine
+dur = 3; % duration of sine
 f_sin = 1.*ones(1,fs*dur);
 % f_sin = logspace(log10(0.5),log10(3),fs*5);
 % u_ex(1,-t(1)*fs+fs*1+(1:fix(fs*dur))) = stim_b0+amp.*sign(sin(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))'));
@@ -104,15 +104,22 @@ N_sys_eqs = size(X_0,1); % Number of system equations / states
 
 %% Integrate with ODE solver
 
-ode_options = odeset('RelTol', 1e-11, 'AbsTol', 1e-12, 'MaxStep', 0.5*dt, 'InitialStep', min(0.001, 0.2*dt)); % accurate
-% ode_options = odeset('RelTol', 1e-5, 'AbsTol', 1e-6, 'MaxStep', 0.5*dt, 'InitialStep', min(0.001, 0.2*dt)); % fast
+% ode_options = odeset('RelTol', 1e-11, 'AbsTol', 1e-12, 'MaxStep', 0.5*dt, 'InitialStep', min(0.001, 0.2*dt)); % accurate
+ode_options = odeset('RelTol', 1e-5, 'AbsTol', 1e-6, 'MinStep',0.05*dt,'MaxStep', 0.5*dt, 'InitialStep', 0.5*dt); % fast
+
+% ode_options = odeset('RelTol', 1e-1, 'AbsTol', 1e-1, 'MaxStep', dt, 'InitialStep', dt,'MinStep',dt); % effectively single step for when using ode45 for debug
 
 SRNN_wrapper = @(tt,XX) SRNN(tt,XX,t,u_ex,params); % inline wrapper function to add t, u_ex, and params to SRNN
 
 % wrap ode_RKn to limit the exposure of extra parameters for usage to match builtin integrators
-ode_RKn_wrapper = @(odefun, tspan, y0, options) deal(tspan(:), ode_RKn_deci_bounded(odefun, tspan, y0, 6, false, 1, get_minMaxRange(n,n_a,n_b)));
+solver_method = 6; % 5 is classic RK4
+deci = 1;
+ode_RKn_wrapper = @(odefun, tspan, y0, options) deal(tspan(:), ode_RKn_deci_bounded(odefun, tspan, y0, solver_method, false, deci, get_minMaxRange(n,n_a,n_b)));
 
-ode_solver = ode_RKn_wrapper; % or ode15s, ode45, etc.
+% ode_solver = ode_RKn_wrapper; % lyapunov exponent is ridiculously high.  maybe divide by zero?
+ode_solver = @ode45; % works fine
+% ode_solver = @ode4_wrapper; % lyapunov exponent is ridiculously high.  maybe divide by zero?
+% ode_solver = @ode15s;
 
 % Use the wrapper instead of ode15s
 [t_ode, X] = ode_solver(SRNN_wrapper, t, X_0, ode_options);
@@ -122,7 +129,7 @@ clear t_ode % t_ode is same as t
 
 %% comput LLE or Lyapunov spectrum
 
-lya_dt = 0.1; % Rescaling time interval for Lyapunov calculation (tau_lya) (s)
+lya_dt = 0.01; % Rescaling time interval for Lyapunov calculation (tau_lya) (s)
 
 switch lower(Lya_method)
     case 'qr'

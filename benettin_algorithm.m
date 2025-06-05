@@ -29,20 +29,41 @@ function [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X, t, dt, fs, 
     rnd_IC = randn(n_state,1);
     pert = (rnd_IC./norm(rnd_IC)).*d0;
 
+    % Get bounds for the full state vector X once, as they are static.
+    % This assumes params contains n, n_a, n_b.
+    min_max_range = get_minMaxRange(params.n, params.n_a, params.n_b);
+    % Ensure current_min_max_range matches the structure of X_k_pert (n_state x 2)
+    
+    min_bnds = min_max_range(:, 1); % n_state x 1 column vector
+    max_bnds = min_max_range(:, 2); % n_state x 1 column vector
+
     for k = 1:nt_lya
         idx_start = (k-1)*deci_lya + 1;      % index of t_lya(k) in `t`
         idx_end   = idx_start + deci_lya;    % => t_lya(k) + tau_lya
 
-        X_start = X(idx_start,:).';      % fiducial state at t_lya(k)
+        X_start = X(idx_start,:).';      % fiducial state at t_lya(k), n_state x 1
 
-        X_k_pert = X_start + pert; % Rescale perturbation from previous normalized delta
+        X_k_pert = X_start + pert; % Rescale perturbation from previous normalized delta, n_state x 1
 
-        % Integrate ONLY the perturbed trajectory over [t_lya(k), t_lya(k)+tau_lya]
-        t_seg = t_lya(k) + [0, tau_lya];
-        [~, X_pert_seg] = ode_solver(@(tt,XX) dynamics_func(tt,XX,t_ex,u_ex,params), t_seg, X_k_pert, ode_options);
+        % Vectorized clipping of X_k_pert to ensure it's within bounds
+        % Apply lower bounds where they are defined and violated
+        idx_violates_min = ~isnan(min_bnds) & (X_k_pert < min_bnds);
+        X_k_pert(idx_violates_min) = min_bnds(idx_violates_min);
+
+        % Apply upper bounds where they are defined and violated
+        idx_violates_max = ~isnan(max_bnds) & (X_k_pert > max_bnds);
+        X_k_pert(idx_violates_max) = max_bnds(idx_violates_max);
         
-        X_pert_end = X_pert_seg(end,:).';
-
+        % Integrate ONLY the perturbed trajectory over [t_lya(k), t_lya(k)+tau_lya]
+        t_seg_detailed = t_lya(k) + (0:dt:tau_lya); % tau lya is always a multiple of dt, so this should be fine
+        
+        % Pass the now-bounded X_k_pert and the detailed t_seg_detailed to the ODE solver
+        % ode_options are passed along; for ode45 they dictate MaxStep=dt, 
+        % for ode4/ode_RKn they are mostly ignored for step control but passed to odefun if needed.
+        [~, X_pert_output_all_steps] = ode_solver(@(tt,XX) dynamics_func(tt,XX,t_ex,u_ex,params), t_seg_detailed, X_k_pert, ode_options);
+        
+        X_pert_end = X_pert_output_all_steps(end,:).';
+        
         X_end   = X(idx_end,:).';        % fiducial state tau_lya later
 
         % Local exponent
