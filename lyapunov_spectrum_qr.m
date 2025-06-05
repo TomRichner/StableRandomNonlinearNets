@@ -77,7 +77,7 @@ function [LE_spectrum, local_LE_spectrum_t, finite_LE_spectrum_t, t_lya_vec] = .
         t_span_ode = [t_start_segment, t_end_segment];
         Psi0_vec = reshape(Q_current, [], 1);
         
-        [~, Psi_solution_vec] = ode45(@variational_eqs_ode, t_span_ode, Psi0_vec, ode_options_var);
+        [~, Psi_solution_vec] = ode15s(@variational_eqs_ode, t_span_ode, Psi0_vec, ode_options_var);
         
         Psi_evolved_matrix = reshape(Psi_solution_vec(end,:)', [N_states_sys, N_states_sys]);
         [Q_new, R_segment] = qr(Psi_evolved_matrix);

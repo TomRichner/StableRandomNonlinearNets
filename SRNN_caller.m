@@ -7,15 +7,15 @@ clc
 tic
 
 %% 
-seed = 7;
+seed = 42;
 rng(seed,'twister');
 
 %% Network
-n = 8; % number of neurons
+n = 6; % number of neurons
 
-Lya_method = 'benettin'; % 'benettin', 'qr', or 'none'
+Lya_method = 'qr'; % 'benettin', 'qr', or 'none'
 
-mean_in_out_degree = 4; % desired mean number of connections in and out
+mean_in_out_degree = 3; % desired mean number of connections in and out
 density = mean_in_out_degree/(n-1); % each neuron can make up to n-1 connections with other neurons
 sparsity = 1-density;
 
@@ -32,9 +32,9 @@ w.selfI = 0;    % self connections of I neurons
 EI_vec = EI_vec(:); % make it a column
 
 %% Time
-fs = 500; %Plotting sample frequency
+fs = 1000; %Plotting sample frequency
 dt = 1/fs;
-T = [-10 10];
+T = [-10 20];
 
 % Validate time interval
 if not( T(1)<=0 && 0<T(2) )
@@ -49,11 +49,11 @@ t = linspace(T(1), T(2), nt)'; % Plotting time vector
 u_ex = zeros(n, nt);
 % sine and square wave stim
 stim_b0 = 0.5; amp = 0.5;
-dur = 3; % duration of sine
+dur = 8; % duration of sine
 f_sin = 1.*ones(1,fs*dur);
 % f_sin = logspace(log10(0.5),log10(3),fs*5);
-u_ex(1,-t(1)*fs+fs*1+(1:fix(fs*dur))) = stim_b0+amp.*sign(sin(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))'));
-u_ex(1,-t(1)*fs+fix(fs*5)+(1:fix(fs*dur))) = stim_b0+amp.*-cos(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))');
+% u_ex(1,-t(1)*fs+fs*1+(1:fix(fs*dur))) = stim_b0+amp.*sign(sin(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))'));
+u_ex(1,-t(1)*fs+fix(fs*1)+(1:fix(fs*dur))) = stim_b0+amp.*-cos(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))');
 u_ex = u_ex*1;
 u_ex = u_ex(:,1:nt);
 DC = 0.1;
@@ -104,8 +104,8 @@ N_sys_eqs = size(X_0,1); % Number of system equations / states
 
 %% Integrate with ODE solver
 
-% ode_options = odeset('RelTol', 1e-9, 'AbsTol', 1e-9, 'MaxStep', 0.5*dt, 'InitialStep', min(0.001, 0.2*dt)); % accurate
-ode_options = odeset('RelTol', 1e-5, 'AbsTol', 1e-6, 'MaxStep', 0.5*dt, 'InitialStep', min(0.001, 0.2*dt)); % fast
+ode_options = odeset('RelTol', 1e-11, 'AbsTol', 1e-12, 'MaxStep', 0.5*dt, 'InitialStep', min(0.001, 0.2*dt)); % accurate
+% ode_options = odeset('RelTol', 1e-5, 'AbsTol', 1e-6, 'MaxStep', 0.5*dt, 'InitialStep', min(0.001, 0.2*dt)); % fast
 
 SRNN_wrapper = @(tt,XX) SRNN(tt,XX,t,u_ex,params); % inline wrapper function to add t, u_ex, and params
 
@@ -116,7 +116,7 @@ clear t_ode % t_ode is same as t
 
 %% comput LLE or Lyapunov spectrum
 
-lya_dt = 0.05; % Rescaling time interval for Lyapunov calculation (tau_lya) (s)
+lya_dt = 0.1; % Rescaling time interval for Lyapunov calculation (tau_lya) (s)
 
 switch lower(Lya_method)
     case 'qr'
@@ -125,16 +125,17 @@ switch lower(Lya_method)
         % Ensure SRNN_jacobian_eqs is defined elsewhere or this will error.
         % Using N_sys_eqs for the number of states.
         [LE_spectrum, local_LE_spectrum_t, finite_LE_spectrum_t, t_lya] = ...
-            lyapunov_spectrum_qr(X, t, lya_dt, params, ode_options, @SRNN_jacobian_eqs, T, N_sys_eqs, fs);
+            lyapunov_spectrum_qr(X, t, lya_dt, params, ode_options, @SRNN_Jacobian, T, N_sys_eqs, fs);
 
+        LE_sorted = sort(LE_spectrum,'descend');
         % Display the estimated Lyapunov Spectrum
         fprintf('----------------------------------------------------\n');
         fprintf('Estimated Lyapunov Spectrum (Global):\n');
         for i = 1:N_sys_eqs
-            fprintf('  LE(%d): %f\n', i, LE_spectrum(i));
+            fprintf('  LE(%d): %f\n', i, LE_sorted(i));
         end
-        fprintf('Sum of exponents: %f (should be < 0 for dissipative systems like Lorenz)\n', sum(LE_spectrum));
-        fprintf('Kaplan-Yorke Dimension: %f\n', calculate_kaplan_yorke_dimension(LE_spectrum));
+        fprintf('Sum of exponents: %f (should be < 0 for dissipative systems)\n', sum(LE_spectrum));
+        fprintf('Kaplan-Yorke Dimension: %f\n', kaplan_yorke_dim(LE_sorted));
         fprintf('----------------------------------------------------\n');
         
     case 'benettin'
