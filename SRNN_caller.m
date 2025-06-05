@@ -109,7 +109,13 @@ ode_options = odeset('RelTol', 1e-11, 'AbsTol', 1e-12, 'MaxStep', 0.5*dt, 'Initi
 
 SRNN_wrapper = @(tt,XX) SRNN(tt,XX,t,u_ex,params); % inline wrapper function to add t, u_ex, and params
 
-[t_ode, X] = ode15s(SRNN_wrapper, t, X_0, ode_options);
+% Create a wrapper for ode_RKn_deci_bounded to make it compatible with ode15s
+min_max_range = get_minMaxRange(n,n_a,n_b);
+
+ode_RKn_wrapper = @(odefun, tspan, y0, options) deal(tspan(:), ode_RKn_deci_bounded(odefun, tspan, y0, 6, false, 1, min_max_range));
+
+% Use the wrapper instead of ode15s
+[t_ode, X] = ode_RKn_wrapper(SRNN_wrapper, t, X_0, ode_options);
 
 assert(all(abs(t_ode - t) < 1e-12), 'ODE solver did not return results exactly at the requested times for fiducial trajectory.');
 clear t_ode % t_ode is same as t

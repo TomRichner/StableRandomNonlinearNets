@@ -1,4 +1,5 @@
 addpath('supporting_functions');
+addpath('ode_solvers');
 set(groot, 'DefaultFigureRenderer', 'painters');
 set(groot, 'DefaultAxesFontSize', 18);
 set(groot, 'DefaultTextFontSize', 16);

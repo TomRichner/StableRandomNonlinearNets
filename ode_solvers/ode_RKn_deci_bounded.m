@@ -190,7 +190,6 @@ function Y = ode_RKn_deci_bounded(odefun,tspan,y0, RK_method_num, dispMethodOrde
 
 end
 
-end
 function [A, b, c, order, MethodName] = getRKnButcherTableau(methodNumber)
   % getRKNButcherTableau retrieves Butcher tableau coefficients for Runge-Kutta methods.
   %
