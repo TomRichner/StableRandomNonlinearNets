@@ -17,8 +17,6 @@ function [min_max_range] = get_minMaxRange(n,n_a,n_b)
         error('n_b must be a non-negative integer scalar (>= 0).');
     end
 
-    
-
     n_a_states = n*n_a;
     n_b_states = n*n_b;
     n_u_d_states = n;

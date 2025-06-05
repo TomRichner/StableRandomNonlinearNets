@@ -107,15 +107,15 @@ N_sys_eqs = size(X_0,1); % Number of system equations / states
 ode_options = odeset('RelTol', 1e-11, 'AbsTol', 1e-12, 'MaxStep', 0.5*dt, 'InitialStep', min(0.001, 0.2*dt)); % accurate
 % ode_options = odeset('RelTol', 1e-5, 'AbsTol', 1e-6, 'MaxStep', 0.5*dt, 'InitialStep', min(0.001, 0.2*dt)); % fast
 
-SRNN_wrapper = @(tt,XX) SRNN(tt,XX,t,u_ex,params); % inline wrapper function to add t, u_ex, and params
+SRNN_wrapper = @(tt,XX) SRNN(tt,XX,t,u_ex,params); % inline wrapper function to add t, u_ex, and params to SRNN
 
-% Create a wrapper for ode_RKn_deci_bounded to make it compatible with ode15s
-min_max_range = get_minMaxRange(n,n_a,n_b);
+% wrap ode_RKn to limit the exposure of extra parameters for usage to match builtin integrators
+ode_RKn_wrapper = @(odefun, tspan, y0, options) deal(tspan(:), ode_RKn_deci_bounded(odefun, tspan, y0, 6, false, 1, get_minMaxRange(n,n_a,n_b)));
 
-ode_RKn_wrapper = @(odefun, tspan, y0, options) deal(tspan(:), ode_RKn_deci_bounded(odefun, tspan, y0, 6, false, 1, min_max_range));
+ode_solver = ode_RKn_wrapper; % or ode15s, ode45, etc.
 
 % Use the wrapper instead of ode15s
-[t_ode, X] = ode_RKn_wrapper(SRNN_wrapper, t, X_0, ode_options);
+[t_ode, X] = ode_solver(SRNN_wrapper, t, X_0, ode_options);
 
 assert(all(abs(t_ode - t) < 1e-12), 'ODE solver did not return results exactly at the requested times for fiducial trajectory.');
 clear t_ode % t_ode is same as t
@@ -148,7 +148,7 @@ switch lower(Lya_method)
         fprintf('Computing largest Lyapunov exponent using Benettin''s algorithm...\n');
         
         d0 = 1e-3; % Initial separation magnitude for Benettin's algorithm
-        [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X, t, dt, fs, d0, T, lya_dt, params, ode_options, @SRNN, t, u_ex);
+        [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X, t, dt, fs, d0, T, lya_dt, params, ode_options, @SRNN, t, u_ex, ode_solver);
 
         fprintf('----------------------------------------------------\n');
         fprintf('Estimated Largest Lyapunov Exponent (LLE): %f\n', LLE);
