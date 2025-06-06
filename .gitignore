@@ -17,6 +17,8 @@ Thumbs.db
 *.slxc         # Simulink cache files
 slprj/         # Simulink project files
 *.slx.original # Simulink backup files
+*.svg
+*.png
 
 # MATLAB Code Generation
 codegen/
