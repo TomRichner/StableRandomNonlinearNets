@@ -4,69 +4,108 @@ function [dX_dt] = SRNN(t, X, t_ex, u_ex, params)
     u = interp1(t_ex, u_ex', t', 'linear')'; % u will be n x 1
 
     %% load parameters
-    n_a = params.n_a; % number of SFA timescales per neuron
-    n_b = params.n_b; % number of STD timescales per neuron
-
-    tau_a = params.tau_a; % s, 1 x n_a, time constants of SFA
-    tau_b = params.tau_b; % s, 1 x n_b, time constants of STD
-
-    tau_d = params.tau_d; % s, scalar
-
-    n = params.n; % n neurons
+    n = params.n; % total number of neurons
     M = params.M; % connection matrix
+    tau_d = params.tau_d; % s, scalar, dendritic time constant
     
-    c_SFA = params.c_SFA; % n x 1, 0 for I neurons
-    F_STD = params.F_STD; % n x 1, 0 for I neurons
-    tau_STD = params.tau_STD; % scalar
+    % E/I specific parameters
+    n_E = params.n_E;
+    n_I = params.n_I;
+    E_indices = params.E_indices;
+    I_indices = params.I_indices;
+
+    n_a_E = params.n_a_E; 
+    n_a_I = params.n_a_I;
+    n_b_E = params.n_b_E;
+    n_b_I = params.n_b_I;
+
+    tau_a_E = params.tau_a_E; % 1 x n_a_E (or empty)
+    tau_a_I = params.tau_a_I; % 1 x n_a_I (or empty)
+    tau_b_E = params.tau_b_E; % 1 x n_b_E (or empty)
+    tau_b_I = params.tau_b_I; % 1 x n_b_I (or empty)
+    
+    c_SFA = params.c_SFA; % n x 1, SFA strength coefficients
+    F_STD = params.F_STD; % n x 1, STD strength coefficients
+    tau_STD = params.tau_STD; % scalar, STD recovery time const for b's derivative
 
     %% unpack state variables using the generalized function
     % X is N_sys_eqs x 1 here.
-    % unpack_SRNN_states will return:
-    % a: n x n_a
-    % b: n x n_b
+    % unpack_SRNN_state will return:
+    % a_E: n_E x n_a_E (or empty)
+    % a_I: n_I x n_a_I (or empty)
+    % b_E: n_E x n_b_E (or empty)
+    % b_I: n_I x n_b_I (or empty)
     % u_d: n x 1
-    [a, b, u_d] = unpack_SRNN_state(X, n, n_a, n_b);
+    [a_E, a_I, b_E, b_I, u_d] = unpack_SRNN_state(X, params);
 
     %% make dependent variables from state variables and parameters
-    if n_a > 0
-        r = relu(u_d - c_SFA .* sum(a,2));        % Hz, spike rate, n x 1
-    else
-        r = relu(u_d);                            % no SFA, n x 1
-    end
+    u_eff = u_d; % n x 1, effective dendritic potential before relu
 
-    if n_b > 0
-        p = r .* prod(b,2);                       % axonal output, n x 1
-    else
-        p = r;                                    % no STD, n x 1
+    % Apply SFA effect to E neurons
+    if n_E > 0 && n_a_E > 0 && ~isempty(a_E)
+        % c_SFA(E_indices) is n_E x 1. sum(a_E, 2) is n_E x 1.
+        u_eff(E_indices) = u_eff(E_indices) - c_SFA(E_indices) .* sum(a_E, 2);
+    end
+    % Apply SFA effect to I neurons
+    if n_I > 0 && n_a_I > 0 && ~isempty(a_I)
+        % c_SFA(I_indices) is n_I x 1. sum(a_I, 2) is n_I x 1.
+        u_eff(I_indices) = u_eff(I_indices) - c_SFA(I_indices) .* sum(a_I, 2);
+    end
+    
+    r = max(0, u_eff); % Hz, spike rate, n x 1 (relu)
+
+    p = r; % n x 1, axonal output, initially same as r
+
+    % Apply STD effect to E neurons
+    if n_E > 0 && n_b_E > 0 && ~isempty(b_E)
+        % prod(b_E, 2) is n_E x 1
+        p(E_indices) = p(E_indices) .* prod(b_E, 2);
+    end
+    % Apply STD effect to I neurons
+    if n_I > 0 && n_b_I > 0 && ~isempty(b_I)
+        % prod(b_I, 2) is n_I x 1
+        p(I_indices) = p(I_indices) .* prod(b_I, 2);
     end
 
     %% derivatives
-    % da_dt should be n x n_a
-    % db_dt should be n x n_b
+    % da_E_dt should be n_E x n_a_E (or empty)
+    % da_I_dt should be n_I x n_a_I (or empty)
+    % db_E_dt should be n_E x n_b_E (or empty)
+    % db_I_dt should be n_I x n_b_I (or empty)
     % u_d_dt should be n x 1
 
-    if n_a > 0
-        % r is n x 1, tau_a is 1 x n_a. Broadcasting makes (r - a) ./ tau_a valid.
-        da_dt = (r - a) ./ tau_a;
-        da_dt(c_SFA==0) = 0; % enforce no adaptation for neurons where c_SFA == 0, inhibitory neurons
-    else
-        da_dt = [];
+    da_E_dt = [];
+    if n_E > 0 && n_a_E > 0 && ~isempty(a_E)
+        % r(E_indices) is n_E x 1. tau_a_E is 1 x n_a_E. Broadcasting makes (r_E - a_E) ./ tau_a_E valid.
+        da_E_dt = (r(E_indices) - a_E) ./ tau_a_E;
+        % Enforce no adaptation for E neurons where c_SFA is 0
+        da_E_dt(c_SFA(E_indices)==0, :) = 0; 
     end
 
-    if n_b > 0
-        % (1-b) is n x n_b. tau_b is 1 x n_b.
-        % F_STD is n x 1. p is n x 1. (F_STD .* p) is n x 1.
-        % Broadcasting makes (F_STD .* p) ./ tau_STD valid against (1-b)./tau_b if tau_STD is scalar.
-        db_dt = (1 - b) ./ tau_b - (F_STD .* p) ./ tau_STD;
-        db_dt(F_STD==0) = 0; % enforce no depression for neurons where F_STD == 0, inhibitory neurons
-    else
-        db_dt = [];
+    da_I_dt = [];
+    if n_I > 0 && n_a_I > 0 && ~isempty(a_I)
+        da_I_dt = (r(I_indices) - a_I) ./ tau_a_I;
+        da_I_dt(c_SFA(I_indices)==0, :) = 0;
+    end
+
+    db_E_dt = [];
+    if n_E > 0 && n_b_E > 0 && ~isempty(b_E)
+        % (1-b_E) is n_E x n_b_E. tau_b_E is 1 x n_b_E.
+        % F_STD(E_indices) is n_E x 1. p(E_indices) is n_E x 1. (F_STD_E .* p_E) is n_E x 1.
+        % Broadcasting makes (F_STD_E .* p_E) ./ tau_STD valid against (1-b_E)./tau_b_E if tau_STD is scalar.
+        db_E_dt = (1 - b_E) ./ tau_b_E - (F_STD(E_indices) .* p(E_indices)) ./ tau_STD;
+        db_E_dt(F_STD(E_indices)==0, :) = 0;
+    end
+
+    db_I_dt = [];
+    if n_I > 0 && n_b_I > 0 && ~isempty(b_I)
+        db_I_dt = (1 - b_I) ./ tau_b_I - (F_STD(I_indices) .* p(I_indices)) ./ tau_STD;
+        db_I_dt(F_STD(I_indices)==0, :) = 0;
     end
     
-    % u_d is n x 1, u is n x 1, M is n x n, p is n x 1. M*p is n x 1.
     u_d_dt = (-u_d + u + M * p) ./ tau_d;
 
-    %% load derivatives into dXdt
-    dX_dt = [da_dt(:); db_dt(:); u_d_dt];
+    %% load derivatives into dXdt in the correct order
+    dX_dt = [da_E_dt(:); da_I_dt(:); db_E_dt(:); db_I_dt(:); u_d_dt];
 
 end

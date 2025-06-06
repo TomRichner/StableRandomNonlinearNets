@@ -30,8 +30,8 @@ function [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X, t, dt, fs, 
     pert = (rnd_IC./norm(rnd_IC)).*d0;
 
     % Get bounds for the full state vector X once, as they are static.
-    % This assumes params contains n, n_a, n_b.
-    min_max_range = get_minMaxRange(params.n, params.n_a, params.n_b);
+    % This now expects params to contain all necessary info for get_minMaxRange
+    min_max_range = get_minMaxRange(params); 
     % Ensure current_min_max_range matches the structure of X_k_pert (n_state x 2)
     
     min_bnds = min_max_range(:, 1); % n_state x 1 column vector

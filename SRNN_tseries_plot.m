@@ -1,21 +1,19 @@
-function SRNN_tseries_plot(t, u_ex, r, a, b, u_d, params, EI_vec, T, n, M, Lya_method, varargin)
+function SRNN_tseries_plot(t, u_ex, r_ts, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T_plot_limits, Lya_method, varargin)
 % SRNN_tseries_plot - Plot time series results from SRNN simulation
 %
 % Inputs:
 %   t        - Time vector
 %   u_ex     - External input (n x nt)
-%   r        - Firing rates (n x nt)
-%   a        - SFA variables ((n*n_a) x nt)
-%   b        - STD variables ((n*n_b) x nt) 
-%   u_d      - Dendritic potential (n x nt)
-%   params   - Parameter structure containing n_a, n_b, c_SFA, F_STD
-%   EI_vec   - Excitatory/inhibitory classification vector (n x 1)
-%   T        - Time interval [T_start, T_end]
-%   n        - Number of neurons
-%   M        - Connectivity matrix (n x n)
+%   r_ts     - Firing rates (n x nt)
+%   a_E_ts   - SFA variables for E neurons (n_E x n_a_E x nt or empty)
+%   a_I_ts   - SFA variables for I neurons (n_I x n_a_I x nt or empty)
+%   b_E_ts   - STD variables for E neurons (n_E x n_b_E x nt or empty)
+%   b_I_ts   - STD variables for I neurons (n_I x n_b_I x nt or empty)
+%   u_d_ts   - Dendritic potential (n x nt)
+%   params   - Parameter structure
+%   T_plot_limits - Time interval [T_start, T_end] for x-axis limits
 %   Lya_method - Lyapunov calculation method ('benettin', 'qr', or 'none')
-%   varargin - Optional Lyapunov results: LLE, t_lya, local_lya, finite_lya, 
-%              LE_spectrum, local_LE_spectrum_t, finite_LE_spectrum_t, N_sys_eqs
+%   varargin - Optional Lyapunov results struct
 
 % Parse optional Lyapunov inputs
 LLE = [];
@@ -25,7 +23,7 @@ finite_lya = [];
 LE_spectrum = [];
 local_LE_spectrum_t = [];
 finite_LE_spectrum_t = [];
-N_sys_eqs = [];
+N_sys_eqs_lya = []; % Renamed to avoid conflict with params.N_sys_eqs if it exists
 
 if ~isempty(varargin)
     lya_results = varargin{1};
@@ -36,14 +34,19 @@ if ~isempty(varargin)
     if isfield(lya_results, 'LE_spectrum'), LE_spectrum = lya_results.LE_spectrum; end
     if isfield(lya_results, 'local_LE_spectrum_t'), local_LE_spectrum_t = lya_results.local_LE_spectrum_t; end
     if isfield(lya_results, 'finite_LE_spectrum_t'), finite_LE_spectrum_t = lya_results.finite_LE_spectrum_t; end
-    if isfield(lya_results, 'N_sys_eqs'), N_sys_eqs = lya_results.N_sys_eqs; end
+    if isfield(lya_results, 'N_sys_eqs'), N_sys_eqs_lya = lya_results.N_sys_eqs; end % Use from lya_results
 end
 
 nt = length(t);
+n = params.n;
+E_indices = params.E_indices; % from params struct
+I_indices = params.I_indices; % from params struct
+M = params.M; % from params struct
+
 
 %% Make plots
 
-figure('Position', [100, 100, 900, 1200]); % Adjusted figure size
+figure('Position', [100, 100, 900, 1200]);
 
 num_subplots = 5;
 if ~strcmpi(Lya_method, 'none')
@@ -51,98 +54,110 @@ if ~strcmpi(Lya_method, 'none')
 end
 ax_handles = gobjects(num_subplots, 1);
 
-% Define plot indices for manageable number of points
 plot_indices = round(linspace(1, nt, min(nt, 2000)));
 t_display = t(plot_indices);
 
-E_neurons_idx = find(EI_vec == 1);
-I_neurons_idx = find(EI_vec == -1);
-
 % Subplot 1: External input u_ex
 ax_handles(1) = subplot(num_subplots, 1, 1);
-has_stim = any(abs(u_ex) > 1e-6, 2); % Find neurons that actually receive stimulus
+has_stim = any(abs(u_ex(:, plot_indices)) > 1e-6, 2); 
 if any(has_stim)
     plot(t_display, u_ex(has_stim, plot_indices)');
 else
-    plot(t_display, zeros(length(t_display),1)); % Plot zeros if no stim
+    plot(t_display, zeros(length(t_display),1)); 
 end
 ylabel('Input, u_{ex}');
 box off;
 set(gca, 'XTickLabel', []);
 
-% Subplot 2: Firing rates r
+% Subplot 2: Firing rates r_ts
 ax_handles(2) = subplot(num_subplots, 1, 2);
 hold on;
-if ~isempty(I_neurons_idx)
-    plot(t_display, r(I_neurons_idx, plot_indices)', 'r');
+if ~isempty(I_indices)
+    plot(t_display, r_ts(I_indices, plot_indices)', 'r');
 end
-if ~isempty(E_neurons_idx)
-    set(gca,'ColorOrderIndex',1); % Reset color index if I neurons were plotted
-    plot(t_display, r(E_neurons_idx, plot_indices)');
+if ~isempty(E_indices)
+    set(gca,'ColorOrderIndex',1); 
+    plot(t_display, r_ts(E_indices, plot_indices)');
 end
 hold off;
 ylabel('Spike rate, r');
 box off;
 set(gca, 'XTickLabel', []);
 
-% Subplot 3: SFA sum (from variable 'a')
+% Subplot 3: SFA sum
 ax_handles(3) = subplot(num_subplots, 1, 3);
-if params.n_a > 0
-    % a is n x n_a x nt from unpack_SRNN_state when called with full X
-    % sum(a, 2) results in n x 1 x nt. We want n x nt.
-    a_sum_plot = squeeze_dim(sum(a, 2), 2); % Use squeeze_dim to remove singleton 2nd dim
-else
-    a_sum_plot = zeros(n, nt);
+a_sum_plot = zeros(n, nt); % Initialize as n x nt
+if params.n_E > 0 && params.n_a_E > 0 && ~isempty(a_E_ts)
+    % a_E_ts is n_E x n_a_E x nt. sum across 2nd dim -> n_E x 1 x nt. Squeeze -> n_E x nt
+    a_sum_plot(E_indices, :) = squeeze(sum(a_E_ts, 2));
 end
+if params.n_I > 0 && params.n_a_I > 0 && ~isempty(a_I_ts)
+    a_sum_plot(I_indices, :) = squeeze(sum(a_I_ts, 2));
+end
+
 hold on;
-if ~isempty(I_neurons_idx) && params.n_a > 0 % Assuming SFA can apply to I neurons based on c_SFA
-    if any(params.c_SFA(I_neurons_idx) ~= 0) % Only plot if SFA is active for I neurons
-         plot(t_display, a_sum_plot(I_neurons_idx, plot_indices)', 'r');
+% Plot I neurons SFA sum if they have SFA states and c_SFA is non-zero for them
+if ~isempty(I_indices) && params.n_a_I > 0
+    active_I_sfa = params.c_SFA(I_indices) ~= 0;
+    if any(active_I_sfa)
+         plot(t_display, a_sum_plot(I_indices(active_I_sfa), plot_indices)', 'r');
     end
 end
-if ~isempty(E_neurons_idx) && params.n_a > 0
-    set(gca,'ColorOrderIndex',1);
-    plot(t_display, a_sum_plot(E_neurons_idx, plot_indices)');
+% Plot E neurons SFA sum
+if ~isempty(E_indices) && params.n_a_E > 0
+    active_E_sfa = params.c_SFA(E_indices) ~= 0;
+    if any(active_E_sfa)
+        set(gca,'ColorOrderIndex',1);
+        plot(t_display, a_sum_plot(E_indices(active_E_sfa), plot_indices)');
+    end
 end
 hold off;
 ylabel({'Spike Freq. Adapt.', '$\sum\limits_k a_k$'}, 'Interpreter', 'latex')
 box off;
 set(gca, 'XTickLabel', []);
 
-% Subplot 4: STD product (from variable 'b')
+% Subplot 4: STD product
 ax_handles(4) = subplot(num_subplots, 1, 4);
-if params.n_b > 0
-    % b is n x n_b x nt from unpack_SRNN_state when called with full X
-    % prod(b, 2) results in n x 1 x nt. We want n x nt.
-    b_prod_plot = squeeze_dim(prod(b, 2), 2); % Use squeeze_dim to remove singleton 2nd dim
-else
-    b_prod_plot = ones(n, nt);
+b_prod_plot = ones(n, nt); % Initialize as n x nt, default product is 1
+if params.n_E > 0 && params.n_b_E > 0 && ~isempty(b_E_ts)
+    % b_E_ts is n_E x n_b_E x nt. prod across 2nd dim -> n_E x 1 x nt. Squeeze -> n_E x nt
+    b_prod_plot(E_indices, :) = squeeze(prod(b_E_ts, 2));
 end
+if params.n_I > 0 && params.n_b_I > 0 && ~isempty(b_I_ts)
+    b_prod_plot(I_indices, :) = squeeze(prod(b_I_ts, 2));
+end
+
 hold on;
-if ~isempty(I_neurons_idx) && params.n_b > 0 % Assuming STD can apply to I neurons based on F_STD
-    if any(params.F_STD(I_neurons_idx) ~= 0) % Only plot if STD is active for I neurons
-        plot(t_display, b_prod_plot(I_neurons_idx, plot_indices)', 'r');
+% Plot I neurons STD product if they have STD states and F_STD is non-zero
+if ~isempty(I_indices) && params.n_b_I > 0
+    active_I_std = params.F_STD(I_indices) ~= 0;
+    if any(active_I_std)
+        plot(t_display, b_prod_plot(I_indices(active_I_std), plot_indices)', 'r');
     end
 end
-if ~isempty(E_neurons_idx) && params.n_b > 0
-    set(gca,'ColorOrderIndex',1);
-    plot(t_display, b_prod_plot(E_neurons_idx, plot_indices)');
+% Plot E neurons STD product
+if ~isempty(E_indices) && params.n_b_E > 0
+    active_E_std = params.F_STD(E_indices) ~= 0;
+    if any(active_E_std)
+        set(gca,'ColorOrderIndex',1);
+        plot(t_display, b_prod_plot(E_indices(active_E_std), plot_indices)');
+    end
 end
 hold off;
 ylabel({'Syn. Dep.','$\prod\limits_m b_m$'}, 'Interpreter', 'latex')
 box off;
-ylim([0 1.1]); % STD factors are typically between 0 and 1
+ylim([0 1.1]); 
 set(gca, 'XTickLabel', []);
 
-% Subplot 5: Dendritic potential u_d
+% Subplot 5: Dendritic potential u_d_ts
 ax_handles(5) = subplot(num_subplots, 1, 5);
 hold on;
-if ~isempty(I_neurons_idx)
-    plot(t_display, u_d(I_neurons_idx, plot_indices)', 'r');
+if ~isempty(I_indices)
+    plot(t_display, u_d_ts(I_indices, plot_indices)', 'r');
 end
-if ~isempty(E_neurons_idx)
+if ~isempty(E_indices)
     set(gca,'ColorOrderIndex',1);
-    plot(t_display, u_d(E_neurons_idx, plot_indices)');
+    plot(t_display, u_d_ts(E_indices, plot_indices)');
 end
 hold off;
 ylabel('Dentrite, u_d');
@@ -158,57 +173,97 @@ if ~strcmpi(Lya_method, 'none')
     ax_handles(6) = subplot(num_subplots, 1, 6);
     hold on;
     if strcmpi(Lya_method, 'benettin')
-        if exist('LLE', 'var') && exist('t_lya', 'var') && ~isempty(t_lya)
+        if ~isempty(LLE) && ~isempty(t_lya) % Ensure variables exist and are not empty
             plot([t_lya(1) t_lya(end)], [LLE LLE], 'Color',[0.7 0.7 0.7], 'LineWidth', 4, 'DisplayName', sprintf('Global LLE: %.4f', LLE));
         end
-            if exist('t_lya', 'var') && exist('finite_lya', 'var') && ~isempty(t_lya)
+        if ~isempty(finite_lya) && ~isempty(t_lya)
             plot(t_lya, finite_lya, 'r', 'LineWidth', 2, 'DisplayName', 'Finite-time LLE');
         end
-        if exist('t_lya', 'var') && exist('local_lya', 'var') && ~isempty(t_lya)
+        if ~isempty(local_lya) && ~isempty(t_lya)
             plot(t_lya, local_lya, 'b', 'LineWidth', 1, 'DisplayName', 'Local LLE');
         end
-        ylim([-.15 .115])
+        ylim_benettin = get(gca, 'YLim'); % Store auto y-limits
+        if ~isempty(LLE) && ~isempty(t_lya) % Only adjust if LLE was plotted
+             ylim_benettin = [min(ylim_benettin(1), LLE - 0.05*abs(LLE)), max(ylim_benettin(2), LLE + 0.05*abs(LLE))];
+        end
+        if isempty(LLE) && isempty(finite_lya) && isempty(local_lya)
+             plot(0,0); % Placeholder
+        else
+             ylim(ylim_benettin); % Apply potentially adjusted y-limits
+        end
+
     elseif strcmpi(Lya_method, 'qr')
-        if exist('LE_spectrum', 'var') && exist('t_lya', 'var') && ~isempty(t_lya)
-            colors = lines(N_sys_eqs);
-            % Plot local Lyapunov exponents
-            if exist('local_LE_spectrum_t', 'var') && ~isempty(local_LE_spectrum_t)
-                for i = 1:N_sys_eqs
+        if ~isempty(LE_spectrum) && ~isempty(t_lya) && ~isempty(N_sys_eqs_lya)
+            colors = lines(N_sys_eqs_lya);
+            if ~isempty(local_LE_spectrum_t)
+                for i = 1:N_sys_eqs_lya
                     plot(t_lya, local_LE_spectrum_t(:,i), '--', 'Color', colors(i,:), 'DisplayName', sprintf('Local LE(%d)', i));
                 end
             end
-            % Plot finite-time Lyapunov exponents
-            if exist('finite_LE_spectrum_t', 'var') && ~isempty(finite_LE_spectrum_t)
-                for i = 1:N_sys_eqs
+            if ~isempty(finite_LE_spectrum_t)
+                for i = 1:N_sys_eqs_lya
                     plot(t_lya, finite_LE_spectrum_t(:,i), '-', 'Color', colors(i,:), 'LineWidth', 1.5, 'DisplayName', sprintf('Finite LE(%d)', i));
                 end
             end
-            % Plot global Lyapunov exponents as horizontal lines
-            for i = 1:N_sys_eqs
+            for i = 1:N_sys_eqs_lya
                 plot([t_lya(1) t_lya(end)], [LE_spectrum(i) LE_spectrum(i)], ':', 'Color', colors(i,:), 'LineWidth', 2, 'DisplayName', sprintf('Global LE(%d): %.4f', i, LE_spectrum(i)));
             end
         else
-             plot(0,0); % Placeholder if Lya vars are missing
+             plot(0,0); 
         end
     end
     hold off;
     ylabel('Lyapunov Exp.');
     xlabel('Time (s)');
-    legend('show');
+    legend('show', 'Location', 'best');
     grid on;
     box off;
+    % Force y-limits for Lyapunov subplot
+    ylim([-0.25 0.25]);
 end
 
-% Link axes and set limits
-linkaxes(ax_handles, 'x');
-xlim(T);
+% New logic for linking axes and setting x-axis limits:
+if ~strcmpi(Lya_method, 'none') && numel(ax_handles) > 0 && num_subplots == numel(ax_handles)
+    % This condition implies the Lyapunov plot exists and ax_handles is consistent.
+    % num_subplots will be 6 if the Lyapunov plot is being made.
+    
+    % Handle non-Lyapunov plots (ax_handles(1) to ax_handles(num_subplots-1))
+    if num_subplots > 1 % If there are plots other than just the Lyapunov plot
+        plots_to_link_standard = ax_handles(1:num_subplots-1);
+        if ~isempty(plots_to_link_standard) && all(isgraphics(plots_to_link_standard))
+            linkaxes(plots_to_link_standard, 'x');
+            axes(plots_to_link_standard(1)); % Set context for xlim for this group
+            xlim(T_plot_limits);
+        end
+    end
+    
+    % Handle Lyapunov plot (ax_handles(num_subplots), which is the last one)
+    lya_plot_ax = ax_handles(num_subplots);
+    if isgraphics(lya_plot_ax)
+        axes(lya_plot_ax); % Activate Lyapunov subplot
+        lya_plot_end_time = T_plot_limits(2); % Default end time based on global limits
+        if ~isempty(t_lya) % If t_lya has data for Lyapunov exponents
+            lya_plot_end_time = t_lya(end); % Use the actual end time of Lyapunov data
+        end
+        xlim([0, max(0, lya_plot_end_time)]); % Set Lya plot x-axis from 0 to its relevant end (ensure end is non-negative)
+    end
+    
+else
+    % No Lyapunov plot, or an inconsistent state. Link all available plots as before.
+    if numel(ax_handles) > 0 && all(isgraphics(ax_handles))
+        linkaxes(ax_handles, 'x');
+        % It's safer to set xlim on a specific valid axes from the linked group
+        axes(ax_handles(1)); 
+        xlim(T_plot_limits);
+    end
+end
 
-% Network graph visualization (if network is small enough)
 if n <= 50
     figure(2)
     clf
     set(gcf,'Position',[100   1009 500 500])
-    [h_digraph, dgA] = plot_network_graph_widthRange_color_R(M,1,EI_vec);
+    % EI_vec is already in params, so params.EI_vec
+    [h_digraph, dgA] = plot_network_graph_widthRange_color_R(M,1,params.EI_vec);
     box off
     axis equal
     axis off

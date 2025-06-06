@@ -36,7 +36,7 @@ EI_vec = EI_vec(:); % make it a column
 %% Time
 fs = 1000; %Plotting sample frequency
 dt = 1/fs;
-T = [-30 50];
+T = [-50 50];
 
 % Validate time interval
 if not( T(1)<=0 && 0<T(2) )
@@ -275,3 +275,6 @@ end
 sim_dur = toc
 
 sim_t_dived_by_rt = sim_dur./(T(2)-T(1))
+
+save_some_figs_to_folder_2('fig_files/Benettin_vs_qr_test/figs',['QR_spectrum_seed_' num2str(seed)],[],[])
+save('fig_files/Benettin_vs_qr_test/figs/QR_spectrum_works_space.mat')

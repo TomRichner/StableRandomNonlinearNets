@@ -1,69 +1,110 @@
-function [a, b, u_d] = unpack_SRNN_state(X, n, n_a, n_b)
-    % Unpack SRNN state vector/matrix X into named variables.
+function [a_E, a_I, b_E, b_I, u_d] = unpack_SRNN_state(X, params)
+    % Unpack SRNN state vector/matrix X into named variables for E and I neurons.
+    %
     % If X is N_sys_eqs x 1 (single time point, e.g., from within SRNN.m):
-    %   a will be n x n_a
-    %   b will be n x n_b
+    %   a_E will be n_E x n_a_E (if n_a_E > 0, else [])
+    %   a_I will be n_I x n_a_I (if n_a_I > 0, else [])
+    %   b_E will be n_E x n_b_E (if n_b_E > 0, else [])
+    %   b_I will be n_I x n_b_I (if n_b_I > 0, else [])
     %   u_d will be n x 1
-    % If X is nt x N_sys_eqs (multiple time points, e.g., output from ode45):
-    %   a will be n x n_a x nt
-    %   b will be n x n_b x nt
+    %
+    % If X is nt x N_sys_eqs (multiple time points, e.g., output from ode solver):
+    %   a_E will be n_E x n_a_E x nt (if n_a_E > 0, else [])
+    %   a_I will be n_I x n_a_I x nt (if n_a_I > 0, else [])
+    %   b_E will be n_E x n_b_E x nt (if n_b_E > 0, else [])
+    %   b_I will be n_I x n_b_I x nt (if n_b_I > 0, else [])
     %   u_d will be n x nt
+
+    n_E   = params.n_E;
+    n_I   = params.n_I;
+    n_a_E = params.n_a_E;
+    n_a_I = params.n_a_I;
+    n_b_E = params.n_b_E;
+    n_b_I = params.n_b_I;
+    n     = params.n;
 
     is_single_time_point = iscolumn(X);
 
     if is_single_time_point
-        nt = 1; % Conceptually, for internal calculations
+        nt = 1; 
     else
-        nt = size(X, 1); % Number of time points from the matrix X
+        nt = size(X, 1); % Number of time points
     end
 
-    idx_a_end = n * n_a;
+    current_idx = 0;
 
-    % ---------- SFA (a–states) ----------
-    if n_a > 0
+    % --- SFA states for E neurons (a_E) ---
+    len_a_E = n_E * n_a_E;
+    if n_a_E > 0 && n_E > 0
         if is_single_time_point
-            % X is (N_sys_eqs) x 1. X(1:idx_a_end) is (n*n_a) x 1.
-            a = reshape(X(1:idx_a_end), n, n_a);      % n x n_a
+            % X_aE_vec is (n_E*n_a_E) x 1
+            a_E_vec = X(current_idx + (1:len_a_E));
+            a_E = reshape(a_E_vec, n_E, n_a_E); % n_E x n_a_E
         else
-            % X is nt x N_sys_eqs. X_a_block is nt x (n*n_a).
-            X_a_block = X(:, 1:idx_a_end);
-            X_a_block_T = X_a_block'; % (n*n_a) x nt
-            a = reshape(X_a_block_T, n, n_a, nt); % n x n_a x nt
+            % X_aE_block is nt x (n_E*n_a_E)
+            X_aE_block = X(:, current_idx + (1:len_a_E));
+            X_aE_block_T = X_aE_block'; % (n_E*n_a_E) x nt
+            a_E = reshape(X_aE_block_T, n_E, n_a_E, nt); % n_E x n_a_E x nt
         end
     else
-        a = []; % no SFA states
+        a_E = []; % No SFA states for E neurons or no E neurons
     end
+    current_idx = current_idx + len_a_E;
 
-    % ---------- STD (b–states) ----------
-    idx_b_start = idx_a_end + 1;
-    idx_b_end   = idx_a_end + n * n_b;
-
-    if n_b > 0
+    % --- SFA states for I neurons (a_I) ---
+    len_a_I = n_I * n_a_I;
+    if n_a_I > 0 && n_I > 0
         if is_single_time_point
-            % X_b_component is (n*n_b) x 1
-            b = reshape(X(idx_b_start:idx_b_end), n, n_b); % n x n_b
+            a_I_vec = X(current_idx + (1:len_a_I));
+            a_I = reshape(a_I_vec, n_I, n_a_I); % n_I x n_a_I
         else
-            % X_b_block is nt x (n*n_b)
-            X_b_block = X(:, idx_b_start:idx_b_end);
-            X_b_block_T = X_b_block'; % (n*n_b) x nt
-            b = reshape(X_b_block_T, n, n_b, nt); % n x n_b x nt
+            X_aI_block = X(:, current_idx + (1:len_a_I));
+            X_aI_block_T = X_aI_block';
+            a_I = reshape(X_aI_block_T, n_I, n_a_I, nt); % n_I x n_a_I x nt
         end
     else
-        b = []; % no STD states
+        a_I = [];
     end
+    current_idx = current_idx + len_a_I;
 
-    % ---------- Dendrite (u_d) ----------
-    idx_ud_start = idx_b_end + 1;
-    % If single time point, idx_ud_end is total length of X (N_sys_eqs).
-    % If multiple time points, idx_ud_end is number of columns in X (N_sys_eqs).
-    idx_ud_end = idx_b_end + n;
+    % --- STD states for E neurons (b_E) ---
+    len_b_E = n_E * n_b_E;
+    if n_b_E > 0 && n_E > 0
+        if is_single_time_point
+            b_E_vec = X(current_idx + (1:len_b_E));
+            b_E = reshape(b_E_vec, n_E, n_b_E); % n_E x n_b_E
+        else
+            X_bE_block = X(:, current_idx + (1:len_b_E));
+            X_bE_block_T = X_bE_block';
+            b_E = reshape(X_bE_block_T, n_E, n_b_E, nt); % n_E x n_b_E x nt
+        end
+    else
+        b_E = [];
+    end
+    current_idx = current_idx + len_b_E;
 
+    % --- STD states for I neurons (b_I) ---
+    len_b_I = n_I * n_b_I;
+    if n_b_I > 0 && n_I > 0
+        if is_single_time_point
+            b_I_vec = X(current_idx + (1:len_b_I));
+            b_I = reshape(b_I_vec, n_I, n_b_I); % n_I x n_b_I
+        else
+            X_bI_block = X(:, current_idx + (1:len_b_I));
+            X_bI_block_T = X_bI_block';
+            b_I = reshape(X_bI_block_T, n_I, n_b_I, nt); % n_I x n_b_I x nt
+        end
+    else
+        b_I = [];
+    end
+    current_idx = current_idx + len_b_I;
+
+    % --- Dendrite states (u_d) ---
+    % u_d is always n x 1 (single time point) or n x nt (multiple time points)
     if is_single_time_point
-        % X_ud_component is n x 1
-        u_d = X(idx_ud_start:idx_ud_end); % n x 1
+        u_d = X(current_idx + (1:n)); % n x 1
     else
-        % X_ud_block is nt x n
-        X_ud_block = X(:, idx_ud_start:idx_ud_end);
+        X_ud_block = X(:, current_idx + (1:n)); % nt x n
         u_d = X_ud_block'; % n x nt
     end
 end

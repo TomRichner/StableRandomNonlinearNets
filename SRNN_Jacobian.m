@@ -1,11 +1,8 @@
 function J = SRNN_Jacobian(t, X, params)
-% Analytic Jacobian for the SRNN ODE system (see SRNN.m)
+% SRNN_Jacobian - Analytic Jacobian for the SRNN ODE system with E/I split.
 %
-% State ordering (see unpack_SRNN_state.m):
-%   X = [ a(:) ; b(:) ; u_d ]
-%
-% ReLU derivative is treated as a Heaviside step:  H(s) = 1 for s>0, 0 else.
-% For the problem sizes of interest ( ≤ 600 states ) a dense matrix is fine.
+% State ordering (consistent with unpack_SRNN_state and SRNN.m):
+%   X = [ a_E(:) ; a_I(:) ; b_E(:) ; b_I(:) ; u_d(:) ]
 %
 % Inputs
 %   t       – time (unused, but kept for signature compatibility)
@@ -15,198 +12,355 @@ function J = SRNN_Jacobian(t, X, params)
 % Output
 %   J       – Jacobian matrix  (N_sys_eqs × N_sys_eqs)
 
-% ---------- parameters --------------------------------------------------
-n        = params.n;
-n_a      = params.n_a;
-n_b      = params.n_b;
+% ---------- Parameters --------------------------------------------------
+    n         = params.n;
+    M         = params.M;
+    tau_d     = params.tau_d;
+    c_SFA_all = params.c_SFA; % n x 1
+    F_STD_all = params.F_STD; % n x 1
+    tau_STD   = params.tau_STD;
 
-tau_a    = params.tau_a(:)';     % 1 × n_a
-tau_b    = params.tau_b(:)';     % 1 × n_b
-tau_d    = params.tau_d;
+    E_indices = params.E_indices;
+    I_indices = params.I_indices;
+    n_E = params.n_E;
+    n_I = params.n_I;
 
-M        = params.M;             % n × n
-c_SFA    = params.c_SFA(:);      % n × 1
-F_STD    = params.F_STD(:);      % n × 1
-tau_STD  = params.tau_STD;
+    n_a_E = params.n_a_E; tau_a_E = params.tau_a_E; % tau_a_E is 1 x n_a_E
+    n_a_I = params.n_a_I; tau_a_I = params.tau_a_I; % tau_a_I is 1 x n_a_I
+    n_b_E = params.n_b_E; tau_b_E = params.tau_b_E; % tau_b_E is 1 x n_b_E
+    n_b_I = params.n_b_I; tau_b_I = params.tau_b_I; % tau_b_I is 1 x n_b_I
+    
+    eps_b_div = 1e-12; % Small number for safe division
 
-eps_b_div = 1e-12; % Small number to prevent division by zero for b_ik derivatives
+% ---------- Unpack State ------------------------------------------------
+    [a_E, a_I, b_E, b_I, u_d] = unpack_SRNN_state(X, params);
+    % a_E: n_E x n_a_E (or empty)
+    % a_I: n_I x n_a_I (or empty)
+    % b_E: n_E x n_b_E (or empty)
+    % b_I: n_I x n_b_I (or empty)
+    % u_d: n x 1
 
-% ---------- unpack state ------------------------------------------------
-[a, b, u_d] = unpack_SRNN_state(X, n, n_a, n_b);
+% ---------- Derived Variables (similar to SRNN.m) -----------------------
+    u_eff = u_d; % n x 1
+    if n_E > 0 && n_a_E > 0 && ~isempty(a_E)
+        u_eff(E_indices) = u_eff(E_indices) - c_SFA_all(E_indices) .* sum(a_E, 2);
+    end
+    if n_I > 0 && n_a_I > 0 && ~isempty(a_I)
+        u_eff(I_indices) = u_eff(I_indices) - c_SFA_all(I_indices) .* sum(a_I, 2);
+    end
+    
+    H_all = double(u_eff > 0); % n x 1, derivative of ReLU
+    r_all = H_all .* u_eff;    % n x 1, effectively r_all = max(0, u_eff)
+                               % but H_all is what's needed for Jacobian
 
-% ---------- derived variables ------------------------------------------
-if n_a > 0
-    s_arg = u_d - c_SFA .* sum(a, 2);        % ReLU argument
-else
-    s_arg = u_d;
-end
-H = double(s_arg > 0);                       % derivative of ReLU
-r = H .* s_arg;                              % spike rate
+    p_all = r_all; % n x 1
+    B_E_prod_per_neuron = ones(n_E, 1); % Product of b_E for each E neuron
+    if n_E > 0 && n_b_E > 0 && ~isempty(b_E)
+        B_E_prod_per_neuron = prod(b_E, 2); % n_E x 1
+        p_all(E_indices) = p_all(E_indices) .* B_E_prod_per_neuron;
+    end
+    
+    B_I_prod_per_neuron = ones(n_I, 1); % Product of b_I for each I neuron
+    if n_I > 0 && n_b_I > 0 && ~isempty(b_I)
+        B_I_prod_per_neuron = prod(b_I, 2); % n_I x 1
+        p_all(I_indices) = p_all(I_indices) .* B_I_prod_per_neuron;
+    end
 
-if n_b > 0
-    B = prod(b, 2);                      % ∏_m b_{i,m}
-else
-    B = ones(n, 1);
-end
+% ---------- Indexing Helpers -------------------------------------------
+    num_a_E_states = n_E * n_a_E;
+    num_a_I_states = n_I * n_a_I;
+    num_b_E_states = n_E * n_b_E;
+    num_b_I_states = n_I * n_b_I;
+    num_u_d_states = n;
 
-% ---------- indexing helpers -------------------------------------------
-N_sys_eqs = n * (n_a + n_b + 1);
+    N_sys_eqs = num_a_E_states + num_a_I_states + num_b_E_states + num_b_I_states + num_u_d_states;
 
-if n_a > 0
-    idx_a_all = reshape(1:n*n_a,  n, n_a);           % (i,k) → linear index
-else
-    idx_a_all = [];
-end
-if n_b > 0
-    idx_b_all = n*n_a + reshape(1:n*n_b, n, n_b);
-else
-    idx_b_all = [];
-end
-idx_ud_all = n*n_a + n*n_b + (1:n);                  % dendrite indices
+    % Start indices for each block of state variables
+    start_a_E = 1;
+    start_a_I = start_a_E + num_a_E_states;
+    start_b_E = start_a_I + num_a_I_states;
+    start_b_I = start_b_E + num_b_E_states;
+    start_u_d = start_b_I + num_b_I_states;
 
-% ---------- allocate Jacobian ------------------------------------------
-J = zeros(N_sys_eqs, N_sys_eqs);
+% ---------- Allocate Jacobian ------------------------------------------
+    J = zeros(N_sys_eqs, N_sys_eqs);
 
 % -----------------------------------------------------------------------
-% 1) Adaptation states a_{i,k}
+% Block 1: Derivatives of da_E/dt & da_I/dt 
+% da_E_dt(e_row, k_col_aE) = (r_all(E_indices(e_row)) - a_E(e_row, k_col_aE)) / tau_a_E(k_col_aE)
+% da_I_dt(i_row, k_col_aI) = (r_all(I_indices(i_row)) - a_I(i_row, k_col_aI)) / tau_a_I(k_col_aI)
 % -----------------------------------------------------------------------
-if n_a > 0
-    for i = 1:n
-        if c_SFA(i) == 0
-            for k = 1:n_a
-                row = idx_a_all(i, k);
-                J(row, :) = 0;
+    % --- 1.1 Derivatives for da_E/dt ---
+    if n_E > 0 && n_a_E > 0
+        for e_neuron_idx = 1:n_E % Loop over E neurons (local E index)
+            neuron_global_idx_E = E_indices(e_neuron_idx);
+            if c_SFA_all(neuron_global_idx_E) == 0 % If SFA is off for this E neuron, its a_E derivs are 0
+                for k_aE_idx = 1:n_a_E
+                    row_J = start_a_E + (e_neuron_idx-1)*n_a_E + k_aE_idx - 1;
+                    J(row_J, :) = 0;
+                end
+                continue; 
             end
-            continue;
-        end
 
-        for k = 1:n_a
-            row = idx_a_all(i, k);
-            tauAk = tau_a(k);
-            
-            % ∂(da_{i,k}/dt)/∂u_{d,i}
-            J(row, idx_ud_all(i)) =  H(i) / tauAk;
-            
-            % ∂(da_{i,k}/dt)/∂a_{i,k′}
-            for k2 = 1:n_a
-                col = idx_a_all(i, k2);
-                delta = double(k == k2);
-                J(row, col) = (-delta - c_SFA(i) * H(i)) / tauAk;
+            for k_aE_idx = 1:n_a_E % Loop over SFA timescales for this E neuron
+                row_J = start_a_E + (e_neuron_idx-1)*n_a_E + k_aE_idx - 1;
+                inv_tau_aEk = 1 / tau_a_E(k_aE_idx);
+                H_this_E_neuron = H_all(neuron_global_idx_E);
+                c_SFA_this_E_neuron = c_SFA_all(neuron_global_idx_E);
+
+                % d(da_E/dt) / da_E'(e',k') : only if e == e'
+                for k_aE_prime_idx = 1:n_a_E
+                    col_J_aE = start_a_E + (e_neuron_idx-1)*n_a_E + k_aE_prime_idx - 1;
+                    delta_k = double(k_aE_idx == k_aE_prime_idx);
+                    J(row_J, col_J_aE) = (-c_SFA_this_E_neuron * H_this_E_neuron - delta_k) * inv_tau_aEk;
+                end
+                % d(da_E/dt) / da_I : is 0 because r_E is not directly func of a_I
+
+                % d(da_E/dt) / du_d(j_global) : only if j_global == neuron_global_idx_E
+                col_J_ud_for_this_E = start_u_d + neuron_global_idx_E - 1;
+                J(row_J, col_J_ud_for_this_E) = H_this_E_neuron * inv_tau_aEk;
             end
         end
     end
-end
 
-% -----------------------------------------------------------------------
-% 2) Depression states b_{i,m}
-% -----------------------------------------------------------------------
-if n_b > 0
-    for i = 1:n
-        if F_STD(i) == 0
-            for m = 1:n_b
-                row = idx_b_all(i, m);
-                J(row, :) = 0;
+    % --- 1.2 Derivatives for da_I/dt ---
+    if n_I > 0 && n_a_I > 0
+        for i_neuron_idx = 1:n_I % Loop over I neurons (local I index)
+            neuron_global_idx_I = I_indices(i_neuron_idx);
+            if c_SFA_all(neuron_global_idx_I) == 0 % If SFA is off for this I neuron
+                for k_aI_idx = 1:n_a_I
+                    row_J = start_a_I + (i_neuron_idx-1)*n_a_I + k_aI_idx - 1;
+                    J(row_J, :) = 0;
+                end
+                continue;
             end
-            continue;
+
+            for k_aI_idx = 1:n_a_I % Loop over SFA timescales for this I neuron
+                row_J = start_a_I + (i_neuron_idx-1)*n_a_I + k_aI_idx - 1;
+                inv_tau_aIk = 1 / tau_a_I(k_aI_idx);
+                H_this_I_neuron = H_all(neuron_global_idx_I);
+                c_SFA_this_I_neuron = c_SFA_all(neuron_global_idx_I);
+
+                % d(da_I/dt) / da_I'(i',k') : only if i == i'
+                for k_aI_prime_idx = 1:n_a_I
+                    col_J_aI = start_a_I + (i_neuron_idx-1)*n_a_I + k_aI_prime_idx - 1;
+                    delta_k = double(k_aI_idx == k_aI_prime_idx);
+                    J(row_J, col_J_aI) = (-c_SFA_this_I_neuron * H_this_I_neuron - delta_k) * inv_tau_aIk;
+                end
+                % d(da_I/dt) / da_E : is 0
+
+                % d(da_I/dt) / du_d(j_global) : only if j_global == neuron_global_idx_I
+                col_J_ud_for_this_I = start_u_d + neuron_global_idx_I - 1;
+                J(row_J, col_J_ud_for_this_I) = H_this_I_neuron * inv_tau_aIk;
+            end
         end
+    end
 
-        term2_coeff = -F_STD(i) / tau_STD;
+% -----------------------------------------------------------------------
+% Block 2: Derivatives of db_E/dt & db_I/dt
+% db_E_dt(e,m) = (1-b_E(e,m))/tau_bE(m) - (F_STD_all(E_idx(e))/tau_STD) * p_all(E_idx(e))
+% -----------------------------------------------------------------------
+    % --- 2.1 Derivatives for db_E/dt ---
+    if n_E > 0 && n_b_E > 0
+        for e_neuron_idx = 1:n_E % Loop over E neurons
+            neuron_global_idx_E = E_indices(e_neuron_idx);
+            if F_STD_all(neuron_global_idx_E) == 0 % If STD is off for this E neuron
+                for m_bE_idx = 1:n_b_E
+                    row_J = start_b_E + (e_neuron_idx-1)*n_b_E + m_bE_idx - 1;
+                    J(row_J, :) = 0;
+                end
+                continue;
+            end
+            
+            K_E_coeff = -F_STD_all(neuron_global_idx_E) / tau_STD;
+            H_this_E_neuron = H_all(neuron_global_idx_E);
+            c_SFA_this_E_neuron = c_SFA_all(neuron_global_idx_E);
+            r_this_E_neuron = r_all(neuron_global_idx_E);
+            B_E_prod_this_neuron = B_E_prod_per_neuron(e_neuron_idx);
 
-        for m = 1:n_b
-            row = idx_b_all(i, m);
-            tauBm = tau_b(m);
+            for m_bE_idx = 1:n_b_E % Loop over STD timescales for this E neuron
+                row_J = start_b_E + (e_neuron_idx-1)*n_b_E + m_bE_idx - 1;
+                inv_tau_bEm = 1 / tau_b_E(m_bE_idx);
+
+                % d(db_E/dt) / da_E(e',k') : only if e == e'
+                for k_aE_prime_idx = 1:n_a_E
+                    col_J_aE = start_a_E + (e_neuron_idx-1)*n_a_E + k_aE_prime_idx - 1;
+                    % d(p_E)/da_E = d(r_E * B_E)/da_E = (dr_E/da_E) * B_E
+                    dr_daE = -c_SFA_this_E_neuron * H_this_E_neuron;
+                    J(row_J, col_J_aE) = J(row_J, col_J_aE) + K_E_coeff * dr_daE * B_E_prod_this_neuron;
+                end
+                
+                % d(db_E/dt) / db_E(e',m') : only if e == e'
+                J(row_J, start_b_E + (e_neuron_idx-1)*n_b_E + m_bE_idx - 1) = J(row_J, start_b_E + (e_neuron_idx-1)*n_b_E + m_bE_idx - 1) - inv_tau_bEm; % Explicit leak term
+                for m_bE_prime_idx = 1:n_b_E
+                    col_J_bE = start_b_E + (e_neuron_idx-1)*n_b_E + m_bE_prime_idx - 1;
+                    % d(p_E)/db_E = d(r_E * B_E)/db_E = r_E * (dB_E/db_E_m')
+                    dB_dbE_m_prime = calculate_prod_b_excluding_k(b_E(e_neuron_idx,:), m_bE_prime_idx, B_E_prod_this_neuron, eps_b_div);
+                    J(row_J, col_J_bE) = J(row_J, col_J_bE) + K_E_coeff * r_this_E_neuron * dB_dbE_m_prime;
+                end
+
+                % d(db_E/dt) / du_d(j_global) : only if j_global == neuron_global_idx_E
+                col_J_ud_for_this_E = start_u_d + neuron_global_idx_E - 1;
+                % d(p_E)/du_d = d(r_E * B_E)/du_d = (dr_E/du_d) * B_E
+                dr_dud = H_this_E_neuron;
+                J(row_J, col_J_ud_for_this_E) = J(row_J, col_J_ud_for_this_E) + K_E_coeff * dr_dud * B_E_prod_this_neuron;
+            end
+        end
+    end
+    
+    % --- 2.2 Derivatives for db_I/dt ---
+    if n_I > 0 && n_b_I > 0
+        for i_neuron_idx = 1:n_I % Loop over I neurons
+            neuron_global_idx_I = I_indices(i_neuron_idx);
+             if F_STD_all(neuron_global_idx_I) == 0 % If STD is off for this I neuron
+                for m_bI_idx = 1:n_b_I
+                    row_J = start_b_I + (i_neuron_idx-1)*n_b_I + m_bI_idx - 1;
+                    J(row_J, :) = 0;
+                end
+                continue;
+            end
+
+            K_I_coeff = -F_STD_all(neuron_global_idx_I) / tau_STD;
+            H_this_I_neuron = H_all(neuron_global_idx_I);
+            c_SFA_this_I_neuron = c_SFA_all(neuron_global_idx_I);
+            r_this_I_neuron = r_all(neuron_global_idx_I);
+            B_I_prod_this_neuron = B_I_prod_per_neuron(i_neuron_idx);
+
+            for m_bI_idx = 1:n_b_I % Loop over STD timescales for this I neuron
+                row_J = start_b_I + (i_neuron_idx-1)*n_b_I + m_bI_idx - 1;
+                inv_tau_bIm = 1 / tau_b_I(m_bI_idx);
+
+                % d(db_I/dt) / da_I(i',k') : only if i == i'
+                for k_aI_prime_idx = 1:n_a_I
+                    col_J_aI = start_a_I + (i_neuron_idx-1)*n_a_I + k_aI_prime_idx - 1;
+                    dr_daI = -c_SFA_this_I_neuron * H_this_I_neuron;
+                    J(row_J, col_J_aI) = J(row_J, col_J_aI) + K_I_coeff * dr_daI * B_I_prod_this_neuron;
+                end
+                
+                % d(db_I/dt) / db_I(i',m') : only if i == i'
+                J(row_J, start_b_I + (i_neuron_idx-1)*n_b_I + m_bI_idx - 1) = J(row_J, start_b_I + (i_neuron_idx-1)*n_b_I + m_bI_idx - 1) - inv_tau_bIm; % Explicit leak
+                for m_bI_prime_idx = 1:n_b_I
+                    col_J_bI = start_b_I + (i_neuron_idx-1)*n_b_I + m_bI_prime_idx - 1;
+                    dB_dbI_m_prime = calculate_prod_b_excluding_k(b_I(i_neuron_idx,:), m_bI_prime_idx, B_I_prod_this_neuron, eps_b_div);
+                    J(row_J, col_J_bI) = J(row_J, col_J_bI) + K_I_coeff * r_this_I_neuron * dB_dbI_m_prime;
+                end
+
+                % d(db_I/dt) / du_d(j_global) : only if j_global == neuron_global_idx_I
+                col_J_ud_for_this_I = start_u_d + neuron_global_idx_I - 1;
+                dr_dud = H_this_I_neuron;
+                J(row_J, col_J_ud_for_this_I) = J(row_J, col_J_ud_for_this_I) + K_I_coeff * dr_dud * B_I_prod_this_neuron;
+            end
+        end
+    end
+
+% -----------------------------------------------------------------------
+% Block 3: Derivatives of du_d/dt
+% du_d_dt(j_glob) = (-u_d(j_glob) + u_ex(j_glob) + sum_l M(j_glob,l_glob)*p_all(l_glob)) / tau_d
+% -----------------------------------------------------------------------
+    inv_tau_d = 1 / tau_d;
+    for j_global_idx = 1:n % Row of Jacobian (for u_d(j_global_idx))
+        row_J = start_u_d + j_global_idx - 1;
+        
+        % Explicit leak term d(-u_d(j_global_idx)/tau_d) / du_d(j_global_idx)
+        J(row_J, start_u_d + j_global_idx - 1) = J(row_J, start_u_d + j_global_idx - 1) - inv_tau_d;
+
+        for l_global_idx = 1:n % Column of Jacobian (for M(j,l)*p(l) term, where l is the presynaptic neuron)
             
-            % explicit leak term
-            J(row, idx_b_all(i, m)) = -1 / tauBm;
-            
-            % derivative via p_i
-            % (a) w.r.t. u_{d,i}
-            J(row, idx_ud_all(i)) = J(row, idx_ud_all(i)) ...
-                + term2_coeff * B(i) * H(i);
-            
-            % (b) w.r.t. a_{i,k}
-            if n_a > 0
-                for k = 1:n_a
-                    J(row, idx_a_all(i, k)) = J(row, idx_a_all(i, k)) ...
-                        + term2_coeff * c_SFA(i) * H(i) * B(i);
+            M_jl_inv_tau_d = M(j_global_idx, l_global_idx) * inv_tau_d;
+            if M_jl_inv_tau_d == 0, continue; end % No connection, no contribution
+
+            H_l = H_all(l_global_idx);
+            c_SFA_l = c_SFA_all(l_global_idx);
+            r_l = r_all(l_global_idx);
+
+            % Find if l_global_idx is E or I, and its local index
+            is_E_l = false; e_l_idx = 0;
+            is_I_l = false; i_l_idx = 0;
+            [is_E_member, e_l_idx_temp] = ismember(l_global_idx, E_indices);
+            if is_E_member, is_E_l = true; e_l_idx = e_l_idx_temp; end
+            [is_I_member, i_l_idx_temp] = ismember(l_global_idx, I_indices);
+            if is_I_member, is_I_l = true; i_l_idx = i_l_idx_temp; end
+
+            B_prod_l = 1; % Effective product of b for neuron l
+            if is_E_l && n_E > 0 && n_b_E > 0 && ~isempty(b_E)
+                B_prod_l = B_E_prod_per_neuron(e_l_idx);
+            elseif is_I_l && n_I > 0 && n_b_I > 0 && ~isempty(b_I)
+                B_prod_l = B_I_prod_per_neuron(i_l_idx);
+            end
+
+            % d(du_d(j)/dt) / da_E(e',k') where E_indices(e') == l_global_idx
+            if is_E_l && n_E > 0 && n_a_E > 0
+                for k_aE_prime_idx = 1:n_a_E
+                    col_J_aE = start_a_E + (e_l_idx-1)*n_a_E + k_aE_prime_idx - 1;
+                    % dp(l)/da_E(l,k') = (dr(l)/da_E(l,k')) * B_prod_l
+                    dr_daE = -c_SFA_l * H_l;
+                    J(row_J, col_J_aE) = J(row_J, col_J_aE) + M_jl_inv_tau_d * dr_daE * B_prod_l;
+                end
+            end
+
+            % d(du_d(j)/dt) / da_I(i',k') where I_indices(i') == l_global_idx
+            if is_I_l && n_I > 0 && n_a_I > 0
+                for k_aI_prime_idx = 1:n_a_I
+                    col_J_aI = start_a_I + (i_l_idx-1)*n_a_I + k_aI_prime_idx - 1;
+                    dr_daI = -c_SFA_l * H_l;
+                    J(row_J, col_J_aI) = J(row_J, col_J_aI) + M_jl_inv_tau_d * dr_daI * B_prod_l;
                 end
             end
             
-            % (c) w.r.t. b_{i,k′}
-            for k = 1:n_b
-                if k == m
-                    continue;
+            % d(du_d(j)/dt) / db_E(e',m') where E_indices(e') == l_global_idx
+            if is_E_l && n_E > 0 && n_b_E > 0 && ~isempty(b_E)
+                for m_bE_prime_idx = 1:n_b_E
+                    col_J_bE = start_b_E + (e_l_idx-1)*n_b_E + m_bE_prime_idx - 1;
+                    % dp(l)/db_E(l,m') = r(l) * (dB_prod_l / db_E(l,m'))
+                    dB_dbE_m_prime = calculate_prod_b_excluding_k(b_E(e_l_idx,:), m_bE_prime_idx, B_prod_l, eps_b_div);
+                    J(row_J, col_J_bE) = J(row_J, col_J_bE) + M_jl_inv_tau_d * r_l * dB_dbE_m_prime;
                 end
-                col_b = idx_b_all(i, k);
-                denom = max(b(i, k), eps_b_div);
-                J(row, col_b) = J(row, col_b) ...
-                    + term2_coeff * r(i) * B(i) * calculate_prod_b_excluding_k(b(i,:), k, B(i), eps_b_div) / denom;
             end
+
+            % d(du_d(j)/dt) / db_I(i',m') where I_indices(i') == l_global_idx
+            if is_I_l && n_I > 0 && n_b_I > 0 && ~isempty(b_I)
+                for m_bI_prime_idx = 1:n_b_I
+                    col_J_bI = start_b_I + (i_l_idx-1)*n_b_I + m_bI_prime_idx - 1;
+                    dB_dbI_m_prime = calculate_prod_b_excluding_k(b_I(i_l_idx,:), m_bI_prime_idx, B_prod_l, eps_b_div);
+                    J(row_J, col_J_bI) = J(row_J, col_J_bI) + M_jl_inv_tau_d * r_l * dB_dbI_m_prime;
+                end
+            end
+            
+            % d(du_d(j)/dt) / du_d(l_global_idx)
+            col_J_ud = start_u_d + l_global_idx - 1;
+            % dp(l)/du_d(l) = (dr(l)/du_d(l)) * B_prod_l
+            dr_dud = H_l;
+            J(row_J, col_J_ud) = J(row_J, col_J_ud) + M_jl_inv_tau_d * dr_dud * B_prod_l;
         end
     end
 end
 
-% -----------------------------------------------------------------------
-% 3) Dendritic variables u_{d,i}
-% -----------------------------------------------------------------------
-for i = 1:n
-    row = idx_ud_all(i);
-    
-    for j = 1:n
-        scale = M(i, j) / tau_d;    % common factor
-        
-        % (a) w.r.t. u_{d,j}
-        J(row, idx_ud_all(j)) = J(row, idx_ud_all(j)) + scale * B(j) * H(j);
-        
-        % (b) w.r.t. a_{j,k}
-        if n_a > 0
-            for k = 1:n_a
-                J(row, idx_a_all(j, k)) = J(row, idx_a_all(j, k)) ...
-                    - scale * c_SFA(j) * H(j) * B(j);
-            end
-        end
-        
-        % (c) w.r.t. b_{j,m}
-        if n_b > 0
-            for m = 1:n_b
-                denom = max(b(j, m), 1e-12);
-                J(row, idx_b_all(j, m)) = J(row, idx_b_all(j, m)) ...
-                    + scale * r(j) * B(j) * calculate_prod_b_excluding_k(b(j,:), m, B(j), eps_b_div) / denom;
-            end
-        end
-    end
-    
-    % explicit leak term:  -u_{d,i}/τ_d
-    J(row, idx_ud_all(i)) = J(row, idx_ud_all(i)) - 1 / tau_d;
-end
-end
+function prod_val = calculate_prod_b_excluding_k(b_row_neuron, k_exclude_idx_in_row, B_neuron_val_total, epsilon)
+% Calculates prod_{m != k_exclude_idx_in_row} b_row_neuron(m)
+% b_row_neuron: 1 x n_b_specific (e.g., 1 x n_b_E) vector of b states for a single neuron
+% k_exclude_idx_in_row: index (1 to n_b_specific) of the b_m to exclude
+% B_neuron_val_total: precomputed prod(b_row_neuron) for that neuron
+% epsilon: small value for checking if b_row_neuron(k_exclude_idx_in_row) is zero
 
-function prod_val = calculate_prod_b_excluding_k(b_row_neuron, k_exclude_idx, B_neuron_val, epsilon)
-% Calculates prod_{m != k_exclude_idx} b_row_neuron(m)
-% b_row_neuron: 1 x n_b vector of b states for a single neuron
-% k_exclude_idx: index (1 to n_b) of the b_m to exclude from product
-% B_neuron_val: precomputed prod(b_row_neuron)
-% epsilon: small value for checking if b_row_neuron(k_exclude_idx) is zero
+    num_b_timescales_for_neuron = length(b_row_neuron);
 
-    n_b_local = length(b_row_neuron);
-    if n_b_local == 0
-        prod_val = 1; % Or handle as error, but consistent with B=1 if no b states
+    if num_b_timescales_for_neuron == 0 % Should not happen if called
+        prod_val = 1; 
         return;
     end
-    if n_b_local == 1 
-        % B = b_1. dB/db_1 = 1.
-        % k_exclude_idx must be 1. Product of "others" is 1 (empty product).
+    if num_b_timescales_for_neuron == 1 % If only one b, derivative of product B w.r.t b1 is 1 (empty product)
         prod_val = 1;
         return;
     end
 
-    if abs(b_row_neuron(k_exclude_idx)) > epsilon
-        prod_val = B_neuron_val / b_row_neuron(k_exclude_idx);
+    val_b_k_exclude = b_row_neuron(k_exclude_idx_in_row);
+    if abs(val_b_k_exclude) > epsilon
+        prod_val = B_neuron_val_total / val_b_k_exclude;
     else
-        % b_row_neuron(k_exclude_idx) is zero or close to it.
+        % val_b_k_exclude is zero or close to it.
         % Calculate product of other elements directly.
-        indices = true(1, n_b_local);
-        indices(k_exclude_idx) = false;
+        indices = true(1, num_b_timescales_for_neuron);
+        indices(k_exclude_idx_in_row) = false;
         prod_val = prod(b_row_neuron(indices));
     end
 end 
