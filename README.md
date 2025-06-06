@@ -71,3 +71,7 @@ We investigate the worst case scenario where synaptic weights are drawn from a r
 ## License
 
 MIT License 
+
+## Notes:
+We need to remove unused states due to c_SFA and F_STD because they cause a false zero Lyapunov exponent for systems which are stable!
+And systems which are truely edge of chaos maybe difficult to measure with Benettins method.

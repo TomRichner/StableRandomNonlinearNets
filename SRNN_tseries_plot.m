@@ -167,7 +167,7 @@ if ~strcmpi(Lya_method, 'none')
         if exist('t_lya', 'var') && exist('local_lya', 'var') && ~isempty(t_lya)
             plot(t_lya, local_lya, 'b', 'LineWidth', 1, 'DisplayName', 'Local LLE');
         end
-        ylim([-.5 .5])
+        ylim([-.15 .115])
     elseif strcmpi(Lya_method, 'qr')
         if exist('LE_spectrum', 'var') && exist('t_lya', 'var') && ~isempty(t_lya)
             colors = lines(N_sys_eqs);

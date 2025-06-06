@@ -35,7 +35,7 @@ EI_vec = EI_vec(:); % make it a column
 %% Time
 fs = 1000; %Plotting sample frequency
 dt = 1/fs;
-T = [-30 7];
+T = [-30 10];
 
 % Validate time interval
 if not( T(1)<=0 && 0<T(2) )
@@ -53,7 +53,7 @@ stim_b0 = 0.5; amp = 0.5;
 dur = 3; % duration of sine
 f_sin = 1.*ones(1,fs*dur);
 % f_sin = logspace(log10(0.5),log10(3),fs*5);
-u_ex(1,-t(1)*fs+fs*1+(1:fix(fs*dur))) = stim_b0+amp.*sign(sin(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))'));
+u_ex(1,-t(1)*fs+fix(fs*6)+(1:fix(fs*dur))) = stim_b0+amp.*sign(sin(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))'));
 u_ex(1,-t(1)*fs+fix(fs*1)+(1:fix(fs*dur))) = stim_b0+amp.*-cos(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))');
 u_ex = u_ex*1;
 u_ex = u_ex(:,1:nt);
@@ -78,7 +78,7 @@ n_b = 1; % number of STD timescales per neuron
 tau_a = logspace(log10(0.3), log10(6), n_a); % s, 1 x n_a, time constants of SFA
 tau_b = logspace(log10(0.6), log10(9), n_b);  % s, 1 x n_b, time constants of STD, n_b == 1, then it takes the last value log10(9)
 if n_b == 1
-    tau_b = 4*tau_STD;
+    tau_b = 1*tau_STD; % if tau_STD << tau_b, then the system is very stable and close to edge of chaos
 end
 
 tau_d = 0.025; % s, scalar
@@ -120,7 +120,7 @@ if use_Jacobian
     ode_options = odeset('RelTol', 1e-7, 'AbsTol', 1e-8, 'InitialStep', 0.05*dt, 'Jacobian', SRNN_Jacobian_wrapper); % fast
 else
     % ode_options = odeset('RelTol', 1e-5, 'AbsTol', 1e-6, 'MinStep', 0.1*dt,'MaxStep', dt, 'InitialStep', 0.5*dt); % fast
-    ode_options = odeset('RelTol', 1e-7, 'AbsTol', 1e-8, 'MaxStep',dt, 'InitialStep', 0.05*dt); % fast
+    ode_options = odeset('RelTol', 1e-7, 'AbsTol', 1e-8, 'MaxStep',0.5*dt, 'InitialStep', 0.1*dt); % fast
 end
 
 
@@ -134,9 +134,9 @@ deci = 1; % deci > 1 does not work for benettin's method.  Need to fix this
 ode_RKn_wrapper = @(odefun, tspan, y0, options) deal(tspan(:), ode_RKn_deci_bounded(odefun, tspan, y0, solver_method, false, deci, get_minMaxRange(n,n_a,n_b)));
 
 % ode_solver = ode_RKn_wrapper; 
-% ode_solver = @ode45; % works fine
+ode_solver = @ode45; % works fine
 % ode_solver = @ode4_wrapper; 
-ode_solver = @ode15s; 
+% ode_solver = @ode15s; 
 
 % Use the wrapper instead of ode15s
 [t_ode, X] = ode_solver(SRNN_wrapper, t, X_0, ode_options);
@@ -221,6 +221,8 @@ if ~strcmpi(Lya_method, 'none') && ~isempty(fieldnames(lya_results))
 else
     SRNN_tseries_plot(t, u_ex, r, a, b, u_d, params, EI_vec, T, n, M, Lya_method);
 end
+figure(1)
+xlim([0 T(2)])
 
 sim_dur = toc
 
