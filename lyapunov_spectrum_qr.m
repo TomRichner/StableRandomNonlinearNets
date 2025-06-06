@@ -1,5 +1,4 @@
-function [LE_spectrum, local_LE_spectrum_t, finite_LE_spectrum_t, t_lya_vec] = ...
-    lyapunov_spectrum_qr(X_fid_traj, t_fid_traj, lya_dt_interval, params, ode_options_main, jacobian_func_handle, T_full_interval, N_states_sys, fs_fid)
+function [LE_spectrum, local_LE_spectrum_t, finite_LE_spectrum_t, t_lya_vec] = lyapunov_spectrum_qr(X_fid_traj, t_fid_traj, lya_dt_interval, params, ode_solver, ode_options_main, jacobian_func_handle, T_full_interval, N_states_sys, fs_fid)
     % Calculates the Lyapunov spectrum using the QR decomposition method.
     % Integrates variational equations along a pre-computed fiducial trajectory.
     %
@@ -77,7 +76,8 @@ function [LE_spectrum, local_LE_spectrum_t, finite_LE_spectrum_t, t_lya_vec] = .
         t_span_ode = [t_start_segment, t_end_segment];
         Psi0_vec = reshape(Q_current, [], 1);
         
-        [~, Psi_solution_vec] = ode15s(@variational_eqs_ode, t_span_ode, Psi0_vec, ode_options_var);
+        % [~, Psi_solution_vec] = ode15s(@variational_eqs_ode, t_span_ode, Psi0_vec, ode_options_var);
+        [~, Psi_solution_vec] = ode_solver(@variational_eqs_ode, t_span_ode, Psi0_vec, ode_options_var);
         
         Psi_evolved_matrix = reshape(Psi_solution_vec(end,:)', [N_states_sys, N_states_sys]);
         [Q_new, R_segment] = qr(Psi_evolved_matrix);

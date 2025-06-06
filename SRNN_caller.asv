@@ -7,7 +7,7 @@ clc
 tic
 
 %% 
-seed = 42;
+seed = 7;
 rng(seed,'twister');
 
 %% Network
@@ -76,7 +76,7 @@ n_b = 2; % number of STD timescales per neuron
 tau_a = logspace(log10(0.3), log10(6), n_a); % s, 1 x n_a, time constants of SFA
 tau_b = logspace(log10(0.6), log10(9), n_b);  % s, 1 x n_b, time constants of STD, n_b == 1, then it takes the last value log10(9)
 
-tau_d = 0.025; % s, scalar
+tau_d = 0.01; % s, scalar
 
 c_SFA = 1 * double(EI_vec == 1); % n x 1, 0 for I neurons bc no SFA
 F_STD = 1 * double(EI_vec == 1); % n x 1, 0 for I neurons bc no STD
@@ -116,7 +116,7 @@ if use_Jacobian
     ode_options = odeset('RelTol', 1e-7, 'AbsTol', 1e-8, 'InitialStep', 0.05*dt, 'Jacobian', SRNN_Jacobian_wrapper); % fast
 else
     % ode_options = odeset('RelTol', 1e-5, 'AbsTol', 1e-6, 'MinStep', 0.1*dt,'MaxStep', dt, 'InitialStep', 0.5*dt); % fast
-    ode_options = odeset('RelTol', 1e-7, 'AbsTol', 1e-8, 'MaxStep',dt, 'InitialStep', 0.05*dt); % fast
+    ode_options = odeset('RelTol', 1e-7, 'AbsTol', 1e-8, 'MaxStep,'dt'InitialStep', 0.05*dt); % fast
 end
 
 
@@ -125,14 +125,14 @@ end
 SRNN_wrapper = @(tt,XX) SRNN(tt,XX,t,u_ex,params); % inline wrapper function to add t, u_ex, and params to SRNN
 
 % wrap ode_RKn to limit the exposure of extra parameters for usage to match builtin integrators
-solver_method = 3; % 5 is classic RK4
-deci = 1; % deci > 1 does not work for benettin's method.  Need to fix this
+solver_method = 6; % 5 is classic RK4
+deci = 1;
 ode_RKn_wrapper = @(odefun, tspan, y0, options) deal(tspan(:), ode_RKn_deci_bounded(odefun, tspan, y0, solver_method, false, deci, get_minMaxRange(n,n_a,n_b)));
 
-ode_solver = ode_RKn_wrapper; 
+% ode_solver = ode_RKn_wrapper; 
 % ode_solver = @ode45; % works fine
 % ode_solver = @ode4_wrapper; 
-% ode_solver = @ode15s; 
+ode_solver = @ode15s; 
 
 % Use the wrapper instead of ode15s
 [t_ode, X] = ode_solver(SRNN_wrapper, t, X_0, ode_options);
