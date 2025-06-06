@@ -11,12 +11,12 @@ seed = 42;
 rng(seed,'twister');
 
 %% Network
-n = 10; % number of neurons
+n = 4; % number of neurons
 
 Lya_method = 'benettin'; % 'benettin', 'qr', or 'none'
 use_Jacobian = false;
 
-mean_in_out_degree = 4; % desired mean number of connections in and out
+mean_in_out_degree = 3; % desired mean number of connections in and out
 density = mean_in_out_degree/(n-1); % each neuron can make up to n-1 connections with other neurons
 sparsity = 1-density;
 
@@ -35,7 +35,7 @@ EI_vec = EI_vec(:); % make it a column
 %% Time
 fs = 1000; %Plotting sample frequency
 dt = 1/fs;
-T = [-3 7];
+T = [-30 7];
 
 % Validate time interval
 if not( T(1)<=0 && 0<T(2) )
@@ -70,17 +70,21 @@ u_ex = u_ex+0.001./fs.*randn(n,nt); % a tiny bit of noise to help the network ge
 
 %% parameters
 
+tau_STD = 0.5; % scalar, time constant of synaptic depression
+
 n_a = 3; % number of SFA timescales per neuron
-n_b = 2; % number of STD timescales per neuron
+n_b = 1; % number of STD timescales per neuron
 
 tau_a = logspace(log10(0.3), log10(6), n_a); % s, 1 x n_a, time constants of SFA
 tau_b = logspace(log10(0.6), log10(9), n_b);  % s, 1 x n_b, time constants of STD, n_b == 1, then it takes the last value log10(9)
+if n_b == 1
+    tau_b = 4*tau_STD;
+end
 
 tau_d = 0.025; % s, scalar
 
 c_SFA = 1 * double(EI_vec == 1); % n x 1, 0 for I neurons bc no SFA
 F_STD = 1 * double(EI_vec == 1); % n x 1, 0 for I neurons bc no STD
-tau_STD = 0.5; % scalar, time constant of synaptic depression
 
 params = package_params(n_a, n_b, tau_a, tau_b, tau_d, n, M, c_SFA, F_STD, tau_STD);
 
@@ -129,10 +133,10 @@ solver_method = 3; % 5 is classic RK4
 deci = 1; % deci > 1 does not work for benettin's method.  Need to fix this
 ode_RKn_wrapper = @(odefun, tspan, y0, options) deal(tspan(:), ode_RKn_deci_bounded(odefun, tspan, y0, solver_method, false, deci, get_minMaxRange(n,n_a,n_b)));
 
-ode_solver = ode_RKn_wrapper; 
+% ode_solver = ode_RKn_wrapper; 
 % ode_solver = @ode45; % works fine
 % ode_solver = @ode4_wrapper; 
-% ode_solver = @ode15s; 
+ode_solver = @ode15s; 
 
 % Use the wrapper instead of ode15s
 [t_ode, X] = ode_solver(SRNN_wrapper, t, X_0, ode_options);
@@ -142,7 +146,11 @@ clear t_ode % t_ode is same as t
 
 %% comput LLE or Lyapunov spectrum
 
-lya_dt = 0.005; % Rescaling time interval for Lyapunov calculation (tau_lya) (s)
+if strcmpi(Lya_method,'qr')
+    lya_dt = 0.05; % longer better for qr?
+else
+    lya_dt = 0.005; % 0.005 is good for Benettin.  Rescaling time interval for Lyapunov calculation (tau_lya) (s)
+end
 
 switch lower(Lya_method)
     case 'qr'
