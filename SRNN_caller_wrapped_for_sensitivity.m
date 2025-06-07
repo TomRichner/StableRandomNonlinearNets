@@ -1,4 +1,4 @@
-function [result] = SRNN_caller_wrapped_for_sensitivity(seed, n, EE_factor, IE_factor, EI, E_self, DC, sparsity, tau_a_E_2, tau_b_E_2, tau_STD, c_SFA_factor, n_a_E, fs)
+function [result] = SRNN_caller_wrapped_for_sensitivity(seed, n, EE_factor, IE_factor, EI, E_self, mean_weight, DC, sparsity, tau_a_E_2, tau_b_E_2, tau_STD, c_SFA_factor, n_a_E, fs)
     %SRNN_CALLER_WRAPPED_FOR_SENSITIVITY Runs a simulation of the Spiking Rate Neural Network model.
     %
     % This function wraps the SRNN simulation and is intended for use in sensitivity
@@ -11,6 +11,7 @@ function [result] = SRNN_caller_wrapped_for_sensitivity(seed, n, EE_factor, IE_f
     %   IE_factor        - (scalar) Scaling factor for inhibitory-to-excitatory weights.
     %   EI               - (scalar) Fraction of neurons that are excitatory (between 0 and 1).
     %   E_self           - (scalar) Weight of excitatory self-connections.
+    %   mean_weight      - (scalar) Mean weight of connections.
     %   DC               - (scalar) DC offset applied to external input for all neurons.
     %   sparsity         - (scalar) Fraction of connections to be removed (between 0 and 1).
     %   tau_a_E_2        - (scalar) Upper limit for the SFA time constant vector (log-spaced).
@@ -59,7 +60,6 @@ function [result] = SRNN_caller_wrapped_for_sensitivity(seed, n, EE_factor, IE_f
     use_Jacobian = false;
 
     % sparsity is now a direct input
-    mean_weight = 0.5;
     scale = mean_weight/0.79782; % overall scaling factor of weights
     w.EE = scale*EE_factor; % E to E. Change to scale*2 for bursting
     w.EI = scale*1; % E to I connections
@@ -85,7 +85,7 @@ function [result] = SRNN_caller_wrapped_for_sensitivity(seed, n, EE_factor, IE_f
 
     %% Time
     dt = 1/fs;
-    T = [-5 11];
+    T = [-10 11];
 
     % Validate time interval
     if not( T(1)<=0 && 0<T(2) )
