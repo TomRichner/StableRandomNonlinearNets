@@ -85,7 +85,7 @@ function [result] = SRNN_caller_wrapped_for_sensitivity(seed, n, EE_factor, IE_f
 
     %% Time
     dt = 1/fs;
-    T = [-30 50];
+    T = [-5 11];
 
     % Validate time interval
     if not( T(1)<=0 && 0<T(2) )

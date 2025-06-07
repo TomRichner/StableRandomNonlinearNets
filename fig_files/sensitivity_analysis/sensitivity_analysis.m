@@ -8,8 +8,12 @@ close all;
 addpath(fullfile(fileparts(mfilename('fullpath')),'../..'));
 
 %% Analysis Parameters
-n_levels = 11; % Number of values to test for each parameter
-n_reps = 11;   % Number of repetitions with different random seeds for each level
+n_levels = 6; % Number of values to test for each parameter
+n_reps = 4;   % Number of repetitions with different random seeds for each level
+
+% Specify which parameters to analyze (comment/uncomment or modify as needed)
+params_to_analyze = {'EE_factor', 'DC'}; % Only analyze these parameters
+% params_to_analyze = {}; % Empty means analyze all parameters
 
 %% Default Simulation Parameters (based on SRNN_caller.m)
 p_default.fs = 1000;
@@ -18,7 +22,7 @@ p_default.EE_factor = 1.0;
 p_default.IE_factor = 1.0;
 p_default.EI = 0.7;
 p_default.E_self = 0.0;
-p_default.DC = 0.01;
+p_default.DC = 0.1;
 p_default.sparsity = 0.0;
 p_default.tau_a_E_2 = 15;
 p_default.tau_b_E_2 = 9;
@@ -27,13 +31,13 @@ p_default.c_SFA_factor = 1.0;
 p_default.n_a_E = 3;
 
 %% Parameter Ranges for Sensitivity Analysis
-ranges.fs = [100, 1000];
+ranges.fs = [200, 2000];
 ranges.n = [10, 100];
 ranges.EE_factor = [0, 4.0];
 ranges.IE_factor = [0, 4.0];
 ranges.EI = [0.1, 1.0];  % Changed from [0, 1.0] to avoid EI=0 issues
 ranges.E_self = [0.0, 0.5];
-ranges.DC = [0, 2.0];
+ranges.DC = [0, 1];
 ranges.sparsity = [0, 0.8];  % Changed from 0.85 to 0.8 to reduce connectivity issues
 ranges.tau_a_E_2 = [1, 60];
 ranges.tau_b_E_2 = [2, 60];
@@ -42,6 +46,21 @@ ranges.c_SFA_factor = [0.0, 4.0];
 ranges.n_a_E = [0, 10];
 
 param_names = fieldnames(ranges);
+
+% Filter to only analyze specified parameters
+if ~isempty(params_to_analyze)
+    % Validate that all specified parameters exist in ranges
+    invalid_params = setdiff(params_to_analyze, param_names);
+    if ~isempty(invalid_params)
+        error('Invalid parameter names specified: %s', strjoin(invalid_params, ', '));
+    end
+    
+    % Filter param_names to only include specified parameters
+    param_names = intersect(param_names, params_to_analyze, 'stable');
+    fprintf('Running sensitivity analysis for subset of parameters: %s\n', strjoin(param_names, ', '));
+else
+    fprintf('Running sensitivity analysis for all parameters\n');
+end
 
 output_dir = 'sensitivity_results';
 if ~exist(output_dir, 'dir')
