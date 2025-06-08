@@ -193,8 +193,14 @@ function sensitivity_plot(param_file, hist_edges_with_inf, output_dir)
          'Units', 'normalized', 'VerticalAlignment', 'top', 'FontWeight', 'bold');
     
     % Overall title
-    sgtitle(sprintf('Sensitivity Analysis: %s (n=%d successful runs)', ...
-                   strrep(param_name, '_', '\\_'), total_success), 'FontSize', 14);
+    condition_str = '';
+    if isfield(metadata, 'condition') && isfield(metadata.condition, 'name')
+        condition_str_raw = strrep(metadata.condition.name, '_', ' ');
+        condition_str = sprintf(' (Condition: %s)', condition_str_raw);
+    end
+    
+    sgtitle(sprintf('Sensitivity Analysis: %s%s (n=%d successful runs)', ...
+                   strrep(param_name, '_', '\\_'), condition_str, total_success), 'FontSize', 14);
     
     % Save the figure
     if nargin >= 3 && ~isempty(output_dir)

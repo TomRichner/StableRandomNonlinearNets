@@ -61,8 +61,11 @@ profile_results/
 *.rar
 
 # Output Directories (customize based on your project)
-figures/
+# figures/ # Your directory seems to be named fig_files/
 data/
+**/figs/
+**/sensitivity_results/
+**/ICs/
 
 # Large Data Files (uncomment if you want to exclude large datasets)
 # *.csv

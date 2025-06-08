@@ -6,15 +6,19 @@ clc
 
 tic
 
+%%
+Lya_method = 'none'; % 'benettin', 'qr', or 'none'
+use_Jacobian = false;
+store_ICs_from_X_of_t = false;
+load_ICs = true;
+t_IC_for_saving = 70; % s, time point in trajectory to save as initial conditions for next run
+
 %% 
-seed = 42;
+seed = 7;
 rng(seed,'twister');
 
 %% Network
 n = 10; % number of neurons
-
-Lya_method = 'benettin'; % 'benettin', 'qr', or 'none'
-use_Jacobian = false;
 
 mean_in_out_degree = 4; % desired mean number of connections in and out
 density = mean_in_out_degree/(n-1); % each neuron can make up to n-1 connections with other neurons
@@ -22,7 +26,8 @@ sparsity = 1-density;
 
 EI = 0.7;
 scale = 0.5/0.79782; % overall scaling factor of weights
-w.EE = scale*1; % E to E. Change to scale*2 for bursting
+EEfactor = 2;
+w.EE = scale*EEfactor; % E to E. Change to scale*2 for bursting
 w.EI = scale*1; % E to I connections
 w.IE = scale*1; % I to E
 w.II = scale*.5; % I to I
@@ -34,9 +39,9 @@ EI_vec = EI_vec(:); % make it a column
 [E_indices, I_indices, n_E, n_I] = get_EI_indices(EI_vec);
 
 %% Time
-fs = 1000; %Plotting sample frequency
+fs = 500; %Plotting sample frequency
 dt = 1/fs;
-T = [-15 20];
+T = [0 200];
 
 % Validate time interval
 if not( T(1)<=0 && 0<T(2) )
@@ -54,24 +59,24 @@ stim_b0 = 0.5; amp = 0.5;
 dur = 3; % duration of sine
 f_sin = 1.*ones(1,fs*dur);
 % f_sin = logspace(log10(0.5),log10(3),fs*5);
-u_ex(1,-t(1)*fs+fix(fs*6)+(1:fix(fs*dur))) = stim_b0+amp.*sign(sin(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))'));
-u_ex(1,-t(1)*fs+fix(fs*1)+(1:fix(fs*dur))) = stim_b0+amp.*-cos(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))');
+% u_ex(1,-t(1)*fs+fix(fs*6)+(1:fix(fs*dur))) = stim_b0+amp.*sign(sin(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))'));
+% u_ex(1,-t(1)*fs+fix(fs*1)+(1:fix(fs*dur))) = stim_b0+amp.*-cos(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))');
 u_ex = u_ex*1;
 u_ex = u_ex(:,1:nt);
-DC = 0.01;
+DC = 0.0;
 u_ex = u_ex+DC;
 
-u_ex(:,0.2*fs:0.3*fs) = u_ex(:,0.2*fs:0.3*fs) + 0.1; % a pulse to help Lyapunov exponent to find the direction.
-u_ex(:,1:fs) = u_ex(:,1:fs)+1./fs.*randn(n,fs); % noise in the first second to help the network get off the trivial saddle node from ICs
+% u_ex(:,0.2*fs:0.3*fs) = u_ex(:,0.2*fs:0.3*fs) + 0.1; % a pulse to help Lyapunov exponent to find the direction.
+% u_ex(:,1:fs) = u_ex(:,1:fs)+1./fs.*randn(n,fs); % noise in the first second to help the network get off the trivial saddle node from ICs
 u_ex = u_ex+0.001./fs.*randn(n,nt); % a tiny bit of noise to help the network get off the trivial saddle node from ICs
 
-% noise_density = 0.02; % Define the density for sparse noise application
-% u_ex = u_ex + (0.001./fs .* randn(n, nt)) .* (rand(1, nt) < noise_density); % Apply sparse noise (density ~0.02) to help the network get off the trivial saddle node from ICs
+noise_density = 0.02; % Define the density for sparse noise application
+% u_ex = u_ex + (0.002./fs .* randn(n, nt)) .* (rand(1, nt) < noise_density); % Apply sparse noise (density ~0.02) to help the network get off the trivial saddle node from ICs
 
 
 %% parameters
 
-tau_STD = 0.5; % scalar, time constant of synaptic depression
+tau_STD = 3; % scalar, time constant of synaptic depression
 
 % Define number of timescales for E and I neurons separately
 n_a_E = 3; % number of SFA timescales for E neurons
@@ -82,7 +87,7 @@ n_b_I = 0; % number of STD timescales for I neurons (typically 0)
 % Define tau_a and tau_b for E and I neurons
 % Ensure these are empty if the corresponding n_a_X or n_b_X is 0
 if n_a_E > 0
-    tau_a_E = logspace(log10(0.3), log10(15), n_a_E); % s, 1 x n_a_E
+    tau_a_E = logspace(log10(0.3), log10(6), n_a_E); % s, 1 x n_a_E
 else
     tau_a_E = [];
 end
@@ -95,7 +100,7 @@ end
 if n_b_E > 0
     tau_b_E = logspace(log10(0.6), log10(9), n_b_E);  % s, 1 x n_b_E
     if n_b_E == 1 % Specific condition from original code
-        tau_b_E = 4*tau_STD;
+        tau_b_E = 1*tau_STD;
     end
 else
     tau_b_E = [];
@@ -133,12 +138,12 @@ end
 
 a0_I = [];
 if params.n_I > 0 && params.n_a_I > 0
-    a0_I = zeros(params.n_I * params.n_a_I, 1);
+    a0_I = 0.5+zeros(params.n_I * params.n_a_I, 1);
 end
 
 b0_E = [];
 if params.n_E > 0 && params.n_b_E > 0
-    b0_E = ones(params.n_E * params.n_b_E, 1);
+    b0_E = 0.8*ones(params.n_E * params.n_b_E, 1);
 end
 
 b0_I = [];
@@ -154,18 +159,20 @@ N_sys_eqs = size(X_0,1); % Number of system equations / states
 
 %% Integrate with ODE solver
 
-% Create Jacobian wrapper to match SRNN_wrapper signature
+% Create Jacobian wrapper to match SRNN_wrapper signature (inclusion of params)
 SRNN_Jacobian_wrapper = @(tt,XX) SRNN_Jacobian(tt,XX,params);
 
 % ode_options = odeset('RelTol', 1e-11, 'AbsTol', 1e-12, 'MaxStep', 0.5*dt, 'InitialStep', min(0.001, 0.2*dt)); % accurate
 % ode_options = odeset('RelTol', 1e-5, 'AbsTol', 1e-6, 'MinStep',0.05*dt,'MaxStep', 0.5*dt, 'InitialStep', 0.5*dt); % fast
 
+% % note: ode_options are largely ignored for fix-step solvers (ode4, RKn).  For fixed-step, best to use Ralston's methods and a small step as determined by fs.  1000 Hz seems to work fine.
+% % note: these option settings are important for ode45 and ode15, Benettin's method and qr method.  Need about two orders of accuracy better than the perturbation d0 in Benettin's method
 if use_Jacobian 
     % ode_options = odeset('RelTol', 1e-5, 'AbsTol', 1e-6, 'MinStep', dt,'MaxStep', dt, 'InitialStep', dt, 'Jacobian', SRNN_Jacobian_wrapper); % fast
     ode_options = odeset('RelTol', 1e-7, 'AbsTol', 1e-8, 'MaxStep', dt, 'InitialStep', 0.05*dt, 'Jacobian', SRNN_Jacobian_wrapper); % fast
 else
     % ode_options = odeset('RelTol', 1e-5, 'AbsTol', 1e-6, 'MinStep', 0.1*dt,'MaxStep', dt, 'InitialStep', 0.5*dt); % fast
-    ode_options = odeset('RelTol', 1e-7, 'AbsTol', 1e-8, 'MaxStep',dt, 'InitialStep', 0.05*dt); % RelTol must be greater than perturbation 
+    ode_options = odeset('RelTol', 1e-7, 'AbsTol', 1e-8, 'MaxStep',dt, 'InitialStep', 0.05*dt); % RelTol must be less than perturbation d0, which is 1e-3
 end
 
 
@@ -184,11 +191,41 @@ ode_solver = ode_RKn_wrapper; % fixed step RK 1, 2, or 4th order, with boundary 
 % ode_solver = @ode4_wrapper; % basic RK4 for comparison
 % ode_solver = @ode15s; % stiff ode solver
 
-% Use the wrapper instead of ode15s
+%% try to load ICs
+
+saveName_ICs = ['ICs' filesep 'ICs_seed_' num2str(seed) '_n_' num2str(n) '_IOdeg_' num2str(mean_in_out_degree) '_EEfactor_' num2str(EEfactor) '.mat']
+if load_ICs
+    if exist(saveName_ICs, 'file')
+        try
+            fprintf('Attempting to load initial conditions from %s\n', saveName_ICs);
+            loaded_data = load(saveName_ICs, 'X_ICs');
+            if isfield(loaded_data, 'X_ICs') && isequal(size(loaded_data.X_ICs), size(X_0))
+                X_0 = loaded_data.X_ICs;
+                fprintf('Successfully loaded and applied initial conditions.\n');
+            else
+                warning('Variable ''X_ICs'' in %s has incorrect size or does not exist. Using default ICs.', saveName_ICs);
+            end
+        catch ME
+            warning('Failed to load initial conditions from %s. Error: %s. Using default ICs.', saveName_ICs, ME.message);
+        end
+    else
+        warning('Initial conditions file not found: %s. Using default ICs.', saveName_ICs);
+    end
+end
+
+%% integrate the equations
 [t_ode, X] = ode_solver(SRNN_wrapper, t, X_0, ode_options);
 
 assert(all(abs(t_ode - t) < 1e-11), 'ODE solver did not return results exactly at the requested times for fiducial trajectory.');
 clear t_ode % t_ode is same as t
+
+%% store ICs for next time, if desired
+if store_ICs_from_X_of_t
+    [~, i_IC] = min(abs(t - t_IC_for_saving));
+    X_ICs = X(i_IC, :)'; % get the state and transpose to a column vector
+    save(saveName_ICs, 'X_ICs');
+    fprintf('Saved initial conditions for next run to %s\n', saveName_ICs);
+end
 
 %% comput LLE or Lyapunov spectrum
 

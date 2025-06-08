@@ -1,4 +1,4 @@
-function [result] = SRNN_caller_wrapped_for_sensitivity(seed, n, EE_factor, IE_factor, EI, E_self, mean_weight, DC, sparsity, tau_a_E_2, tau_b_E_2, tau_STD, c_SFA_factor, n_a_E, fs)
+function [result] = SRNN_caller_wrapped_for_sensitivity(seed, n, EE_factor, IE_factor, EI, E_self, mean_weight, DC, sparsity, tau_a_E_2, tau_b_E_2, tau_STD, c_SFA_factor, n_a_E, n_b_E, fs)
     %SRNN_CALLER_WRAPPED_FOR_SENSITIVITY Runs a simulation of the Spiking Rate Neural Network model.
     %
     % This function wraps the SRNN simulation and is intended for use in sensitivity
@@ -19,6 +19,7 @@ function [result] = SRNN_caller_wrapped_for_sensitivity(seed, n, EE_factor, IE_f
     %   tau_STD          - (scalar) Time constant for synaptic depression onset.
     %   c_SFA_factor     - (scalar) Strength of spike-frequency adaptation.
     %   n_a_E            - (scalar) Number of SFA timescales for excitatory neurons.
+    %   n_b_E            - (scalar) Number of STD timescales for E neurons.
     %   fs               - (scalar) Sampling frequency for simulation.
     %
     % Outputs:
@@ -85,7 +86,7 @@ function [result] = SRNN_caller_wrapped_for_sensitivity(seed, n, EE_factor, IE_f
 
     %% Time
     dt = 1/fs;
-    T = [-10 11];
+    T = [-30 15];
 
     % Validate time interval
     if not( T(1)<=0 && 0<T(2) )
@@ -111,7 +112,7 @@ function [result] = SRNN_caller_wrapped_for_sensitivity(seed, n, EE_factor, IE_f
 
     u_ex(:,0.2*fs:0.3*fs) = u_ex(:,0.2*fs:0.3*fs) + 0.1; % a pulse to help Lyapunov exponent to find the direction.
     u_ex(:,1:fs) = u_ex(:,1:fs)+1./fs.*randn(n,fs); % noise in the first second to help the network get off the trivial saddle node from ICs
-    u_ex = u_ex+0.001./fs.*randn(n,nt); % a tiny bit of noise to help the network get off the trivial saddle node from ICs
+    u_ex = u_ex+0.0001./fs.*randn(n,nt); % a tiny bit of noise to help the network get off the trivial saddle node from ICs
 
     % noise_density = 0.02; % Define the density for sparse noise application
     % u_ex = u_ex + (0.001./fs .* randn(n, nt)) .* (rand(1, nt) < noise_density); % Apply sparse noise (density ~0.02) to help the network get off the trivial saddle node from ICs
@@ -121,7 +122,7 @@ function [result] = SRNN_caller_wrapped_for_sensitivity(seed, n, EE_factor, IE_f
 
     % Define number of timescales for E and I neurons separately
     n_a_I = 0; % number of SFA timescales for I neurons (typically 0)
-    n_b_E = 1; % number of STD timescales for E neurons
+    % n_b_E is now an input parameter
     n_b_I = 0; % number of STD timescales for I neurons (typically 0)
 
     % Define tau_a and tau_b for E and I neurons
@@ -211,10 +212,10 @@ function [result] = SRNN_caller_wrapped_for_sensitivity(seed, n, EE_factor, IE_f
     % % note: these option settings are important for ode45 and ode15, Benettin's method and qr method.  Need about two orders of accuracy better than the perturbation d0 in Benettin's method
     if use_Jacobian 
         % ode_options = odeset('RelTol', 1e-5, 'AbsTol', 1e-6, 'MinStep', dt,'MaxStep', dt, 'InitialStep', dt, 'Jacobian', SRNN_Jacobian_wrapper); % fast
-        ode_options = odeset('RelTol', 1e-7, 'AbsTol', 1e-8, 'MaxStep', dt, 'InitialStep', 0.1*dt, 'Jacobian', SRNN_Jacobian_wrapper); % fast
+        ode_options = odeset('RelTol', 1e-5, 'AbsTol', 1e-6, 'MaxStep', dt, 'InitialStep', 0.5*dt, 'Jacobian', SRNN_Jacobian_wrapper); % fast
     else
         % ode_options = odeset('RelTol', 1e-5, 'AbsTol', 1e-6, 'MinStep', 0.1*dt,'MaxStep', dt, 'InitialStep', 0.5*dt); % fast
-        ode_options = odeset('RelTol', 1e-7, 'AbsTol', 1e-8, 'MaxStep',dt, 'InitialStep', 0.1*dt); % RelTol must be less than perturbation d0, which is 1e-3
+        ode_options = odeset('RelTol', 1e-5, 'AbsTol', 1e-6, 'MaxStep',dt, 'InitialStep', 0.5*dt); % RelTol must be less than perturbation d0, which is 1e-3
     end
 
 
@@ -223,7 +224,7 @@ function [result] = SRNN_caller_wrapped_for_sensitivity(seed, n, EE_factor, IE_f
     SRNN_wrapper = @(tt,XX) SRNN(tt,XX,t,u_ex,params); % inline wrapper function to add t, u_ex, and params to SRNN
 
     % wrap ode_RKn to limit the exposure of extra parameters for usage to match builtin integrators
-    solver_method = 3; % 5 is classic RK4
+    solver_method = 6; % 5 is classic RK4
     deci = 1; % deci > 1 does not work for benettin's method.  Need to fix this
     ode_RKn_wrapper = @(odefun, tspan, y0, options) deal(tspan(:), ode_RKn_deci_bounded(odefun, tspan, y0, solver_method, false, deci, get_minMaxRange(params))); % Pass params to get_minMaxRange
 
@@ -314,25 +315,18 @@ function [result] = SRNN_caller_wrapped_for_sensitivity(seed, n, EE_factor, IE_f
         end
     end
 
-    % For sensitivity analysis, plotting is commented out.
-    % if ~strcmpi(Lya_method, 'none') && ~isempty(fieldnames(lya_results))
-    %     SRNN_tseries_plot(t, u_ex, r, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T, Lya_method, lya_results);
-    % else
-    %     SRNN_tseries_plot(t, u_ex, r, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T, Lya_method);
-    % end
-
-    result = lya_results;
-    result.t = t;
-    result.r = r;
-    result.p = p;
-    result.u_ex = u_ex;
-    result.params = params;
-    result.X = X;
-    result.a_E_ts = a_E_ts;
-    result.a_I_ts = a_I_ts;
-    result.b_E_ts = b_E_ts;
-    result.b_I_ts = b_I_ts;
-    result.u_d_ts = u_d_ts;
+    % For sensitivity analysis, we only need a few summary statistics, not the
+    % full time series. Pruning the output here dramatically reduces file size.
+    result = struct();
+    if isfield(lya_results, 'LLE')
+        result.LLE = lya_results.LLE;
+    end
+    if isfield(lya_results, 'LE_spectrum')
+        result.LE_spectrum = lya_results.LE_spectrum;
+        if isfield(lya_results, 'KaplanYorkeDim')
+            result.KaplanYorkeDim = lya_results.KaplanYorkeDim;
+        end
+    end
 
     sim_dur = toc;
 
