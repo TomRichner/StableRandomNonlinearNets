@@ -219,7 +219,7 @@ if ~strcmpi(Lya_method, 'none')
     grid on;
     box off;
     % Force y-limits for Lyapunov subplot
-    ylim([-0.25 0.25]);
+    ylim([-0.5 0.5]);
 end
 
 % New logic for linking axes and setting x-axis limits:

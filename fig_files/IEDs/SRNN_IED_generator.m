@@ -7,11 +7,13 @@ clc
 tic
 
 %%
-Lya_method = 'none'; % 'benettin', 'qr', or 'none'
+Lya_method = 'benettin'; % 'benettin', 'qr', or 'none'
 use_Jacobian = false;
-store_ICs_from_X_of_t = true;
-load_ICs = false;
-t_IC_for_saving = 70; % s, time point in trajectory to save as initial conditions for next run
+store_ICs_from_X_of_t = false;
+load_ICs = true;
+t_IC_for_saving = 30; % s, time point in trajectory to save as initial conditions for next run
+
+T = [0 60];
 
 %% 
 seed = 7;
@@ -20,7 +22,7 @@ rng(seed,'twister');
 %% Network
 n = 10; % number of neurons
 
-mean_in_out_degree = 4; % desired mean number of connections in and out
+mean_in_out_degree = 5; % desired mean number of connections in and out
 density = mean_in_out_degree/(n-1); % each neuron can make up to n-1 connections with other neurons
 sparsity = 1-density;
 
@@ -39,9 +41,8 @@ EI_vec = EI_vec(:); % make it a column
 [E_indices, I_indices, n_E, n_I] = get_EI_indices(EI_vec);
 
 %% Time
-fs = 500; %Plotting sample frequency
+fs = 1000; %Plotting sample frequency
 dt = 1/fs;
-T = [0 200];
 
 % Validate time interval
 if not( T(1)<=0 && 0<T(2) )
@@ -63,25 +64,31 @@ f_sin = 1.*ones(1,fs*dur);
 % u_ex(1,-t(1)*fs+fix(fs*1)+(1:fix(fs*dur))) = stim_b0+amp.*-cos(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))');
 u_ex = u_ex*1;
 u_ex = u_ex(:,1:nt);
-DC = 0.0;
+DC = 0.1;
 u_ex = u_ex+DC;
+
+period1 = and(15<t, t<30);
+period2 = and(30<t, t<45);
+u_ex(:,period1) = u_ex(:,period1)+0.5;
+u_ex(:,period2) = u_ex(:,period2)+4;
+
 
 % u_ex(:,0.2*fs:0.3*fs) = u_ex(:,0.2*fs:0.3*fs) + 0.1; % a pulse to help Lyapunov exponent to find the direction.
 % u_ex(:,1:fs) = u_ex(:,1:fs)+1./fs.*randn(n,fs); % noise in the first second to help the network get off the trivial saddle node from ICs
-u_ex = u_ex+0.001./fs.*randn(n,nt); % a tiny bit of noise to help the network get off the trivial saddle node from ICs
+% u_ex = u_ex+0.001./fs.*randn(n,nt); % a tiny bit of noise to help the network get off the trivial saddle node from ICs
 
-noise_density = 0.02; % Define the density for sparse noise application
-% u_ex = u_ex + (0.002./fs .* randn(n, nt)) .* (rand(1, nt) < noise_density); % Apply sparse noise (density ~0.02) to help the network get off the trivial saddle node from ICs
+noise_density = 0.005; % Define the density for sparse noise application
+u_ex = u_ex + (0.002./fs .* randn(n, nt)) .* (rand(1, nt) < noise_density); % Apply sparse noise (density ~0.02) to help the network get off the trivial saddle node from ICs
 
 
 %% parameters
 
-tau_STD = 3; % scalar, time constant of synaptic depression
+tau_STD = 1; % scalar, time constant of synaptic depression
 
 % Define number of timescales for E and I neurons separately
-n_a_E = 3; % number of SFA timescales for E neurons
+n_a_E = 0; % number of SFA timescales for E neurons
 n_a_I = 0; % number of SFA timescales for I neurons (typically 0)
-n_b_E = 1; % number of STD timescales for E neurons
+n_b_E = 0; % number of STD timescales for E neurons
 n_b_I = 0; % number of STD timescales for I neurons (typically 0)
 
 % Define tau_a and tau_b for E and I neurons
@@ -310,3 +317,10 @@ end
 sim_dur = toc
 
 sim_t_dived_by_rt = sim_dur./(T(2)-T(1))
+
+for i_b = 1:5
+    beep;
+    pause(0.5)
+end
+
+save_some_figs_to_folder_2('AES_figs','none',[],[])

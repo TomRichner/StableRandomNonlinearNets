@@ -8,8 +8,8 @@ close all;
 
 
 %% Set up paths and parameters
-sensitivity_results_dir = 'sensitivity_results';
-output_dir_base = 'plots';
+sensitivity_results_dir = '/Users/tom/Desktop/local_code/adaptation_paper/dual_adaptation_random_matrix_theory/fig_files/sensitivity_analysis/sensitivity_results';
+output_dir_base = fullfile(fileparts(mfilename('fullpath')), 'plots');
 
 % Create base output directory if it doesn't exist
 if ~exist(output_dir_base, 'dir')
