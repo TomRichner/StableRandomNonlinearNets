@@ -26,8 +26,8 @@ for c_idx = 1:length(conditions)
     fprintf('======================================================\n\n');
 
     %% Analysis Parameters
-    n_levels = 17; % Number of values to test for each parameter
-    n_reps = 32;   % Number of repetitions with different random seeds for each level
+    n_levels = 20m; % Number of values to test for each parameter
+    n_reps = 25;   % Number of repetitions with different random seeds for each level
     
     % Specify which parameters to analyze (comment/uncomment or modify as needed)
     params_to_analyze = {'EE_factor'}; % Only analyze these parameters
@@ -35,15 +35,15 @@ for c_idx = 1:length(conditions)
     
     %% Default Simulation Parameters (based on SRNN_caller.m)
     p_default.fs = 1000;
-    p_default.n = 6;
+    p_default.n = 10;
     p_default.EE_factor = 1.0;
     p_default.IE_factor = 1.0;
     p_default.EI = 0.666;
     p_default.E_self = 0.0;
     p_default.mean_weight = 0.5;
-    p_default.DC = 0.25;
-    p_default.sparsity = 0;
-    p_default.tau_a_E_2 = 30;
+    p_default.DC = 0.05;
+    p_default.sparsity = 0.55;
+    p_default.tau_a_E_2 = 6;
     p_default.tau_b_E_2 = 9;
     p_default.tau_STD = 0.5;
     p_default.c_SFA_factor = 1.0;

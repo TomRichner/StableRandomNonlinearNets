@@ -224,15 +224,15 @@ function [result] = SRNN_caller_wrapped_for_sensitivity(seed, n, EE_factor, IE_f
     SRNN_wrapper = @(tt,XX) SRNN(tt,XX,t,u_ex,params); % inline wrapper function to add t, u_ex, and params to SRNN
 
     % wrap ode_RKn to limit the exposure of extra parameters for usage to match builtin integrators
-    solver_method = 6; % 5 is classic RK4
+    solver_method = 3; % 5 is classic RK4
     deci = 1; % deci > 1 does not work for benettin's method.  Need to fix this
     ode_RKn_wrapper = @(odefun, tspan, y0, options) deal(tspan(:), ode_RKn_deci_bounded(odefun, tspan, y0, solver_method, false, deci, get_minMaxRange(params))); % Pass params to get_minMaxRange
 
     %% pick an ODE solver
-    % ode_solver = ode_RKn_wrapper; % fixed step RK 1, 2, or 4th order, with boundary enforcement
+    ode_solver = ode_RKn_wrapper; % fixed step RK 1, 2, or 4th order, with boundary enforcement
     % ode_solver = @ode45; % variable step
     % ode_solver = @ode4_wrapper; % basic RK4 for comparison
-    ode_solver = @ode15s; % stiff ode solver
+    % ode_solver = @ode15s; % stiff ode solver
 
     % Use the wrapper instead of ode15s
     [t_ode, X] = ode_solver(SRNN_wrapper, t, X_0, ode_options);

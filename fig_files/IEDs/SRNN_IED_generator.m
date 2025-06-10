@@ -9,8 +9,8 @@ tic
 %%
 Lya_method = 'none'; % 'benettin', 'qr', or 'none'
 use_Jacobian = false;
-store_ICs_from_X_of_t = false;
-load_ICs = true;
+store_ICs_from_X_of_t = true;
+load_ICs = false;
 t_IC_for_saving = 70; % s, time point in trajectory to save as initial conditions for next run
 
 %% 

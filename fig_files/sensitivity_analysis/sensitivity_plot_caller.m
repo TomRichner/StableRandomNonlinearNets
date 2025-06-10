@@ -6,12 +6,10 @@ clear;
 clc;
 close all;
 
-% Add the root directory to the path to access model functions
-addpath(fullfile(fileparts(mfilename('fullpath')),'../..'));
 
 %% Set up paths and parameters
-sensitivity_results_dir = fullfile(fileparts(mfilename('fullpath')), '../../sensitivity_results');
-output_dir_base = fullfile(fileparts(mfilename('fullpath')), 'plots');
+sensitivity_results_dir = 'sensitivity_results';
+output_dir_base = 'plots';
 
 % Create base output directory if it doesn't exist
 if ~exist(output_dir_base, 'dir')
