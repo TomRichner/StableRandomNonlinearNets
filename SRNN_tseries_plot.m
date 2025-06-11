@@ -173,23 +173,21 @@ if ~strcmpi(Lya_method, 'none')
     ax_handles(6) = subplot(num_subplots, 1, 6);
     hold on;
     if strcmpi(Lya_method, 'benettin')
-        if ~isempty(LLE) && ~isempty(t_lya) % Ensure variables exist and are not empty
+        % Check if there is any Lyapunov data to plot.
+        % t_lya would be empty if divergence occurred before the first interval.
+        if ~isempty(t_lya)
             plot([t_lya(1) t_lya(end)], [LLE LLE], 'Color',[0.7 0.7 0.7], 'LineWidth', 4, 'DisplayName', sprintf('Global LLE: %.4f', LLE));
-        end
-        if ~isempty(finite_lya) && ~isempty(t_lya)
             plot(t_lya, finite_lya, 'r', 'LineWidth', 2, 'DisplayName', 'Finite-time LLE');
-        end
-        if ~isempty(local_lya) && ~isempty(t_lya)
             plot(t_lya, local_lya, 'b', 'LineWidth', 1, 'DisplayName', 'Local LLE');
-        end
-        ylim_benettin = get(gca, 'YLim'); % Store auto y-limits
-        if ~isempty(LLE) && ~isempty(t_lya) % Only adjust if LLE was plotted
-             ylim_benettin = [min(ylim_benettin(1), LLE - 0.05*abs(LLE)), max(ylim_benettin(2), LLE + 0.05*abs(LLE))];
-        end
-        if isempty(LLE) && isempty(finite_lya) && isempty(local_lya)
-             plot(0,0); % Placeholder
+            
+            % Adjust y-limits to ensure all data is visible
+            ylim_current = get(gca, 'YLim');
+            ylim_new = [min(ylim_current(1), LLE - 0.05*abs(LLE)), max(ylim_current(2), LLE + 0.05*abs(LLE))];
+            if all(isfinite(ylim_new))
+                ylim(ylim_new);
+            end
         else
-             ylim(ylim_benettin); % Apply potentially adjusted y-limits
+            text(0.5, 0.5, 'No Lyapunov data (diverged early)', 'Units', 'normalized', 'HorizontalAlignment', 'center');
         end
 
     elseif strcmpi(Lya_method, 'qr')
@@ -208,8 +206,10 @@ if ~strcmpi(Lya_method, 'none')
             for i = 1:N_sys_eqs_lya
                 plot([t_lya(1) t_lya(end)], [LE_spectrum(i) LE_spectrum(i)], ':', 'Color', colors(i,:), 'LineWidth', 2, 'DisplayName', sprintf('Global LE(%d): %.4f', i, LE_spectrum(i)));
             end
+            % For QR method, fix y-limits for better comparability of spectra
+            ylim([-0.5 0.5]);
         else
-             plot(0,0); 
+             text(0.5, 0.5, 'No Lyapunov data to plot', 'Units', 'normalized', 'HorizontalAlignment', 'center');
         end
     end
     hold off;
@@ -218,8 +218,7 @@ if ~strcmpi(Lya_method, 'none')
     legend('show', 'Location', 'best');
     grid on;
     box off;
-    % Force y-limits for Lyapunov subplot
-    ylim([-0.5 0.5]);
+    ylim([-0.5 0.5])
 end
 
 % Link all subplots' x-axes and set limits

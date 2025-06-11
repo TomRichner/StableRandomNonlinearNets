@@ -51,7 +51,7 @@ function [LE_spectrum, local_LE_spectrum_t, finite_LE_spectrum_t, t_lya_vec] = l
     sum_log_R_diag = zeros(N_states_sys, 1); 
     
     local_LE_spectrum_t  = zeros(nt_lya, N_states_sys);
-    finite_LE_spectrum_t = zeros(nt_lya, N_states_sys);
+    finite_LE_spectrum_t = nan(nt_lya, N_states_sys);
     
     total_positive_time_accumulated = 0; 
     ode_options_var = ode_options_main;
@@ -80,6 +80,26 @@ function [LE_spectrum, local_LE_spectrum_t, finite_LE_spectrum_t, t_lya_vec] = l
         [~, Psi_solution_vec] = ode_solver(@variational_eqs_ode, t_span_ode, Psi0_vec, ode_options_var);
         
         Psi_evolved_matrix = reshape(Psi_solution_vec(end,:)', [N_states_sys, N_states_sys]);
+        
+        % Check for divergence in the integrated variational equations
+        if any(~isfinite(Psi_evolved_matrix(:)))
+            warning('lyapunov_spectrum_qr:Divergence', 'System diverged. Variational equation integration produced non-finite values at t=%f. Truncating results.', t_start_segment);
+            
+            % Calculate final spectrum based on data accumulated so far
+            if total_positive_time_accumulated > eps
+                LE_spectrum = sum_log_R_diag / total_positive_time_accumulated;
+            else
+                LE_spectrum = nan(N_states_sys,1);
+            end
+
+            % Truncate output arrays to exclude invalid data
+            t_lya_vec(k:end) = [];
+            local_LE_spectrum_t(k:end,:) = [];
+            finite_LE_spectrum_t(k:end,:) = [];
+
+            return; % Stop computation and return partial results
+        end
+        
         [Q_new, R_segment] = qr(Psi_evolved_matrix);
         diag_R = diag(R_segment);
         

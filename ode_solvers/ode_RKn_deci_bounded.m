@@ -13,6 +13,8 @@ function Y = ode_RKn_deci_bounded(odefun,tspan,y0, RK_method_num, dispMethodOrde
   %     solves the system y' = vdp1(t,y) with a constant step size of 0.1, 
   %     and plots the first component of the solution.   
 
+  persistent warning_shown;
+
   if ~isnumeric(tspan)
     error('TSPAN should be a vector of integration steps.');
   end
@@ -54,44 +56,47 @@ function Y = ode_RKn_deci_bounded(odefun,tspan,y0, RK_method_num, dispMethodOrde
       end
       
       if size(min_max_range, 1) ~= n_states
-          error('MIN_MAX_RANGE must have the same number of rows as the length of Y0 (%d).', n_states);
+          if isempty(warning_shown) || ~warning_shown
+              warning('ODE_RKN_DECI_BOUNDED:DimensionMismatch', 'MIN_MAX_RANGE row count (%d) does not match state vector length (%d). Bounds will not be applied.', size(min_max_range, 1), n_states);
+              warning_shown = true;
+          end
+          min_logical = false(n_states,1);
+          max_logical = false(n_states,1);
+          min_max_range = NaN(n_states,2); % Set to non-bounding state to prevent errors in later logic
+      else
+          % This is the case where bounds can be applied.
+          min_logical = ~isnan(min_max_range(:,1));
+          max_logical = ~isnan(min_max_range(:,2));
+      
+          % Check that min <= max where both are not NaN
+          both_finite_and_specified = min_logical & max_logical;
+      
+          if any(both_finite_and_specified & (min_max_range(:,1) > min_max_range(:,2)))
+              error('MIN_MAX_RANGE: minimum values must be less than or equal to maximum values for rows where both are specified.');
+          end
+      
+          % Check that initial conditions are within bounds
+          y0_col = y0(:);  % Ensure column vector for consistent indexing
+      
+          % Check minimum bounds
+          if any(min_logical & (y0_col < min_max_range(:,1)))
+              violating_indices = find(min_logical & (y0_col < min_max_range(:,1)));
+              error('Initial condition Y0(%d) = %g violates minimum bound %g.', ...
+                    violating_indices(1), y0_col(violating_indices(1)), min_max_range(violating_indices(1),1));
+          end
+      
+          % Check maximum bounds
+          if any(max_logical & (y0_col > min_max_range(:,2)))
+              violating_indices = find(max_logical & (y0_col > min_max_range(:,2)));
+              error('Initial condition Y0(%d) = %g violates maximum bound %g.', ...
+                    violating_indices(1), y0_col(violating_indices(1)), min_max_range(violating_indices(1),2));
+          end
       end
-
-      min_logical = ~isnan(min_max_range(:,1));
-      max_logical = ~isnan(min_max_range(:,2));
       
-      % Check that min <= max where both are not NaN
-      both_finite_and_specified = min_logical & max_logical;
-      
-      if any(both_finite_and_specified & (min_max_range(:,1) > min_max_range(:,2)))
-          error('MIN_MAX_RANGE: minimum values must be less than or equal to maximum values for rows where both are specified.');
-      end
-      
-      % Check that initial conditions are within bounds
-      y0_col = y0(:);  % Ensure column vector for consistent indexing
-      
-      % Check minimum bounds
-      if any(min_logical & (y0_col < min_max_range(:,1)))
-          violating_indices = find(min_logical & (y0_col < min_max_range(:,1)));
-          error('Initial condition Y0(%d) = %g violates minimum bound %g.', ...
-                violating_indices(1), y0_col(violating_indices(1)), min_max_range(violating_indices(1),1));
-      end
-      
-      % Check maximum bounds
-      if any(max_logical & (y0_col > min_max_range(:,2)))
-          violating_indices = find(max_logical & (y0_col > min_max_range(:,2)));
-          error('Initial condition Y0(%d) = %g violates maximum bound %g.', ...
-                violating_indices(1), y0_col(violating_indices(1)), min_max_range(violating_indices(1),2));
-      end
-      
-      % min_vals = min_max_range(min_logical,1); % Not needed with new bounding logic
-      % max_vals = min_max_range(max_logical,2); % Not needed with new bounding logic
   else
       min_max_range = NaN(n_states,2); % Ensure min_max_range has a defined structure
       min_logical = false(n_states,1);
       max_logical = false(n_states,1);
-      % min_vals = []; % Not needed
-      % max_vals = []; % Not needed
   end
 
   f0 = feval(odefun,tspan(1),y0,varargin{:});

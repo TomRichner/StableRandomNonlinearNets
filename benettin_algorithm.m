@@ -21,7 +21,7 @@ function [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X, t, dt, fs, 
     nt_lya  = numel(t_lya);           % number of Lyapunov intervals
 
     local_lya  = zeros(nt_lya,1);
-    finite_lya = zeros(nt_lya,1);
+    finite_lya = nan(nt_lya,1);
     sum_log_stretching_factors = 0;
 
     % Initial perturbation
@@ -71,6 +71,31 @@ function [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X, t, dt, fs, 
         d_k     = norm(delta);
         local_lya(k) = log(d_k/d0)/tau_lya;
 
+        % Check for divergence (NaN or Inf in local Lyapunov exponent)
+        if ~isfinite(local_lya(k))
+            warning('benettin_algorithm:Divergence', 'System diverged or produced non-finite Lyapunov exponent at t=%f. Truncating results.', t_lya(k));
+            
+            if k > 1
+                % Use the last valid finite Lyapunov exponent as the final LLE
+                last_valid_finite_lya = finite_lya(1:k-1);
+                last_valid_finite_lya = last_valid_finite_lya(~isnan(last_valid_finite_lya));
+                if ~isempty(last_valid_finite_lya)
+                    LLE = last_valid_finite_lya(end);
+                else
+                    LLE = 0; % No valid finite LLE computed before divergence
+                end
+            else
+                LLE = 0; % Diverged on the first step
+            end
+            
+            % Truncate output arrays to remove invalid data
+            local_lya(k:end) = [];
+            finite_lya(k:end) = [];
+            t_lya(k:end) = [];
+            
+            return; % Stop computation and return partial results
+        end
+
         pert = (delta./d_k).*d0; % rescaled perturbation for next step
 
         % Accumulate stretching only from t >= 0
@@ -80,5 +105,11 @@ function [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X, t, dt, fs, 
         end
     end
 
-    LLE = sum_log_stretching_factors / T(2);  % finite-time estimate from t = 0 to T(2)
+    % Final LLE is the last computed finite Lyapunov exponent.
+    last_valid_finite_lya = finite_lya(~isnan(finite_lya));
+    if ~isempty(last_valid_finite_lya)
+        LLE = last_valid_finite_lya(end);
+    else
+        LLE = 0; % No valid finite LLE was computed
+    end
 end

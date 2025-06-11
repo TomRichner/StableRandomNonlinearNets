@@ -13,10 +13,10 @@ rng(seed,'twister');
 %% Network
 n = 4; % number of neurons
 
-Lya_method = 'svd'; % 'benettin', 'qr', 'svd', or 'none'
+Lya_method = 'benettin'; % 'benettin', 'qr', 'svd', or 'none'
 use_Jacobian = false;
 
-mean_in_out_degree = 4; % desired mean number of connections in and out
+mean_in_out_degree = 3; % desired mean number of connections in and out
 density = mean_in_out_degree/(n-1); % each neuron can make up to n-1 connections with other neurons
 sparsity = 1-density;
 
@@ -39,6 +39,7 @@ dt = 1/fs;
 T = [-30 15];
 
 T_lya_1 = -10; % s, time to start Lyapunov calculation warmup
+% T_lya_1 = T(1); % s, time to start Lyapunov calculation warmup
 
 % Validate time interval
 if not( T(1)<=0 && 0<T(2) )
@@ -82,10 +83,10 @@ u_ex(:,0.2*fs:0.3*fs) = u_ex(:,0.2*fs:0.3*fs) + 0.1; % a pulse to help Lyapunov 
 tau_STD = 0.5; % scalar, time constant of synaptic depression
 
 % Define number of timescales for E and I neurons separately
-n_a_E = 3; % number of SFA timescales for E neurons
-n_a_I = 0; % number of SFA timescales for I neurons (typically 0)
-n_b_E = 2; % number of STD timescales for E neurons
-n_b_I = 0; % number of STD timescales for I neurons (typically 0)
+n_a_E = 3; % typically 3, number of SFA timescales for E neurons
+n_a_I = 0; % typically 0, number of SFA timescales for I neurons (typically 0)
+n_b_E = 1; % typically 1 or 2, number of STD timescales for E neurons
+n_b_I = 0; % typically 0, number of STD timescales for I neurons (typically 0)
 
 % Define tau_a and tau_b for E and I neurons
 % Ensure these are empty if the corresponding n_a_X or n_b_X is 0
@@ -122,7 +123,11 @@ tau_d = 0.025; % s, scalar
 
 % c_SFA and F_STD remain n x 1, defining strength for *all* neurons.
 % SRNN.m will use n_a_I/n_b_I to determine if states a_I/b_I exist.
-c_SFA = 1/n_b_E * double(EI_vec == 1); % n x 1, Example: SFA only for E neurons
+if n_a_E > 0
+    c_SFA = (1/n_a_E) * double(EI_vec == 1); % n x 1, Example: SFA only for E neurons
+else
+    c_SFA = zeros(n, 1);
+end
 % c_SFA(I_indices) = 0; % Explicitly set to 0 for I if desired, or rely on n_a_I = 0
 F_STD = 1 * double(EI_vec == 1); % n x 1, Example: STD only for E neurons
 % F_STD(I_indices) = 0; % Explicitly set to 0 for I if desired, or rely on n_b_I = 0
@@ -186,6 +191,7 @@ SRNN_wrapper = @(tt,XX) SRNN(tt,XX,t,u_ex,params); % inline wrapper function to 
 % wrap ode_RKn to limit the exposure of extra parameters for usage to match builtin integrators
 solver_method = 6; % 5 is classic RK4
 deci = 1; % deci > 1 does not work for benettin's method.  Need to fix this
+
 ode_RKn_wrapper = @(odefun, tspan, y0, options) deal(tspan(:), ode_RKn_deci_bounded(odefun, tspan, y0, solver_method, false, deci, get_minMaxRange(params))); % Pass params to get_minMaxRange
 
 %% pick an ODE solver
@@ -193,6 +199,10 @@ ode_RKn_wrapper = @(odefun, tspan, y0, options) deal(tspan(:), ode_RKn_deci_boun
 % ode_solver = @ode45; % variable step
 % ode_solver = @ode4_wrapper; % basic RK4 for comparison
 ode_solver = @ode15s; % stiff ode solver
+
+if strcmpi(Lya_method,'qr') && ~isequal(ode_solver, @ode15s)
+    warning('QR method typically requires ode15s for stability. Current solver may cause issues.');
+end
 
 % Use the wrapper instead of ode15s
 [t_ode, X] = ode_solver(SRNN_wrapper, t, X_0, ode_options);
