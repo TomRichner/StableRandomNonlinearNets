@@ -23,88 +23,78 @@ function [a_E, a_I, b_E, b_I, u_d] = unpack_SRNN_state(X, params)
     n_b_I = params.n_b_I;
     n     = params.n;
 
-    is_single_time_point = iscolumn(X);
+    if iscolumn(X) % Single time point case, optimized for ODE solvers
+        current_idx = 0;
 
-    if is_single_time_point
-        nt = 1; 
-    else
-        nt = size(X, 1); % Number of time points
-    end
-
-    current_idx = 0;
-
-    % --- SFA states for E neurons (a_E) ---
-    len_a_E = n_E * n_a_E;
-    if n_a_E > 0 && n_E > 0
-        if is_single_time_point
-            % X_aE_vec is (n_E*n_a_E) x 1
-            a_E_vec = X(current_idx + (1:len_a_E));
-            a_E = reshape(a_E_vec, n_E, n_a_E); % n_E x n_a_E
+        len_a_E = n_E * n_a_E;
+        if len_a_E > 0
+            a_E = reshape(X(current_idx + (1:len_a_E)), n_E, n_a_E);
         else
-            % X_aE_block is nt x (n_E*n_a_E)
-            X_aE_block = X(:, current_idx + (1:len_a_E));
-            X_aE_block_T = X_aE_block'; % (n_E*n_a_E) x nt
-            a_E = reshape(X_aE_block_T, n_E, n_a_E, nt); % n_E x n_a_E x nt
+            a_E = [];
         end
-    else
-        a_E = []; % No SFA states for E neurons or no E neurons
-    end
-    current_idx = current_idx + len_a_E;
+        current_idx = current_idx + len_a_E;
 
-    % --- SFA states for I neurons (a_I) ---
-    len_a_I = n_I * n_a_I;
-    if n_a_I > 0 && n_I > 0
-        if is_single_time_point
-            a_I_vec = X(current_idx + (1:len_a_I));
-            a_I = reshape(a_I_vec, n_I, n_a_I); % n_I x n_a_I
+        len_a_I = n_I * n_a_I;
+        if len_a_I > 0
+            a_I = reshape(X(current_idx + (1:len_a_I)), n_I, n_a_I);
         else
-            X_aI_block = X(:, current_idx + (1:len_a_I));
-            X_aI_block_T = X_aI_block';
-            a_I = reshape(X_aI_block_T, n_I, n_a_I, nt); % n_I x n_a_I x nt
+            a_I = [];
         end
-    else
-        a_I = [];
-    end
-    current_idx = current_idx + len_a_I;
+        current_idx = current_idx + len_a_I;
 
-    % --- STD states for E neurons (b_E) ---
-    len_b_E = n_E * n_b_E;
-    if n_b_E > 0 && n_E > 0
-        if is_single_time_point
-            b_E_vec = X(current_idx + (1:len_b_E));
-            b_E = reshape(b_E_vec, n_E, n_b_E); % n_E x n_b_E
+        len_b_E = n_E * n_b_E;
+        if len_b_E > 0
+            b_E = reshape(X(current_idx + (1:len_b_E)), n_E, n_b_E);
         else
-            X_bE_block = X(:, current_idx + (1:len_b_E));
-            X_bE_block_T = X_bE_block';
-            b_E = reshape(X_bE_block_T, n_E, n_b_E, nt); % n_E x n_b_E x nt
+            b_E = [];
         end
-    else
-        b_E = [];
-    end
-    current_idx = current_idx + len_b_E;
+        current_idx = current_idx + len_b_E;
 
-    % --- STD states for I neurons (b_I) ---
-    len_b_I = n_I * n_b_I;
-    if n_b_I > 0 && n_I > 0
-        if is_single_time_point
-            b_I_vec = X(current_idx + (1:len_b_I));
-            b_I = reshape(b_I_vec, n_I, n_b_I); % n_I x n_b_I
+        len_b_I = n_I * n_b_I;
+        if len_b_I > 0
+            b_I = reshape(X(current_idx + (1:len_b_I)), n_I, n_b_I);
         else
-            X_bI_block = X(:, current_idx + (1:len_b_I));
-            X_bI_block_T = X_bI_block';
-            b_I = reshape(X_bI_block_T, n_I, n_b_I, nt); % n_I x n_b_I x nt
+            b_I = [];
         end
-    else
-        b_I = [];
-    end
-    current_idx = current_idx + len_b_I;
+        current_idx = current_idx + len_b_I;
 
-    % --- Dendrite states (u_d) ---
-    % u_d is always n x 1 (single time point) or n x nt (multiple time points)
-    if is_single_time_point
-        u_d = X(current_idx + (1:n)); % n x 1
-    else
-        X_ud_block = X(:, current_idx + (1:n)); % nt x n
-        u_d = X_ud_block'; % n x nt
+        u_d = X(current_idx + (1:n));
+    else % Multiple time points case
+        nt = size(X, 1);
+        current_idx = 0;
+
+        len_a_E = n_E * n_a_E;
+        if len_a_E > 0
+            a_E = reshape(X(:, current_idx + (1:len_a_E))', n_E, n_a_E, nt);
+        else
+            a_E = [];
+        end
+        current_idx = current_idx + len_a_E;
+
+        len_a_I = n_I * n_a_I;
+        if len_a_I > 0
+            a_I = reshape(X(:, current_idx + (1:len_a_I))', n_I, n_a_I, nt);
+        else
+            a_I = [];
+        end
+        current_idx = current_idx + len_a_I;
+
+        len_b_E = n_E * n_b_E;
+        if len_b_E > 0
+            b_E = reshape(X(:, current_idx + (1:len_b_E))', n_E, n_b_E, nt);
+        else
+            b_E = [];
+        end
+        current_idx = current_idx + len_b_E;
+
+        len_b_I = n_I * n_b_I;
+        if len_b_I > 0
+            b_I = reshape(X(:, current_idx + (1:len_b_I))', n_I, n_b_I, nt);
+        else
+            b_I = [];
+        end
+        current_idx = current_idx + len_b_I;
+
+        u_d = X(:, current_idx + (1:n))';
     end
 end

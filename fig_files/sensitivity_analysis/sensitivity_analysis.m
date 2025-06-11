@@ -26,7 +26,7 @@ for c_idx = 1:length(conditions)
     fprintf('======================================================\n\n');
 
     %% Analysis Parameters
-    n_levels = 20m; % Number of values to test for each parameter
+    n_levels = 20; % Number of values to test for each parameter
     n_reps = 25;   % Number of repetitions with different random seeds for each level
     
     % Specify which parameters to analyze (comment/uncomment or modify as needed)
@@ -38,7 +38,7 @@ for c_idx = 1:length(conditions)
     p_default.n = 10;
     p_default.EE_factor = 1.0;
     p_default.IE_factor = 1.0;
-    p_default.EI = 0.666;
+    p_default.EI = 0.7;
     p_default.E_self = 0.0;
     p_default.mean_weight = 0.5;
     p_default.DC = 0.05;

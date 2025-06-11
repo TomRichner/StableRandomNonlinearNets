@@ -222,40 +222,12 @@ if ~strcmpi(Lya_method, 'none')
     ylim([-0.5 0.5]);
 end
 
-% New logic for linking axes and setting x-axis limits:
-if ~strcmpi(Lya_method, 'none') && numel(ax_handles) > 0 && num_subplots == numel(ax_handles)
-    % This condition implies the Lyapunov plot exists and ax_handles is consistent.
-    % num_subplots will be 6 if the Lyapunov plot is being made.
-    
-    % Handle non-Lyapunov plots (ax_handles(1) to ax_handles(num_subplots-1))
-    if num_subplots > 1 % If there are plots other than just the Lyapunov plot
-        plots_to_link_standard = ax_handles(1:num_subplots-1);
-        if ~isempty(plots_to_link_standard) && all(isgraphics(plots_to_link_standard))
-            linkaxes(plots_to_link_standard, 'x');
-            axes(plots_to_link_standard(1)); % Set context for xlim for this group
-            xlim(T_plot_limits);
-        end
-    end
-    
-    % Handle Lyapunov plot (ax_handles(num_subplots), which is the last one)
-    lya_plot_ax = ax_handles(num_subplots);
-    if isgraphics(lya_plot_ax)
-        axes(lya_plot_ax); % Activate Lyapunov subplot
-        lya_plot_end_time = T_plot_limits(2); % Default end time based on global limits
-        if ~isempty(t_lya) % If t_lya has data for Lyapunov exponents
-            lya_plot_end_time = t_lya(end); % Use the actual end time of Lyapunov data
-        end
-        xlim([0, max(0, lya_plot_end_time)]); % Set Lya plot x-axis from 0 to its relevant end (ensure end is non-negative)
-    end
-    
-else
-    % No Lyapunov plot, or an inconsistent state. Link all available plots as before.
-    if numel(ax_handles) > 0 && all(isgraphics(ax_handles))
-        linkaxes(ax_handles, 'x');
-        % It's safer to set xlim on a specific valid axes from the linked group
-        axes(ax_handles(1)); 
-        xlim(T_plot_limits);
-    end
+% Link all subplots' x-axes and set limits
+if numel(ax_handles) > 0 && all(isgraphics(ax_handles))
+    linkaxes(ax_handles, 'x');
+    % Set xlim on the first axes, and linkaxes will propagate it to the others.
+    axes(ax_handles(1)); 
+    xlim(T_plot_limits);
 end
 
 if n <= 50

@@ -1,7 +1,7 @@
 % example call of SRRN()
 
 close all
-clear
+clear all % must clear all due to use of persistant variables in SRNN.m
 clc
 
 tic
@@ -11,12 +11,12 @@ seed = 42;
 rng(seed,'twister');
 
 %% Network
-n = 4; % number of neurons
+n = 10; % number of neurons
 
-Lya_method = 'benettin'; % 'benettin', 'qr', or 'none'
+Lya_method = 'qr'; % 'benettin', 'qr', or 'none'
 use_Jacobian = false;
 
-mean_in_out_degree = 3; % desired mean number of connections in and out
+mean_in_out_degree = 4; % desired mean number of connections in and out
 density = mean_in_out_degree/(n-1); % each neuron can make up to n-1 connections with other neurons
 sparsity = 1-density;
 
@@ -36,11 +36,16 @@ EI_vec = EI_vec(:); % make it a column
 %% Time
 fs = 1000; %Plotting sample frequency
 dt = 1/fs;
-T = [-30 50];
+T = [-20 20];
+
+T_lya_1 = -10; % s, time to start Lyapunov calculation warmup
 
 % Validate time interval
 if not( T(1)<=0 && 0<T(2) )
     error('T(1) must be 0 or negative, and T(2) must be positive for the LLE calculation logic.')
+end
+if ~strcmpi(Lya_method, 'none') && not(T_lya_1 < 0 && T(1) <= T_lya_1)
+    warning('For Lyapunov calculations, it is recommended that T_lya_1 is negative and T(1) <= T_lya_1 to allow for a warmup period.');
 end
 
 nt = round((T(2)-T(1))*fs)+1; % Number of plotting samples
@@ -58,16 +63,19 @@ u_ex(1,-t(1)*fs+fix(fs*6)+(1:fix(fs*dur))) = stim_b0+amp.*sign(sin(2*pi*f_sin(1:
 u_ex(1,-t(1)*fs+fix(fs*1)+(1:fix(fs*dur))) = stim_b0+amp.*-cos(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))');
 u_ex = u_ex*1;
 u_ex = u_ex(:,1:nt);
-DC = 0.01;
+DC = 0.05;
 u_ex = u_ex+DC;
 
 u_ex(:,0.2*fs:0.3*fs) = u_ex(:,0.2*fs:0.3*fs) + 0.1; % a pulse to help Lyapunov exponent to find the direction.
-u_ex(:,1:fs) = u_ex(:,1:fs)+1./fs.*randn(n,fs); % noise in the first second to help the network get off the trivial saddle node from ICs
-u_ex = u_ex+0.001./fs.*randn(n,nt); % a tiny bit of noise to help the network get off the trivial saddle node from ICs
+% u_ex(:,1:fs) = u_ex(:,1:fs)+1./fs.*randn(n,fs); % noise in the first second to help the network get off the trivial saddle node from ICs
+% u_ex = u_ex+0.001./fs.*randn(n,nt); % a tiny bit of noise to help the network get off the trivial saddle node from ICs
 
-% noise_density = 0.02; % Define the density for sparse noise application
-% u_ex = u_ex + (0.001./fs .* randn(n, nt)) .* (rand(1, nt) < noise_density); % Apply sparse noise (density ~0.02) to help the network get off the trivial saddle node from ICs
-
+%% add a bit of sparse noise from T(1) to min(T_lya_1+1, 0)
+% if strcmpi(Lya_method,'benettin')
+%     noise_indices = T(1) <= t & t <= min(T_lya_1+1, 0);
+%     noise_indices = max(T_lya_1-10, T(1)) <= t & t <= min(T_lya_1+0, 0);
+%     u_ex(:, noise_indices) = u_ex(:, noise_indices) + (0.0001./fs .* randn(n, sum(noise_indices))) .* (rand(1, sum(noise_indices)) < 0.05);
+% end
 
 %% parameters
 
@@ -76,7 +84,7 @@ tau_STD = 0.5; % scalar, time constant of synaptic depression
 % Define number of timescales for E and I neurons separately
 n_a_E = 3; % number of SFA timescales for E neurons
 n_a_I = 0; % number of SFA timescales for I neurons (typically 0)
-n_b_E = 1; % number of STD timescales for E neurons
+n_b_E = 2; % number of STD timescales for E neurons
 n_b_I = 0; % number of STD timescales for I neurons (typically 0)
 
 % Define tau_a and tau_b for E and I neurons
@@ -114,7 +122,7 @@ tau_d = 0.025; % s, scalar
 
 % c_SFA and F_STD remain n x 1, defining strength for *all* neurons.
 % SRNN.m will use n_a_I/n_b_I to determine if states a_I/b_I exist.
-c_SFA = 1 * double(EI_vec == 1); % n x 1, Example: SFA only for E neurons
+c_SFA = 1/n_b_E * double(EI_vec == 1); % n x 1, Example: SFA only for E neurons
 % c_SFA(I_indices) = 0; % Explicitly set to 0 for I if desired, or rely on n_a_I = 0
 F_STD = 1 * double(EI_vec == 1); % n x 1, Example: STD only for E neurons
 % F_STD(I_indices) = 0; % Explicitly set to 0 for I if desired, or rely on n_b_I = 0
@@ -167,7 +175,7 @@ if use_Jacobian
     ode_options = odeset('RelTol', 1e-7, 'AbsTol', 1e-8, 'MaxStep', dt, 'InitialStep', 0.05*dt, 'Jacobian', SRNN_Jacobian_wrapper); % fast
 else
     % ode_options = odeset('RelTol', 1e-5, 'AbsTol', 1e-6, 'MinStep', 0.1*dt,'MaxStep', dt, 'InitialStep', 0.5*dt); % fast
-    ode_options = odeset('RelTol', 1e-7, 'AbsTol', 1e-8, 'MaxStep',dt, 'InitialStep', 0.05*dt); % RelTol must be less than perturbation d0, which is 1e-3
+    ode_options = odeset('RelTol', 1e-6, 'AbsTol', 1e-7, 'MaxStep',dt, 'InitialStep', 0.01*dt); % RelTol must be less than perturbation d0, which is 1e-3
 end
 
 
@@ -176,7 +184,7 @@ end
 SRNN_wrapper = @(tt,XX) SRNN(tt,XX,t,u_ex,params); % inline wrapper function to add t, u_ex, and params to SRNN
 
 % wrap ode_RKn to limit the exposure of extra parameters for usage to match builtin integrators
-solver_method = 3; % 5 is classic RK4
+solver_method = 6; % 5 is classic RK4
 deci = 1; % deci > 1 does not work for benettin's method.  Need to fix this
 ode_RKn_wrapper = @(odefun, tspan, y0, options) deal(tspan(:), ode_RKn_deci_bounded(odefun, tspan, y0, solver_method, false, deci, get_minMaxRange(params))); % Pass params to get_minMaxRange
 
@@ -195,9 +203,19 @@ clear t_ode % t_ode is same as t
 %% comput LLE or Lyapunov spectrum
 
 if strcmpi(Lya_method,'qr')
-    lya_dt = 0.05; % longer better for qr?
+    lya_dt = 4*tau_d; % longer better for qr?
 else
-    lya_dt = 0.005; % 0.005 is good for Benettin.  Rescaling time interval for Lyapunov calculation (tau_lya) (s)
+    lya_dt = 0.5*tau_d; % 0.005 is good for Benettin.  Rescaling time interval for Lyapunov calculation (tau_lya) (s)
+end
+
+if ~strcmpi(Lya_method, 'none')
+    % Prepare for Lyapunov calculations by selecting the relevant time window
+    lya_calc_start_idx = find(t >= T_lya_1, 1, 'first');
+    if isempty(lya_calc_start_idx)
+        error('Could not find T_lya_1 in time vector t. Check T and T_lya_1 values.');
+    end
+    X_for_lya = X(lya_calc_start_idx:end, :);
+    t_for_lya = t(lya_calc_start_idx:end);
 end
 
 switch lower(Lya_method)
@@ -207,7 +225,7 @@ switch lower(Lya_method)
         % Ensure SRNN_jacobian_eqs is defined elsewhere or this will error.
         % Using N_sys_eqs for the number of states.
         [LE_spectrum, local_LE_spectrum_t, finite_LE_spectrum_t, t_lya] = ...
-            lyapunov_spectrum_qr(X, t, lya_dt, params, ode_solver, ode_options, @SRNN_Jacobian, T, N_sys_eqs, fs);
+            lyapunov_spectrum_qr(X_for_lya, t_for_lya, lya_dt, params, ode_solver, ode_options, @SRNN_Jacobian, T, N_sys_eqs, fs);
 
         LE_sorted = sort(LE_spectrum,'descend');
         % Display the estimated Lyapunov Spectrum
@@ -224,7 +242,7 @@ switch lower(Lya_method)
         fprintf('Computing largest Lyapunov exponent using Benettin''s algorithm...\n');
         
         d0 = 1e-3; % Initial separation magnitude for Benettin's algorithm
-        [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X, t, dt, fs, d0, T, lya_dt, params, ode_options, @SRNN, t, u_ex, ode_solver);
+        [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X_for_lya, t_for_lya, dt, fs, d0, T, lya_dt, params, ode_options, @SRNN, t, u_ex, ode_solver);
 
         fprintf('----------------------------------------------------\n');
         fprintf('Estimated Largest Lyapunov Exponent (LLE): %f\n', LLE);

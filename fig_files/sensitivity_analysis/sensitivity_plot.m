@@ -29,6 +29,7 @@ function sensitivity_plot(param_file, hist_edges_with_inf, output_dir)
     lle_histogram_matrix = zeros(num_hist_bins, n_levels);
     lle_values_all = [];
     success_counts = zeros(n_levels, 1);
+    all_lle_values_by_level = cell(n_levels, 1);
     
     for level_idx = 1:n_levels
         lle_values_level = [];
@@ -37,10 +38,16 @@ function sensitivity_plot(param_file, hist_edges_with_inf, output_dir)
             result = results{level_idx, rep_idx};
             
             if isfield(result, 'success') && result.success && isfield(result, 'LLE')
-                lle_values_level(end+1) = result.LLE;
+                if isnan(result.LLE)
+                    lle_values_level(end+1) = 1e3;
+                else
+                    lle_values_level(end+1) = result.LLE;
+                end
                 success_counts(level_idx) = success_counts(level_idx) + 1;
             end
         end
+        
+        all_lle_values_by_level{level_idx} = lle_values_level;
         
         % Create histogram for this level
         if ~isempty(lle_values_level)
@@ -61,8 +68,6 @@ function sensitivity_plot(param_file, hist_edges_with_inf, output_dir)
     % Prepare finite y-coordinates for imagesc
     internal_finite_edges = hist_edges_with_inf(2:end-1);
     y_coords_for_plot = zeros(num_hist_bins, 1);
-    plot_y_min = 0; % Default, will be updated
-    plot_y_max = 1; % Default, will be updated
 
     if num_hist_bins == 0
         % Should not happen with current caller settings
@@ -222,13 +227,7 @@ function sensitivity_plot(param_file, hist_edges_with_inf, output_dir)
     std_lle = zeros(n_levels, 1);
     
     for level_idx = 1:n_levels
-        lle_values_level = [];
-        for rep_idx = 1:n_reps
-            result = results{level_idx, rep_idx};
-            if isfield(result, 'success') && result.success && isfield(result, 'LLE')
-                lle_values_level(end+1) = result.LLE;
-            end
-        end
+        lle_values_level = all_lle_values_by_level{level_idx};
         
         if ~isempty(lle_values_level)
             mean_lle(level_idx) = mean(lle_values_level);
@@ -255,13 +254,7 @@ function sensitivity_plot(param_file, hist_edges_with_inf, output_dir)
     chaos_prob = zeros(n_levels, 1);
     
     for level_idx = 1:n_levels
-        lle_values_level = [];
-        for rep_idx = 1:n_reps
-            result = results{level_idx, rep_idx};
-            if isfield(result, 'success') && result.success && isfield(result, 'LLE')
-                lle_values_level(end+1) = result.LLE;
-            end
-        end
+        lle_values_level = all_lle_values_by_level{level_idx};
         
         if ~isempty(lle_values_level)
             chaos_prob(level_idx) = sum(lle_values_level > 0) / length(lle_values_level);

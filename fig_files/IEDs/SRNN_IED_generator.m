@@ -86,9 +86,9 @@ u_ex = u_ex + (0.002./fs .* randn(n, nt)) .* (rand(1, nt) < noise_density); % Ap
 tau_STD = 1; % scalar, time constant of synaptic depression
 
 % Define number of timescales for E and I neurons separately
-n_a_E = 0; % number of SFA timescales for E neurons
+n_a_E = 3; % number of SFA timescales for E neurons
 n_a_I = 0; % number of SFA timescales for I neurons (typically 0)
-n_b_E = 0; % number of STD timescales for E neurons
+n_b_E = 2; % number of STD timescales for E neurons
 n_b_I = 0; % number of STD timescales for I neurons (typically 0)
 
 % Define tau_a and tau_b for E and I neurons
@@ -323,4 +323,4 @@ for i_b = 1:5
     pause(0.5)
 end
 
-save_some_figs_to_folder_2('AES_figs','none',[],[])
+% save_some_figs_to_folder_2('AES_both_check','none',[],[])
