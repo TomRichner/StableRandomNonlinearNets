@@ -11,9 +11,9 @@ seed = 42;
 rng(seed,'twister');
 
 %% Network
-n = 10; % number of neurons
+n = 4; % number of neurons
 
-Lya_method = 'qr'; % 'benettin', 'qr', or 'none'
+Lya_method = 'svd'; % 'benettin', 'qr', 'svd', or 'none'
 use_Jacobian = false;
 
 mean_in_out_degree = 4; % desired mean number of connections in and out
@@ -36,7 +36,7 @@ EI_vec = EI_vec(:); % make it a column
 %% Time
 fs = 1000; %Plotting sample frequency
 dt = 1/fs;
-T = [-20 20];
+T = [-30 15];
 
 T_lya_1 = -10; % s, time to start Lyapunov calculation warmup
 
@@ -219,6 +219,25 @@ if ~strcmpi(Lya_method, 'none')
 end
 
 switch lower(Lya_method)
+    case 'svd'
+        fprintf('Computing full Lyapunov spectrum using SVD method...\n');
+        
+        % Using N_sys_eqs for the number of states.
+        [LE_spectrum, local_LE_spectrum_t, finite_LE_spectrum_t, t_lya] = ...
+            lyapunov_spectrum_svd(X_for_lya, t_for_lya, lya_dt, params, ode_solver, ode_options, @SRNN_Jacobian, T, N_sys_eqs, fs);
+
+        % SVD method returns sorted LEs, so sorting is not strictly necessary but good for consistency
+        LE_sorted = sort(LE_spectrum,'descend');
+        % Display the estimated Lyapunov Spectrum
+        fprintf('----------------------------------------------------\n');
+        fprintf('Estimated Lyapunov Spectrum (Global):\n');
+        for i = 1:N_sys_eqs
+            fprintf('  LE(%d): %f\n', i, LE_sorted(i));
+        end
+        fprintf('Sum of exponents: %f (should be < 0 for dissipative systems)\n', sum(LE_spectrum));
+        fprintf('Kaplan-Yorke Dimension: %f\n', kaplan_yorke_dim(LE_sorted));
+        fprintf('----------------------------------------------------\n');
+
     case 'qr'
         fprintf('Computing full Lyapunov spectrum using QR decomposition method...\n');
         
@@ -274,7 +293,7 @@ if ~strcmpi(Lya_method, 'none')
         if exist('local_lya', 'var'), lya_results.local_lya = local_lya; end
         if exist('finite_lya', 'var'), lya_results.finite_lya = finite_lya; end
         if exist('t_lya', 'var'), lya_results.t_lya = t_lya; end
-    elseif strcmpi(Lya_method, 'qr')
+    elseif strcmpi(Lya_method, 'qr') || strcmpi(Lya_method, 'svd')
         if exist('LE_spectrum', 'var'), lya_results.LE_spectrum = LE_spectrum; end
         if exist('local_LE_spectrum_t', 'var'), lya_results.local_LE_spectrum_t = local_LE_spectrum_t; end
         if exist('finite_LE_spectrum_t', 'var'), lya_results.finite_LE_spectrum_t = finite_LE_spectrum_t; end
