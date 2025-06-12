@@ -61,10 +61,12 @@ We investigate the worst case scenario where synaptic weights are drawn from a r
 - [x] Implemented **Benettin's method** for Lyapunov exponent calculation
 
 ### 🔄 In Progress / Planned
-- [ ] Implement **QR factorization** to compute the full Lyapunov spectrum
-- [ ] Update README with **LaTeX equations** for the RNN model
-- [ ] Write **MATLAB function** for the nonlinear RNN
-- [ ] Create **example implementations** using the RNN function
+- [x] Implement **Benettin's QR factorization** methods to compute the full Lyapunov spectrum
+- [x] Update README with **LaTeX equations** for the RNN model
+- [x] Write **MATLAB function** for the nonlinear RNN
+- [x] Create **example implementations** using the RNN function
+- [ ] Add a fixed point solver for ICs
+- [ ] Add an analytic LLE solver for comparison
 - [ ] Perform **sensitivity analysis** of connectivity distribution parameters
 - [ ] Incorporate figures into manuscript (already written based on prior code base)
 
