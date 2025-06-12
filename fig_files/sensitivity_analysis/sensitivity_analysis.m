@@ -1,19 +1,24 @@
 % Script for sensitivity analysis of the SRNN model
 
-clear;
-clc;
 close all;
-
-% Add the root directory to the path to access model functions
-addpath(fullfile(fileparts(mfilename('fullpath')),'../..'));
+clear all;
+clc;
 
 %% Analysis Conditions to Compare
 conditions = { ...
     struct('name', 'no_adaptation', 'n_a_E_val', 0, 'n_b_E_val', 0), ...
     struct('name', 'sfa_only',      'n_a_E_val', 3, 'n_b_E_val', 0), ...
-    struct('name', 'std_only',      'n_a_E_val', 0, 'n_b_E_val', 2), ...
-    struct('name', 'sfa_and_std',   'n_a_E_val', 3, 'n_b_E_val', 2) ...
+    struct('name', 'std_only',      'n_a_E_val', 0, 'n_b_E_val', 1), ...
+    struct('name', 'sfa_and_std',   'n_a_E_val', 3, 'n_b_E_val', 1) ...
 };
+
+%% Analysis Parameters
+n_levels = 9; % Number of values to test for each parameter
+n_reps = 16;   % Number of repetitions with different random seeds for each level
+
+dt_str = datestr(now, 'mmm_dd_yy_hh_MM_AM');
+dt_str = lower(strrep(dt_str, ':', '_'));
+output_dir_base = ['sensitivity_results_nLevs_' num2str(n_levels) '_nReps_' num2str(n_reps) '_' dt_str];
 
 overall_super_start_time = tic;
 all_conditions_summary = struct();
@@ -24,10 +29,6 @@ for c_idx = 1:length(conditions)
     fprintf('===== Running Analysis for Condition: %s =====\n', upper(current_condition.name));
     fprintf('===== n_a_E = %d, n_b_E = %d =====\n', current_condition.n_a_E_val, current_condition.n_b_E_val);
     fprintf('======================================================\n\n');
-
-    %% Analysis Parameters
-    n_levels = 20; % Number of values to test for each parameter
-    n_reps = 25;   % Number of repetitions with different random seeds for each level
     
     % Specify which parameters to analyze (comment/uncomment or modify as needed)
     params_to_analyze = {'EE_factor'}; % Only analyze these parameters
@@ -41,7 +42,7 @@ for c_idx = 1:length(conditions)
     p_default.EI = 0.7;
     p_default.E_self = 0.0;
     p_default.mean_weight = 0.5;
-    p_default.DC = 0.05;
+    p_default.DC = 0.1;
     p_default.sparsity = 0.55;
     p_default.tau_a_E_2 = 6;
     p_default.tau_b_E_2 = 9;
@@ -53,8 +54,8 @@ for c_idx = 1:length(conditions)
     %% Parameter Ranges for Sensitivity Analysis
     ranges.fs = [250, 2000];
     ranges.n = [10, 100];
-    ranges.EE_factor = [0, 2.5];
-    ranges.IE_factor = [0, 2.5];
+    ranges.EE_factor = [0, 4];
+    ranges.IE_factor = [0, 4];
     ranges.EI = [0.1, 1.0];  % Changed from [0, 1.0] to avoid EI=0 issues
     ranges.E_self = [0.0, 0.5];
     ranges.mean_weight = [0.1, 4];
@@ -87,7 +88,6 @@ for c_idx = 1:length(conditions)
         fprintf('Running sensitivity analysis for all parameters\n');
     end
     
-    output_dir_base = 'sensitivity_results';
     output_dir = fullfile(output_dir_base, current_condition.name);
     if ~exist(output_dir, 'dir')
         mkdir(output_dir);
@@ -147,6 +147,7 @@ for c_idx = 1:length(conditions)
         error_types = {};
 
         parfor k = 1:total_runs
+        % for k = 1:total_runs
             level_idx = floor((k-1) / n_reps) + 1;
             rep_idx = mod(k-1, n_reps) + 1;
             
@@ -161,9 +162,9 @@ for c_idx = 1:length(conditions)
                     param_name, level_idx, n_levels, param_levels(level_idx), rep_idx, n_reps, k, total_runs, sim_seed);
             end
 
-            try
+            % try
                 run_start = tic;
-                result = SRNN_caller_wrapped_for_sensitivity(...
+                result = SRNN_caller_wrapped_for_sensitivity_dual_stage(...
                     sim_seed, ...
                     current_p.n, ...
                     current_p.EE_factor, ...
@@ -188,27 +189,27 @@ for c_idx = 1:length(conditions)
                 result.seed = sim_seed;
                 results{k} = result;
                 
-            catch ME
-                run_duration = toc(run_start);
-                fprintf('ERROR in %s level %d (val: %.3f), rep %d [run %d/%d, seed=%d]:\n', ...
-                    param_name, level_idx, param_levels(level_idx), rep_idx, k, total_runs, sim_seed);
-                fprintf('  Error: %s\n', ME.message);
-                if ~isempty(ME.stack)
-                    fprintf('  Location: %s (line %d)\n', ME.stack(1).name, ME.stack(1).line);
-                end
-                
-                % Store detailed error information
-                results{k} = struct(...
-                    'success', false, ...
-                    'error', ME, ...
-                    'error_message', ME.message, ...
-                    'param_value', param_levels(level_idx), ...
-                    'seed', sim_seed, ...
-                    'run_duration', run_duration, ...
-                    'level_idx', level_idx, ...
-                    'rep_idx', rep_idx ...
-                );
-            end
+            % catch ME
+            %     run_duration = toc(run_start);
+            %     fprintf('ERROR in %s level %d (val: %.3f), rep %d [run %d/%d, seed=%d]:\n', ...
+            %         param_name, level_idx, param_levels(level_idx), rep_idx, k, total_runs, sim_seed);
+            %     fprintf('  Error: %s\n', ME.message);
+            %     if ~isempty(ME.stack)
+            %         fprintf('  Location: %s (line %d)\n', ME.stack(1).name, ME.stack(1).line);
+            %     end
+            % 
+            %     % Store detailed error information
+            %     results{k} = struct(...
+            %         'success', false, ...
+            %         'error', ME, ...
+            %         'error_message', ME.message, ...
+            %         'param_value', param_levels(level_idx), ...
+            %         'seed', sim_seed, ...
+            %         'run_duration', run_duration, ...
+            %         'level_idx', level_idx, ...
+            %         'rep_idx', rep_idx ...
+            %     );
+            % end
         end
         
         % Calculate statistics
@@ -333,7 +334,6 @@ else
 end
 
 % Save final summary
-output_dir_base = 'sensitivity_results';
 final_summary_filename = fullfile(output_dir_base, 'sensitivity_analysis_summary_all_conditions.mat');
 summary_data = struct();
 summary_data.all_conditions_summary = all_conditions_summary;

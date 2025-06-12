@@ -8,7 +8,7 @@ close all;
 
 
 %% Set up paths and parameters
-sensitivity_results_dir = '/Users/tom/Desktop/local_code/adaptation_paper/dual_adaptation_random_matrix_theory/fig_files/sensitivity_analysis/sensitivity_results1';
+sensitivity_results_dir = '/Users/tom/Desktop/local_code/adaptation_paper/dual_adaptation_random_matrix_theory/fig_files/sensitivity_analysis/sensitivity_results_nLevs_9_nReps_16_jun_12_25_ 2_40_pm';
 output_dir_base = fullfile(fileparts(mfilename('fullpath')), 'plots');
 
 % Create base output directory if it doesn't exist
@@ -17,7 +17,7 @@ if ~exist(output_dir_base, 'dir')
 end
 
 % Define LLE histogram parameters
-lle_range = [-0.25, 0.25];
+lle_range = [-0.5, 1];
 n_bins = 50;
 lle_bins = [-inf, linspace(lle_range(1), lle_range(2), n_bins), inf];
 
