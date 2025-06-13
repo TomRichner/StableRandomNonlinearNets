@@ -8,17 +8,29 @@ clc;
 conditions = { ...
     struct('name', 'no_adaptation', 'n_a_E_val', 0, 'n_b_E_val', 0), ...
     struct('name', 'sfa_only',      'n_a_E_val', 3, 'n_b_E_val', 0), ...
-    struct('name', 'std_only',      'n_a_E_val', 0, 'n_b_E_val', 1), ...
-    struct('name', 'sfa_and_std',   'n_a_E_val', 3, 'n_b_E_val', 1) ...
+    struct('name', 'std_only',      'n_a_E_val', 0, 'n_b_E_val', 2), ...
+    struct('name', 'sfa_and_std',   'n_a_E_val', 3, 'n_b_E_val', 2) ...
 };
 
 %% Analysis Parameters
-n_levels = 9; % Number of values to test for each parameter
-n_reps = 16;   % Number of repetitions with different random seeds for each level
+n_levels = 11; % Number of values to test for each parameter
+n_reps = 25;   % Number of repetitions with different random seeds for each level
 
-dt_str = datestr(now, 'mmm_dd_yy_hh_MM_AM');
-dt_str = lower(strrep(dt_str, ':', '_'));
-output_dir_base = ['sensitivity_results_nLevs_' num2str(n_levels) '_nReps_' num2str(n_reps) '_' dt_str];
+note = 'n_b_2_tau_a_E_2_15_c_SFA_0p5'
+
+% Timestamp for folder name
+dt_str = lower(strrep(datestr(now, 'mmm_dd_yy_hh_MM_AM'), ':', '_'));
+
+% -------------------------------------------------------------------------
+% Create an ABSOLUTE base directory and be sure it exists
+% -------------------------------------------------------------------------
+output_dir_base = fullfile(pwd, ...
+    ['sensi_' note '_nLevs_' num2str(n_levels) '_nReps_' num2str(n_reps) '_' dt_str]);
+
+if ~exist(output_dir_base, 'dir')
+    mkdir(output_dir_base);      % create the directory tree once, up-front
+end
+% -------------------------------------------------------------------------
 
 overall_super_start_time = tic;
 all_conditions_summary = struct();
@@ -31,7 +43,7 @@ for c_idx = 1:length(conditions)
     fprintf('======================================================\n\n');
     
     % Specify which parameters to analyze (comment/uncomment or modify as needed)
-    params_to_analyze = {'EE_factor'}; % Only analyze these parameters
+    params_to_analyze = {'EE_factor','mean_weight','tau_a_E_2'}; % Only analyze these parameters
     % params_to_analyze = {}; % Empty means analyze all parameters
     
     %% Default Simulation Parameters (based on SRNN_caller.m)
@@ -44,29 +56,29 @@ for c_idx = 1:length(conditions)
     p_default.mean_weight = 0.5;
     p_default.DC = 0.1;
     p_default.sparsity = 0.55;
-    p_default.tau_a_E_2 = 6;
-    p_default.tau_b_E_2 = 9;
+    p_default.tau_a_E_2 = 15;
+    p_default.tau_b_E_2 = 1; % if n_b_E == 1, then this value is used.
     p_default.tau_STD = 0.5;
-    p_default.c_SFA_factor = 1.0;
+    p_default.c_SFA_factor = 0.5;
     p_default.n_a_E = current_condition.n_a_E_val;
     p_default.n_b_E = current_condition.n_b_E_val;
     
     %% Parameter Ranges for Sensitivity Analysis
     ranges.fs = [250, 2000];
-    ranges.n = [10, 100];
+    ranges.n = [10, 50];
     ranges.EE_factor = [0, 4];
     ranges.IE_factor = [0, 4];
-    ranges.EI = [0.1, 1.0];  % Changed from [0, 1.0] to avoid EI=0 issues
+    ranges.EI = [1/p_default.n, 1.0];  % Changed from [0, 1.0] to avoid EI=0 issues
     ranges.E_self = [0.0, 0.5];
-    ranges.mean_weight = [0.1, 4];
-    ranges.DC = [0, 1];
-    ranges.sparsity = [0, 0.8];  % Changed from 0.85 to 0.8 to reduce connectivity issues
-    ranges.tau_a_E_2 = [1, 60];
-    ranges.tau_b_E_2 = [2, 60];
-    ranges.tau_STD = [0.2, 5.0];
+    ranges.mean_weight = [1/p_default.n, 4];
+    ranges.DC = [0, 4];
+    ranges.sparsity = [0, 0.8];
+    ranges.tau_a_E_2 = [1, 30];
+    ranges.tau_b_E_2 = [2, 30];
+    ranges.tau_STD = [0.2, 1];
     ranges.c_SFA_factor = [0.0, 4.0];
     ranges.n_a_E = [0, 10];
-    ranges.n_b_E = [0, 5]; % For completeness, though not varied here
+    ranges.n_b_E = [0, 5];
     
     param_names = fieldnames(ranges);
     
@@ -103,8 +115,6 @@ for c_idx = 1:length(conditions)
     fprintf('Levels per parameter: %d\n', n_levels);
     fprintf('Repetitions per level: %d\n', n_reps);
     fprintf('Total runs: %d\n', total_runs_all);
-    fprintf('Estimated duration: %.1f-%.1f hours (assuming 10-60 sec per run)\n', ...
-        total_runs_all*10/3600, total_runs_all*60/3600);
     fprintf('==========================================\n\n');
 
     %% Run Sensitivity Analysis for each parameter
@@ -162,8 +172,8 @@ for c_idx = 1:length(conditions)
                     param_name, level_idx, n_levels, param_levels(level_idx), rep_idx, n_reps, k, total_runs, sim_seed);
             end
 
-            % try
-                run_start = tic;
+            run_start = tic;
+            try
                 result = SRNN_caller_wrapped_for_sensitivity_dual_stage(...
                     sim_seed, ...
                     current_p.n, ...
@@ -189,27 +199,27 @@ for c_idx = 1:length(conditions)
                 result.seed = sim_seed;
                 results{k} = result;
                 
-            % catch ME
-            %     run_duration = toc(run_start);
-            %     fprintf('ERROR in %s level %d (val: %.3f), rep %d [run %d/%d, seed=%d]:\n', ...
-            %         param_name, level_idx, param_levels(level_idx), rep_idx, k, total_runs, sim_seed);
-            %     fprintf('  Error: %s\n', ME.message);
-            %     if ~isempty(ME.stack)
-            %         fprintf('  Location: %s (line %d)\n', ME.stack(1).name, ME.stack(1).line);
-            %     end
-            % 
-            %     % Store detailed error information
-            %     results{k} = struct(...
-            %         'success', false, ...
-            %         'error', ME, ...
-            %         'error_message', ME.message, ...
-            %         'param_value', param_levels(level_idx), ...
-            %         'seed', sim_seed, ...
-            %         'run_duration', run_duration, ...
-            %         'level_idx', level_idx, ...
-            %         'rep_idx', rep_idx ...
-            %     );
-            % end
+            catch ME
+                run_duration = toc(run_start);
+                fprintf('ERROR in %s level %d (val: %.3f), rep %d [run %d/%d, seed=%d]:\n', ...
+                    param_name, level_idx, param_levels(level_idx), rep_idx, k, total_runs, sim_seed);
+                fprintf('  Error: %s\n', ME.message);
+                if ~isempty(ME.stack)
+                    fprintf('  Location: %s (line %d)\n', ME.stack(1).name, ME.stack(1).line);
+                end
+            
+                % Store detailed error information
+                results{k} = struct(...
+                    'success', false, ...
+                    'error', ME, ...
+                    'error_message', ME.message, ...
+                    'param_value', param_levels(level_idx), ...
+                    'seed', sim_seed, ...
+                    'run_duration', run_duration, ...
+                    'level_idx', level_idx, ...
+                    'rep_idx', rep_idx ...
+                );
+            end
         end
         
         % Calculate statistics
@@ -273,7 +283,11 @@ for c_idx = 1:length(conditions)
             avg_time_per_param = elapsed_time;
             if i > 1
                 % Use average of completed parameters
-                completed_times = arrayfun(@(x) all_results_summary.(x).elapsed_time, param_names(1:i));
+                completed_times = zeros(1, i);
+                for j = 1:i
+                    p_name = param_names{j};
+                    completed_times(j) = all_results_summary.(p_name).elapsed_time;
+                end
                 avg_time_per_param = mean(completed_times);
             end
             remaining_time_est = avg_time_per_param * (total_params - i);
@@ -349,3 +363,5 @@ summary_data.conditions = conditions;
 save(final_summary_filename, 'summary_data', '-v7.3');
 fprintf('Final summary saved to %s\n', final_summary_filename);
 fprintf('======================================\n');
+
+beep;pause(0.5);beep;pause(0.2);beep % done, wake up

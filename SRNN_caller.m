@@ -7,16 +7,16 @@ clc
 tic
 
 %% 
-% seed = 42;
-% rng(seed,'twister');
+seed = 7;
+rng(seed,'twister');
 
 %% Network
-n = 6; % number of neurons
+n = 10; % number of neurons
 
 Lya_method = 'benettin'; % 'benettin', 'qr', 'svd', or 'none'
 use_Jacobian = false;
 
-mean_in_out_degree = 9; % desired mean number of connections in and out
+mean_in_out_degree = 5; % desired mean number of connections in and out
 density = mean_in_out_degree/(n-1); % each neuron can make up to n-1 connections with other neurons
 sparsity = 1-density;
 
@@ -341,6 +341,7 @@ else % Did not proceed to phase 2
     T = T_phase1;
     lya_results = lya_results_phase1;
 end
+
 
 %% Convert X to named variables and compute dependent variables for plotting and comparisons to analytic method
 % Unpack using the params structure which now contains n_E, n_I, n_a_E, etc.

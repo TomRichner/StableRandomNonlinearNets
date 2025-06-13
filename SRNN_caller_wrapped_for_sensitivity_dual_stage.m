@@ -16,17 +16,9 @@ function [result] = SRNN_caller_wrapped_for_sensitivity_dual_stage(seed, n, EE_f
         warning('EI=%.3f gives no E neurons but c_SFA_factor=%.3f>0. Setting c_SFA_factor=0', EI, c_SFA_factor);
         c_SFA_factor = 0;
     end
-    if n_a_E == 0 && c_SFA_factor > 0
-        warning('n_a_E=0 but c_SFA_factor=%.3f>0. SFA will have no effect', c_SFA_factor);
-    end
+    
     if n_E_expected < 1
         error('EI * n = %.1f < 1 means no excitatory neurons. This will fail.', EI * n);
-    end
-    if sparsity > 0.9
-        warning('Very high sparsity (%.3f) may create poorly connected networks', sparsity);
-    end
-    if tau_a_E_2 < 0.5 && n_a_E > 0
-        warning('Very fast SFA time constant (%.3f) may cause numerical issues', tau_a_E_2);
     end
     
     %% 
@@ -59,8 +51,8 @@ function [result] = SRNN_caller_wrapped_for_sensitivity_dual_stage(seed, n, EE_f
 
     %% Time
     dt = 1/fs;
-    T = [-30 15];
-    T_lya_1 = -10;
+    T = [-40 10];
+    T_lya_1 = -15;
 
     nt = round((T(2)-T(1))*fs)+1;
     t = linspace(T(1), T(2), nt)';
@@ -82,7 +74,14 @@ function [result] = SRNN_caller_wrapped_for_sensitivity_dual_stage(seed, n, EE_f
     if n_b_I > 0, tau_b_I = logspace(log10(0.6), log10(9), n_b_I); else, tau_b_I = []; end
     
     tau_d = 0.025;
-    if n_a_E > 0, c_SFA = (c_SFA_factor/n_a_E) * double(EI_vec == 1); else, c_SFA = zeros(n, 1); end
+    % SFA strength: assign for E and I neurons separately, depending on n_a_E and n_a_I
+    c_SFA = zeros(n, 1);
+    if n_a_E > 0
+        c_SFA(EI_vec == 1) = (c_SFA_factor / n_a_E);
+    end
+    if n_a_I > 0
+        c_SFA(EI_vec == -1) = (c_SFA_factor / n_a_I);
+    end
     F_STD = 1 * double(EI_vec == 1);
 
     params = package_params(n_E, n_I, E_indices, I_indices, n_a_E, n_a_I, n_b_E, n_b_I, ...
@@ -98,8 +97,22 @@ function [result] = SRNN_caller_wrapped_for_sensitivity_dual_stage(seed, n, EE_f
     N_sys_eqs = size(X_0,1);
 
     %% ODE Solver Setup
-    ode_options = odeset('RelTol', 1e-6, 'AbsTol', 1e-7, 'MaxStep',dt, 'InitialStep', 0.01*dt);
+    % ode_options = odeset('RelTol', 1e-11, 'AbsTol', 1e-12, 'MaxStep', 0.5*dt, 'InitialStep', min(0.001, 0.2*dt)); % accurate
+    % ode_options = odeset('RelTol', 1e-5, 'AbsTol', 1e-6, 'MinStep',0.05*dt,'MaxStep', 0.5*dt, 'InitialStep', 0.5*dt); % fast
+    % % note: these option settings are important for ode45 and ode15, Benettin's method and qr method.  Need about two orders of accuracy better than the perturbation d0 in Benettin's method
+    % ode_options = odeset('RelTol', 1e-5, 'AbsTol', 1e-6, 'MinStep', 0.1*dt,'MaxStep', dt, 'InitialStep', 0.5*dt); % fast
+    ode_options = odeset('RelTol', 1e-6, 'AbsTol', 1e-7, 'MaxStep',dt, 'InitialStep', 0.01*dt); % RelTol must be less than perturbation d0, which is 1e-3
+    % ode_options = odeset('RelTol', 1e-1, 'AbsTol', 1e-1, 'MaxStep', dt, 'InitialStep', dt,'MinStep',dt); % effectively single step for when using ode45 for debug
+    
     SRNN_wrapper = @(tt,XX) SRNN(tt,XX,t,u_ex,params);
+    
+    % % wrap ode_RKn to limit the exposure of extra parameters for usage to match builtin integrators
+    solver_method = 6; % 5 is classic RK4
+    deci = 1; % deci > 1 does not work for benettin's method.  Need to fix this
+    ode_RKn_wrapper = @(odefun, tspan, y0, options) deal(tspan(:), ode_RKn_deci_bounded(odefun, tspan, y0, solver_method, false, deci, get_minMaxRange(params))); % Pass params to get_minMaxRange
+    % ode_solver = ode_RKn_wrapper; % fixed step RK 1, 2, or 4th order, with boundary enforcement
+    % ode_solver = @ode45; % variable step
+    % ode_solver = @ode4_wrapper; % basic RK4 for comparison
     ode_solver = @ode15s;
 
     %% Two-phase LLE computation
@@ -115,9 +128,7 @@ function [result] = SRNN_caller_wrapped_for_sensitivity_dual_stage(seed, n, EE_f
     t_phase1     = t(idx_phase1);
     u_ex_phase1  = u_ex(:, idx_phase1);
     % now integrate using only the first‐second of u_ex
-    [~, X_phase1] = ode_solver(...
-        @(tt,XX) SRNN(tt,XX,t_phase1,u_ex_phase1,params), ...
-        t_phase1, X_0, ode_options);
+    [~, X_phase1] = ode_solver(@(tt,XX) SRNN(tt,XX,t_phase1,u_ex_phase1,params), t_phase1, X_0, ode_options);
     
     T_lya_1_phase1 = 0;
     lya_calc_start_idx_p1 = find(t_phase1 >= T_lya_1_phase1, 1, 'first');
