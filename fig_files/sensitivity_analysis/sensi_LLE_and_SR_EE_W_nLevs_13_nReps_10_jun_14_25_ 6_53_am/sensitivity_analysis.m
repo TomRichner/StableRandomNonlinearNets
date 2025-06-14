@@ -19,7 +19,7 @@ params_to_analyze = {'EE_factor','mean_weight'}; % Only analyze these parameters
 
 %% Analysis Parameters
 n_levels = 13; % Number of values to test for each parameter
-n_reps = 25;   % Number of repetitions with different random seeds for each level
+n_reps = 10;   % Number of repetitions with different random seeds for each level
 
 note = 'LLE_and_SR_EE_W'
 

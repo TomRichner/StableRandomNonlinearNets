@@ -1,9 +1,11 @@
-function fig_handle = sensitivity_plot(param_file, hist_edges_with_inf)
-    %SENSITIVITY_PLOT Creates visualization of LLE sensitivity analysis results
+function fig_handle = sensitivity_plot(param_file, hist_edges_with_inf, variable_to_plot, y_axis_label)
+    %SENSITIVITY_PLOT Creates visualization of sensitivity analysis results
     %
     % Inputs:
     %   param_file           - path to the parameter-specific .mat file
-    %   hist_edges_with_inf  - vector of bin edges for LLE histograms (can include -inf, inf)
+    %   hist_edges_with_inf  - vector of bin edges for histograms (can include -inf, inf)
+    %   variable_to_plot     - name of the field to plot from the results (e.g., 'LLE', 'mean_rate')
+    %   y_axis_label         - label for the y-axis
     %
     % Outputs:
     %   fig_handle           - handle to the generated (invisible) figure
@@ -26,36 +28,37 @@ function fig_handle = sensitivity_plot(param_file, hist_edges_with_inf)
     
     fprintf('Processing %s: %d levels, %d reps per level\n', param_name, n_levels, n_reps);
     
-    % Extract LLE values
+    % Extract values
     num_hist_bins = length(hist_edges_with_inf) - 1;
-    lle_histogram_matrix = zeros(num_hist_bins, n_levels);
-    lle_values_all = [];
+    histogram_matrix = zeros(num_hist_bins, n_levels);
+    values_all = [];
     success_counts = zeros(n_levels, 1);
-    all_lle_values_by_level = cell(n_levels, 1);
+    all_values_by_level = cell(n_levels, 1);
     
     for level_idx = 1:n_levels
-        lle_values_level = [];
+        values_level = [];
         
         for rep_idx = 1:n_reps
             result = results{level_idx, rep_idx};
             
-            if isfield(result, 'success') && result.success && isfield(result, 'LLE')
-                if isnan(result.LLE)
-                    lle_values_level(end+1) = 1e3; % Assign a large value for NaN LLEs
+            if isfield(result, 'success') && result.success && isfield(result, variable_to_plot)
+                val = result.(variable_to_plot);
+                if isnan(val)
+                    values_level(end+1) = 1e3; % Assign a large value for NaN values
                 else
-                    lle_values_level(end+1) = result.LLE;
+                    values_level(end+1) = val;
                 end
                 success_counts(level_idx) = success_counts(level_idx) + 1;
             end
         end
         
-        all_lle_values_by_level{level_idx} = lle_values_level;
+        all_values_by_level{level_idx} = values_level;
         
         % Create histogram for this level
-        if ~isempty(lle_values_level)
-            [counts, ~] = histcounts(lle_values_level, hist_edges_with_inf);
-            lle_histogram_matrix(:, level_idx) = counts;
-            lle_values_all = [lle_values_all, lle_values_level];
+        if ~isempty(values_level)
+            [counts, ~] = histcounts(values_level, hist_edges_with_inf);
+            histogram_matrix(:, level_idx) = counts;
+            values_all = [values_all, values_level];
         end
     end
     
@@ -64,11 +67,22 @@ function fig_handle = sensitivity_plot(param_file, hist_edges_with_inf)
     total_attempts = n_levels * n_reps;
     success_rate = total_success / total_attempts;
     
-    fprintf('Overall success rate: %d/%d (%.1f%%)\n', total_success, total_attempts, 100*success_rate);
-    if ~isempty(lle_values_all)
-        fprintf('LLE range: [%.3f, %.3f]\n', min(lle_values_all), max(lle_values_all));
+    fprintf('Overall success rate for %s: %d/%d (%.1f%%)\n', variable_to_plot, total_success, total_attempts, 100*success_rate);
+    if ~isempty(values_all)
+        fprintf('%s range: [%.3f, %.3f]\n', variable_to_plot, min(values_all), max(values_all));
     else
-        fprintf('No successful runs with LLE values found.\n');
+        fprintf('No successful runs with %s values found.\n', variable_to_plot);
+    end
+
+    % Extract finite range from hist_edges_with_inf for custom tick labels
+    finite_edges = hist_edges_with_inf(~isinf(hist_edges_with_inf));
+    if length(finite_edges) >= 2
+        value_min = min(finite_edges);
+        value_max = max(finite_edges);
+    else
+        % Fallback if no finite edges found
+        value_min = -1;
+        value_max = 1;
     end
     
     % Prepare finite y-coordinates for imagesc
@@ -119,15 +133,65 @@ function fig_handle = sensitivity_plot(param_file, hist_edges_with_inf)
 
     % Create the main visualization
     fig_handle = figure('Position', [100, 100, 600, 600], 'Visible', 'off');
-    imagesc(param_levels, y_coords_for_plot, lle_histogram_matrix);
+    imagesc(param_levels, y_coords_for_plot, histogram_matrix);
     % colorbar;
     caxis([0 n_reps]); % Set colormap extents from 0 to n_reps
     xlabel(sprintf('%s', strrep(param_name, '_', '\\_')));
-    ylabel('Largest Lyapunov Exponent (LLE)');
-    % title(sprintf('LLE Distribution vs %s', strrep(param_name, '_', '\\_')));
-    axis xy; % Flip y-axis so smaller LLE values are at bottom
-    % colormap(hot); % Use blue-yellow colormap
+    ylabel(y_axis_label, 'Interpreter', 'latex', 'FontSize', 22);
+    % title(sprintf('Distribution of %s vs %s', variable_to_plot, strrep(param_name, '_', '\\_')));
+    axis xy; % Flip y-axis so smaller values are at bottom
+    % colormap(hot);
     colormap(parula)
+
+    % Add custom y-tick labels with a fixed set of intermediate values, plus
+    % labels for the outermost bins that collect outlier values.
+    if exist('step_size', 'var')
+        % Define desired intermediate ticks.
+        intermediate_ticks = unique([-1, 0, 1, round(value_min), round(value_max)]);
+        if strcmp(variable_to_plot, 'mean_rate')
+            intermediate_ticks = unique([0, 10, 20, 30, 40]);
+        end
+        
+        % Filter out any intermediate ticks that are outside the finite range.
+        intermediate_ticks = intermediate_ticks(intermediate_ticks >= value_min & intermediate_ticks <= value_max);
+
+        % If an intermediate tick is at the minimum value, remove it to avoid
+        % a redundant tick, as the first bin's tick already represents this.
+        if ~isempty(intermediate_ticks)
+            intermediate_ticks(abs(intermediate_ticks - value_min) < 1e-9) = [];
+        end
+
+        % Define the final ticks: user-specified intermediate ticks plus ticks for
+        % the top and bottom bins (which collect outliers).
+        % The y-coordinates for the top/bottom bins are their calculated centers,
+        % while intermediate ticks are placed at their own value on the y-axis.
+        final_yticks = unique([y_coords_for_plot(1); ...
+                               intermediate_ticks(:); ...
+                               y_coords_for_plot(end)]);
+
+        % Generate labels for the final ticks.
+        final_ylabels = cell(size(final_yticks));
+        for k = 1:length(final_yticks)
+            tick_val = final_yticks(k);
+            % Use a small tolerance for float comparison.
+            if abs(tick_val - y_coords_for_plot(1)) < 1e-6
+                if value_min == 0
+                    final_ylabels{k} = sprintf('%.1f', value_min);
+                else
+                    final_ylabels{k} = sprintf('≤%.1f', value_min);
+                end
+            elseif abs(tick_val - y_coords_for_plot(end)) < 1e-6
+                final_ylabels{k} = sprintf('≥%.1f', value_max);
+            else
+                % For intermediate ticks, the label is the value itself.
+                final_ylabels{k} = sprintf('%.1f', tick_val);
+            end
+        end
+
+        % Apply the new ticks and labels.
+        yticks(final_yticks);
+        yticklabels(final_ylabels);
+    end
 
     % Add grid lines for better readability
     % hold on;

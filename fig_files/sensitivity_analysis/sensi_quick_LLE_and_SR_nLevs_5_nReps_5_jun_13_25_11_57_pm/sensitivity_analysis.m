@@ -14,14 +14,14 @@ conditions = { ...
 
 
 
-params_to_analyze = {'EE_factor','mean_weight'}; % Only analyze these parameters
+params_to_analyze = {'EE_factor','mean_weight','n'}; % Only analyze these parameters
 % params_to_analyze = {}; % Empty means analyze all parameters
 
 %% Analysis Parameters
-n_levels = 13; % Number of values to test for each parameter
-n_reps = 25;   % Number of repetitions with different random seeds for each level
+n_levels = 5; % Number of values to test for each parameter
+n_reps = 5;   % Number of repetitions with different random seeds for each level
 
-note = 'LLE_and_SR_EE_W'
+note = 'quick_LLE_and_SR'
 
 % Timestamp for folder name
 dt_str = lower(strrep(datestr(now, 'mmm_dd_yy_hh_MM_AM'), ':', '_'));
@@ -67,7 +67,7 @@ for c_idx = 1:length(conditions)
     
     %% Parameter Ranges for Sensitivity Analysis
     ranges.fs = [250, 2000];
-    ranges.n = [10, 100];
+    ranges.n = [10, 50];
     ranges.EE_factor = [0, 4];
     ranges.IE_factor = [0, 4];
     ranges.EI = [1/p_default.n, 1.0];  % Changed from [0, 1.0] to avoid EI=0 issues

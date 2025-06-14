@@ -1,4 +1,4 @@
-% example call of SRRN()
+%--- SRNN_caller.m
 
 close all
 clear all % must clear all due to use of persistant variables in SRNN.m
@@ -7,8 +7,8 @@ clc
 tic
 
 %% 
-seed = 7;
-rng(seed,'twister');
+% seed = 7;
+% rng(seed,'twister');
 
 %% Network
 n = 10; % number of neurons
@@ -29,14 +29,14 @@ w.II = scale*.5; % I to I
 w.selfE = 0;    % self connections of E neurons
 w.selfI = 0;    % self connections of I neurons
 
-[M, EI_vec] = generate_M(n,w,sparsity, EI);
+[M, EI_vec] = generate_M_no_iso(n,w,sparsity, EI);
 EI_vec = EI_vec(:); % make it a column
 [E_indices, I_indices, n_E, n_I] = get_EI_indices(EI_vec);
 
 %% Time
 fs = 1000; %Plotting sample frequency
 dt = 1/fs;
-T = [-30 15];
+T = [-20 30];
 
 T_lya_1 = -10; % s, time to start Lyapunov calculation warmup
 % T_lya_1 = T(1); % s, time to start Lyapunov calculation warmup
@@ -65,18 +65,29 @@ u_ex = zeros(n, nt);
 % u_ex = u_ex*1;
 % u_ex = u_ex(:,1:nt);
 DC = 0.1;
-u_ex = u_ex+DC;
+% Ramp up to DC over the first 5 seconds from t=T(1)
+ramp_duration = 10; % seconds
+ramp_end_time = T(1) + ramp_duration;
+ramp_indices = t <= ramp_end_time;
+num_ramp_points = sum(ramp_indices);
+ramp_profile = linspace(0, DC, num_ramp_points);
+
+u_dc_profile = ones(1, nt) * DC;
+u_dc_profile(ramp_indices) = ramp_profile;
+u_ex = u_ex + u_dc_profile;
+
+% u_ex(:, 10<t) = u_ex(:, 10<t)+3;
 
 % u_ex(:,0.2*fs:0.3*fs) = u_ex(:,0.2*fs:0.3*fs) + 0.1; % a pulse to help Lyapunov exponent to find the direction.
 % u_ex(:,1:fs) = u_ex(:,1:fs)+1./fs.*randn(n,fs); % noise in the first second to help the network get off the trivial saddle node from ICs
 % u_ex = u_ex+0.001./fs.*randn(n,nt); % a tiny bit of noise to help the network get off the trivial saddle node from ICs
 
 %% add a bit of sparse noise from T(1) to min(T_lya_1+1, 0)
-% if strcmpi(Lya_method,'benettin')
-%     noise_indices = T(1) <= t & t <= min(T_lya_1+1, 0);
-%     noise_indices = max(T_lya_1-10, T(1)) <= t & t <= min(T_lya_1+0, 0);
-%     u_ex(:, noise_indices) = u_ex(:, noise_indices) + (0.0001./fs .* randn(n, sum(noise_indices))) .* (rand(1, sum(noise_indices)) < 0.05);
-% end
+if strcmpi(Lya_method,'benettin')
+    noise_indices = T(1) <= t & t <= min(T_lya_1+1, 0);
+    noise_indices = max(T_lya_1-20, T(1)) <= t & t <= min(T_lya_1-5, 0);
+    u_ex(:, noise_indices) = u_ex(:, noise_indices) + (0.0001./fs .* randn(n, sum(noise_indices))) .* (rand(1, sum(noise_indices)) < 0.05);
+end
 
 %% parameters
 
@@ -85,13 +96,13 @@ tau_STD = 0.5; % scalar, time constant of synaptic depression
 % Define number of timescales for E and I neurons separately
 n_a_E = 3; % typically 3, number of SFA timescales for E neurons
 n_a_I = 0; % typically 0, number of SFA timescales for I neurons (typically 0)
-n_b_E = 1; % typically 1 or 2, number of STD timescales for E neurons
+n_b_E = 2; % typically 1 or 2, number of STD timescales for E neurons
 n_b_I = 0; % typically 0, number of STD timescales for I neurons (typically 0)
 
 % Define tau_a and tau_b for E and I neurons
 % Ensure these are empty if the corresponding n_a_X or n_b_X is 0
 if n_a_E > 0
-    tau_a_E = logspace(log10(0.3), log10(15), n_a_E); % s, 1 x n_a_E
+    tau_a_E = logspace(log10(0.3), log10(30), n_a_E); % s, 1 x n_a_E
 else
     tau_a_E = [];
 end
@@ -180,7 +191,7 @@ if use_Jacobian
     ode_options = odeset('RelTol', 1e-7, 'AbsTol', 1e-8, 'MaxStep', dt, 'InitialStep', 0.05*dt, 'Jacobian', SRNN_Jacobian_wrapper); % fast
 else
     % ode_options = odeset('RelTol', 1e-5, 'AbsTol', 1e-6, 'MinStep', 0.1*dt,'MaxStep', dt, 'InitialStep', 0.5*dt); % fast
-    ode_options = odeset('RelTol', 1e-6, 'AbsTol', 1e-7, 'MaxStep',dt, 'InitialStep', 0.01*dt); % RelTol must be less than perturbation d0, which is 1e-3
+    ode_options = odeset('RelTol', 1e-7, 'AbsTol', 1e8, 'MaxStep',dt, 'InitialStep', 0.01*dt); % RelTol must be less than perturbation d0, which is 1e-3
 end
 
 
@@ -212,9 +223,9 @@ end
 
 %% Analytic LLE Calculation
 fprintf('--- Analytic LLE Calculation ---\n');
-[r0_analytic, LLE_analytic] = LLE_analytic_SRNN_fcn(n, n_E, n_I, M, DC, n_a_E, tau_a_E, c_SFA, n_b_E, tau_b_E, F_STD, tau_STD, tau_d);
+[r0_analytic, LLE_analytic] = LLE_analytic_SRNN_robust_extra_stable_fcn(n, n_E, n_I, M, DC, n_a_E, tau_a_E, c_SFA, n_b_E, tau_b_E, F_STD, tau_STD, tau_d);
 if ~isnan(LLE_analytic)
-    fprintf('Analytic LLE = %f\n', LLE_analytic);
+    fprintf('Analytic  Λ_max = %+8.5f  1/s\n',LLE_analytic);
     fprintf('Max analytic fixed point rate = %f Hz\n', max(r0_analytic));
 end
 fprintf('--------------------------------\n');
@@ -237,7 +248,13 @@ if ~strcmpi(Lya_method, 'none')
     assert(all(abs(t_ode_p1 - t_phase1) < 1e-12), 'ODE solver did not return results exactly at the requested times for phase 1.');
     clear t_ode_p1;
     
-    % Compute LLE for Phase 1
+    % Check for runaway firing rate in Phase 1 before proceeding
+    [a_E_ts_p1, a_I_ts_p1, b_E_ts_p1, b_I_ts_p1, u_d_ts_p1] = unpack_SRNN_state(X_phase1, params);
+    [r_p1, ~] = compute_dependent_variables(a_E_ts_p1, a_I_ts_p1, b_E_ts_p1, b_I_ts_p1, u_d_ts_p1, params);
+    max_r_phase1 = max(r_p1(:));
+    r_threshold = 10000; % Hz
+
+    % Compute LLE for Phase 1 (still useful if Phase 2 calculation fails)
     T_lya_1_phase1 = 0;
     lya_calc_start_idx_p1 = find(t_phase1 >= T_lya_1_phase1, 1, 'first');
     X_for_lya_p1 = X_phase1(lya_calc_start_idx_p1:end, :);
@@ -272,17 +289,20 @@ if ~strcmpi(Lya_method, 'none')
             lya_results_phase1.LE_spectrum = LE_spectrum; lya_results_phase1.local_LE_spectrum_t = local_LE_spectrum_t; lya_results_phase1.finite_LE_spectrum_t = finite_LE_spectrum_t; lya_results_phase1.t_lya = t_lya; lya_results_phase1.N_sys_eqs = N_sys_eqs;
     end
     
-    LLE_threshold = 5;
-    if isnan(LLE_phase1) || LLE_phase1 < LLE_threshold
-        fprintf('Phase 1 LLE = %f (< %f). Proceeding to full simulation.\n', LLE_phase1, LLE_threshold);
+    if max_r_phase1 < r_threshold
+        fprintf('Phase 1 max firing rate = %.2f Hz (< %.0f Hz). Proceeding to full simulation.\n', max_r_phase1, r_threshold);
         proceed_to_phase2 = true;
     else
-        fprintf('Phase 1 LLE = %f (>= %f). Aborting full simulation.\n', LLE_phase1, LLE_threshold);
+        fprintf('Phase 1 max firing rate = %.2f Hz (>= %.0f Hz). Aborting full simulation.\n', max_r_phase1, r_threshold);
         proceed_to_phase2 = false;
     end
 else
     proceed_to_phase2 = true; % No LLE check, proceed directly
 end
+
+% always proceed
+% proceed_to_phase2 = true;
+% warning('always proceeding to phase 2')
 
 if proceed_to_phase2
     % --- Phase 2: Full simulation ---

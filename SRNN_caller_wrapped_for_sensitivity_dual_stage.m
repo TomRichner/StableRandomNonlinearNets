@@ -39,7 +39,7 @@ function [result] = SRNN_caller_wrapped_for_sensitivity_dual_stage(seed, n, EE_f
     density = mean_in_out_degree/(n-1);
     sparsity = 1-density;
 
-    [M, EI_vec] = generate_M(n,w,sparsity, EI);
+    [M, EI_vec] = generate_M_no_iso(n,w,sparsity, EI);
     EI_vec = EI_vec(:);
     [E_indices, I_indices, n_E, n_I] = get_EI_indices(EI_vec);
 
@@ -54,19 +54,31 @@ function [result] = SRNN_caller_wrapped_for_sensitivity_dual_stage(seed, n, EE_f
 
     %% Time
     dt = 1/fs;
-    T = [-40 10];
-    T_lya_1 = -15;
+    T = [-15 10];
+    T_lya_1 = -5;
 
     nt = round((T(2)-T(1))*fs)+1;
     t = linspace(T(1), T(2), nt)';
 
     %% External Input (u_ex)
-    u_ex = zeros(n, nt) + DC;
-    % if nt > 1.2*fs % Ensure time vector is long enough for modifications
-    %     u_ex(:, round(t(1)*fs*-1 + 0.2*fs):round(t(1)*fs*-1 + 0.3*fs)) = u_ex(:, round(t(1)*fs*-1 + 0.2*fs):round(t(1)*fs*-1 + 0.3*fs)) + 0.1;
-    %     u_ex(:, round(t(1)*fs*-1 + 1):round(t(1)*fs*-1 + fs)) = u_ex(:, round(t(1)*fs*-1 + 1):round(t(1)*fs*-1 + fs)) + 1./fs.*randn(n,fs-1);
+    u_ex = zeros(n, nt);
+    
+    % Ramp up to DC over the first 3 seconds from t=T(1)
+    ramp_duration = 3; % seconds
+    ramp_end_time = T(1) + ramp_duration;
+    ramp_indices = t <= ramp_end_time;
+    num_ramp_points = sum(ramp_indices);
+    ramp_profile = linspace(0, DC, num_ramp_points);
+
+    u_dc_profile = ones(1, nt) * DC;
+    u_dc_profile(ramp_indices) = ramp_profile;
+    u_ex = u_ex + u_dc_profile;
+
+    %% add a bit of sparse noise
+    % if strcmpi(Lya_method,'benettin')
+    %     noise_indices = max(T_lya_1-20, T(1)) <= t & t <= min(T_lya_1-5, 0);
+    %     u_ex(:, noise_indices) = u_ex(:, noise_indices) + (0.0001./fs .* randn(n, sum(noise_indices))) .* (rand(1, sum(noise_indices)) < 0.05);
     % end
-    % u_ex = u_ex + 0.0001./fs.*randn(n,nt);
 
     %% parameters
     n_a_I = 0; n_b_I = 0;
@@ -110,13 +122,13 @@ function [result] = SRNN_caller_wrapped_for_sensitivity_dual_stage(seed, n, EE_f
     SRNN_wrapper = @(tt,XX) SRNN(tt,XX,t,u_ex,params);
     
     % % wrap ode_RKn to limit the exposure of extra parameters for usage to match builtin integrators
-    solver_method = 6; % 5 is classic RK4
+    solver_method = 3; % 5 is classic RK4
     deci = 1; % deci > 1 does not work for benettin's method.  Need to fix this
     ode_RKn_wrapper = @(odefun, tspan, y0, options) deal(tspan(:), ode_RKn_deci_bounded(odefun, tspan, y0, solver_method, false, deci, get_minMaxRange(params))); % Pass params to get_minMaxRange
-    % ode_solver = ode_RKn_wrapper; % fixed step RK 1, 2, or 4th order, with boundary enforcement
+    ode_solver = ode_RKn_wrapper; % fixed step RK 1, 2, or 4th order, with boundary enforcement
     % ode_solver = @ode45; % variable step
     % ode_solver = @ode4_wrapper; % basic RK4 for comparison
-    ode_solver = @ode15s;
+    % ode_solver = @ode15s;
 
     %% Two-phase LLE computation
     LLE_phase1 = NaN;
@@ -124,7 +136,7 @@ function [result] = SRNN_caller_wrapped_for_sensitivity_dual_stage(seed, n, EE_f
     proceed_to_phase2 = false;
 
     % --- Phase 1: Pre-check for stability ---
-    T_phase1 = [0 1];
+    T_phase1 = [0 5];
     % find which samples of the full time vector `t` lie in [0,1]
     idx_phase1 = find(t >= T_phase1(1) & t <= T_phase1(2));
     % extract the matching time vector and input slice
@@ -144,8 +156,20 @@ function [result] = SRNN_caller_wrapped_for_sensitivity_dual_stage(seed, n, EE_f
     LLE_phase1 = LLE;
     lya_results_phase1.LLE = LLE; lya_results_phase1.local_lya = local_lya; lya_results_phase1.finite_lya = finite_lya; lya_results_phase1.t_lya = t_lya;
 
-    LLE_threshold = 5;
-    if isnan(LLE_phase1) || LLE_phase1 < LLE_threshold
+    [a_E_p1, a_I_p1, b_E_p1, b_I_p1, u_d_p1] = unpack_SRNN_state(X_for_lya_p1, params);
+    [r_p1, ~] = compute_dependent_variables(a_E_p1, a_I_p1, b_E_p1, b_I_p1, u_d_p1, params);
+    
+    max_r_phase1 = 0;
+    if ~isempty(r_p1)
+        max_r_phase1 = max(r_p1(:));
+        mean_rate_phase1 = mean(r_p1(:));
+    else
+        mean_rate_phase1 = NaN;
+    end
+    lya_results_phase1.mean_rate = mean_rate_phase1;
+
+    r_threshold = 1000; % Hz
+    if isnan(max_r_phase1) || max_r_phase1 < r_threshold
         proceed_to_phase2 = true;
     else
         proceed_to_phase2 = false;
@@ -166,8 +190,17 @@ function [result] = SRNN_caller_wrapped_for_sensitivity_dual_stage(seed, n, EE_f
         [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X_for_lya, t_for_lya, dt, fs, d0, T, lya_dt, params, ode_options, @SRNN, t, u_ex, ode_solver);
         if isfinite(LLE), phase2_LLE_is_finite = true; end
 
+        [a_E, a_I, b_E, b_I, u_d] = unpack_SRNN_state(X_for_lya, params);
+        [r_ts, ~] = compute_dependent_variables(a_E, a_I, b_E, b_I, u_d, params);
+        if ~isempty(r_ts)
+            mean_rate_phase2 = mean(r_ts(:));
+        else
+            mean_rate_phase2 = NaN;
+        end
+        
         if phase2_LLE_is_finite
             lya_results.LLE = LLE; lya_results.local_lya = local_lya; lya_results.finite_lya = finite_lya; lya_results.t_lya = t_lya;
+            lya_results.mean_rate = mean_rate_phase2;
         else
             lya_results = lya_results_phase1;
         end
@@ -179,6 +212,9 @@ function [result] = SRNN_caller_wrapped_for_sensitivity_dual_stage(seed, n, EE_f
     result = struct();
     if isfield(lya_results, 'LLE')
         result.LLE = lya_results.LLE;
+    end
+    if isfield(lya_results, 'mean_rate')
+        result.mean_rate = lya_results.mean_rate;
     end
 
     sim_dur = toc;

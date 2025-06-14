@@ -1,6 +1,7 @@
+function [r0_analytic, LLE_analytic] = LLE_analytic_SRNN_robust_fcn(n, nE, nI, M, u_ex_dc, n_a, tau_a, c_SFA, n_b, tau_b, F_STD, tau_STD, tau_d)
 %% -----------------------------------------------------------
-%  File :  LLE_analytic_SRNN_multiSTD.m
-%  Author: ChatGPT (OpenAI o3)
+%  File :  LLE_analytic_SRNN_robust_fcn.m
+%  Author: ChatGPT (OpenAI o3) & Gemini 2.5 Pro
 %  Date :  2025‑06‑12
 %
 %  – Finds the steady‑state (fixed point) of the SRNN rate model
@@ -13,100 +14,105 @@
 %     Stage‑2  Jacobian‑free Newton–Krylov (GMRES)
 %  -----------------------------------------------------------
 
-clear;  clc;
 
-%% ---------------- 1.  USER‑EDITABLE PARAMETERS ------------------------
-rng(7,'twister')
+%% ---------------- 1.  PARAMETER SETUP ------------------------
 
-n        = 10;                % total neurons
-fracE    = 0.7;  nE = round(fracE*n);  nI = n-nE;
+% Ensure tau vectors are columns
+tau_a = tau_a(:);
+tau_b = tau_b(:);
 
-% Connectivity -----------------------------------------------------------
-g        = 0.5;                % weight scale
-density  = 0.55;               % connection probability
-rng(42);
-M = g/sqrt(n) .* (randn(n) .* (rand(n)<density));
-M(:,1:nE)      =  abs(M(:,1:nE));      % E→· positive
-M(:,nE+1:end)  = -abs(M(:,nE+1:end));  % I→· negative (Dale)
-M(eye(size(M),'logical')) = 0; % main diag is zero
+% External drive (constant DC)
+u_ex = u_ex_dc * ones(n,1);
 
-% External drive (constant DC) ------------------------------------------
-u_ex     = 0.5*ones(n,1);
-
-% SFA  ---------------------------------------------------------------
-n_a      = 3;                                % # SFA timescales
-tau_a    = logspace(log10(0.3),log10(15),n_a)';  % column (s)
-c_SFA    = ones(n,1);           c_SFA(nE+1:end)=0;  % none on I
-
-% *** STD :   now allow >1 time‑constant *****************************
-n_b = 2;
-tau_b    = logspace(log10(0.6),log10(9),n_b);            %  <-- EDIT HERE (s)   length = n_b
-
-tau_STD  = 0.5;                 % release‑probability recovery (s)
-F_STD    = ones(n,1);           F_STD(nE+1:end)=0;   % none on I
-
-% Dendritic low‑pass -----------------------------------------------------
-tau_d    = 0.025;               % (s)
 
 %% ---------------- 2.  FIXED‑POINT SEARCH ------------------------------
 
 [r0,b0_mat,h0,infoFP] = fixed_point_multiSTD( ...
         u_ex,M,c_SFA,tau_a,F_STD,tau_b,tau_STD,n_a);
 
-fprintf('FP  |  Picard it=%d  Newton it=%d  ‖g‖∞=%.1e   max(r0)=%.4g\n',...
+fprintf('FP (robust) | Picard it=%d  Newton it=%d  ‖g‖∞=%.1e   max(r0)=%.4g\n',...
         infoFP.it_picard,infoFP.it_newton,infoFP.res_final,max(r0));
 
 %% ---------------- 3.  ANALYTIC LLE  (multi‑τ STD) --------------------
 
 % Choose a representative *active excitatory* neuron
 idxA = (r0>0);
-iRef = find(idxA & (c_SFA>0),1,'first');
+iRef = find(idxA & (c_SFA>0 | F_STD>0),1,'first');
 if isempty(iRef)
-    error('No active excitatory neuron – increase DC or weights.');
+    warning('No active, adapting excitatory neuron – increase DC or weights. Cannot compute analytic LLE.');
+    r0_analytic = r0;
+    LLE_analytic = NaN;
+    return;
 end
 
 % Shorthand for that neuron
 rS  = r0(iRef);
 bS  = b0_mat(iRef,:).';                 % n_b × 1
-hS  = h0(iRef);                         % product of bS
+hS  = prod(bS);                         % product of bS components
 cS  = c_SFA(iRef);
-gamma_vec = F_STD(iRef)*tau_b(:)/tau_STD;   % n_b ×1
-Kvec = F_STD(iRef) * rS ./ (bS * tau_STD);  % K_m  (n_b×1)
+Kvec = F_STD(iRef) * rS * tau_b ./ (bS * tau_STD);  % K_m  (n_b×1)
 
 % ---------- polynomials :   SFA (A)  and  STD (B) ----------------------
 DenA = 1;
 for k = 1:n_a
-    DenA = conv(DenA,[tau_a(k) 1]);            % ∏ (τ_a λ+1)
+    DenA = conv(DenA,[tau_a(k) 1]);            % ∏ (τ_ak λ+1)
 end
 NumerA = DenA;
-for k = 1:n_a
-    NumerA = polyadd(NumerA, cS*deconv(DenA,[tau_a(k) 1]));
+if cS > 0 && n_a > 0
+    A_numer_sum_term = 0;
+    for k = 1:n_a
+        Partial = deconv(DenA,[tau_a(k) 1]);
+        A_numer_sum_term = polyadd(A_numer_sum_term, cS*Partial);
+    end
+    NumerA = polyadd(NumerA, A_numer_sum_term);
 end
+
 
 % multi‑τ  STD
 DenB = 1;
-for m = 1:n_b
-    DenB = conv(DenB,[1 1/tau_b(m)]);          % ∏ (λ+1/τ_bm)
+if n_b > 0
+    for m = 1:n_b
+        DenB = conv(DenB,[tau_b(m) 1]);          % ∏ (τ_bm λ+1)
+    end
+    NumerB = DenB;
+    for m = 1:n_b
+        Partial = deconv(DenB,[tau_b(m) 1]);
+        NumerB  = polyadd(NumerB, Kvec(m)*Partial);
+    end
+else
+    NumerB = 1;
 end
-NumerB = DenB;
-for m = 1:n_b
-    Partial = deconv(DenB,[1 1/tau_b(m)]);
-    NumerB  = polyadd(NumerB, Kvec(m)*Partial);
-end
+
 
 % dendrite factor  (λ τ_d + 1)
 Cpoly  = [tau_d 1];
-ABCnum = conv(conv(Cpoly,NumerA),NumerB);
-ABDden = conv(DenA,DenB);
+
+% Full transfer function polynomials
+% G(λ) = 1 / ( (τ_d*λ+1) * A(λ) ) -> (DenA*DenC) / (NumerA*NumerC)
+% H(λ) = hS * B(λ) -> hS * NumerB/DenB
+% Characteristic eq: 1 = G(λ) * μ * H(λ)
+% 1 = (1/ (Cpoly*A(λ))) * mu * hS * B(λ)
+% Cpoly(λ)*A(λ) = mu * hS * B(λ)
+% Cpoly(λ)*NumerA(λ)/DenA(λ) = mu * hS * NumerB(λ)/DenB(λ)
+% Cpoly(λ)*NumerA(λ)*DenB(λ) = mu * hS * NumerB(λ)*DenA(λ)
+
+LHS_poly = conv(conv(Cpoly, NumerA), DenB);
+RHS_poly_base = conv(NumerB, DenA);
+
 
 % ---------- loop over connectivity eigenvalues -------------------------
 eigM = eig(M);        LLE = -Inf;
 for mu = eigM.'
-    pEq = polyadd(ABCnum, -mu*hS*ABDden);     % dispersion poly
+    RHS_poly = mu * hS * RHS_poly_base;
+    pEq = polyadd(LHS_poly, -RHS_poly);
     lambdaRoots = roots(pEq);
     LLE = max(LLE, max(real(lambdaRoots)));
 end
-fprintf('Analytic  Λ_max = %+8.5f  1/s\n',LLE);
+
+r0_analytic = r0;
+LLE_analytic = LLE;
+
+end
 
 %% =====================================================================
 %                       LOCAL FUNCTIONS
@@ -132,11 +138,11 @@ r = max(0,u_ex) + 1e-3*randn(n,1);
 % Anderson depth‑2 buffers
 mAA  = 2;        Rbuf = zeros(n,mAA);  Gbuf = zeros(n,mAA);
 tol_pic = 1e-4;  tol_final = 1e-10;
-maxIt1  = 400;   maxIt2   = 40;
+maxIt1  = 400;   maxIt2   = 200;
 
 alpha = 1;  alpha_min = 1e-3;
 
-F   = @(r) r - phi(r,u_ex,M,c_SFA,gamma_mat,n_a);
+F   = @(r) r - phi(r,u_ex,M,c_SFA,gamma_mat,tau_a,n_a);
 
 % -------------- Stage‑1 : damped Picard + Anderson --------------------
 for it = 1:maxIt1
@@ -173,7 +179,7 @@ it2 = 0;
 if res1 > tol_final
     for it2 = 1:maxIt2
         % auxiliaries
-        [p,h,b_mat,dpdr,indA] = phb_from_r(r,gamma_mat);
+        [p,h,b_mat,dpdr,indA] = phb_from_r(r,gamma_mat,c_SFA,tau_a);
         g = F(r);  res = norm(g,inf);
         if res < tol_final, break, end
         
@@ -196,7 +202,7 @@ if res1 > tol_final
 end
 
 % final auxiliaries
-[p,h,b_mat] = phb_from_r(r,gamma_mat);
+[p,h,b_mat] = phb_from_r(r,gamma_mat,c_SFA,tau_a);
 
 % return info
 info.it_picard = it1;
@@ -206,16 +212,28 @@ info.res_final = norm(F(r),inf);
 end
 % ---------------------------------------------------------------------
 
-% ---------- φ(r) = max(0,u_ex+M p - c_SFA n_a r) ----------------------
-function rF = phi(r,u_ex,M,c_SFA,gamma_mat,n_a)
-[p,~,~,~,~] = phb_from_r(r,gamma_mat);
+% ---------- φ(r) = max(0,u_ex+M p - c_SFA Σa_k) ----------------------
+function rF = phi(r,u_ex,M,c_SFA,gamma_mat,tau_a,n_a)
+[p,~,~,~,~] = phb_from_r(r,gamma_mat,c_SFA,tau_a);
+u_sfa = zeros(size(r));
+for k = 1:n_a
+    u_sfa = u_sfa + c_SFA .* r ./ (1 + c_SFA.*r/ (1/tau_a(k)) ); % Not quite right for multi-a SFA
+end
+
+% a_k = r / (1/tau_a_k + c_SFA_i*r). This is for single timescale.
+% For multi-timescale SFA, the effective input is u_eff = u_d - sum(a_k)
+% at fixed point a_k = c_SFA_k * r. so u_eff = u_d - (sum(c_SFA_k)) * r
+% the c_SFA passed is a scalar strength, distributed over timescales.
+% Original code used c_SFA .* (n_a*r)
 u_eff = u_ex + M*p - c_SFA.*(n_a*r);
+
 rF    = max(0,u_eff);
 end
 
 % ---------- p,h,b,dpdr from r  (multi‑τ) ------------------------------
-function [p,h,b_mat,dpdr,indA] = phb_from_r(r,gamma_mat)
+function [p,h,b_mat,dpdr,indA] = phb_from_r(r,gamma_mat,c_SFA,tau_a)
 [n,n_b] = size(gamma_mat);
+n_a = numel(tau_a);
 p   = zeros(n,1);
 h   = zeros(n,1);
 b_mat = zeros(n,n_b);
@@ -224,9 +242,9 @@ dpdr  = zeros(n,1);
 for i = 1:n
     ri = r(i);
     gam = gamma_mat(i,:).';            % n_b×1
-    if all(gam==0) || ri==0            % inhibitory or silent
+    if ri==0  % No STD/SFA if silent
         p(i)     = ri;
-        b_mat(i,:) = ones(1,n_b);
+        if n_b>0, b_mat(i,:) = ones(1,n_b); end
         h(i)     = 1;
         dpdr(i)  = 1;
         continue
@@ -236,6 +254,10 @@ for i = 1:n
     pi = ri / (1+sum(gam)*ri);         % good initial guess
     for k = 1:50
         denom = 1 + gam*pi;
+        if any(denom==0) % prevent division by zero
+            pi = pi + 1e-9;
+            denom = 1 + gam*pi;
+        end
         hi    = prod(1./denom);        % h(p)
         f     = pi - ri*hi;
         if abs(f) < 1e-13, break, end
@@ -245,16 +267,29 @@ for i = 1:n
         pi     = max(pi,0);            % safeguard
     end
     p(i)   = pi;
-    b_mat(i,:) = (1./(1+gam*pi)).';
-    h(i)   = prod(b_mat(i,:));
-    
-    hprime = -h(i)*sum(gam./(1+gam*pi));
-    dpdr(i)= h(i) / (1 - ri*hprime);   % chain rule
+    if n_b>0
+        b_mat(i,:) = (1./(1+gam*pi)).';
+        h(i)   = prod(b_mat(i,:));
+        hprime = -h(i)*sum(gam./(1+gam*pi));
+        dpdr(i)= h(i) / (1 - ri*hprime);   % chain rule
+    else
+        h(i) = 1;
+        dpdr(i) = 1;
+    end
 end
 indA = (r>0);
 end
 
-% ---------- Jacobian‑vector product  J*v  (multi‑τ) --------------------
+% % ---------- Jacobian‑vector product  J*v  (multi‑τ) --------------------
+% function Jv = Jv_multiSTD(v,r,dpdr,M,c_SFA,n_a,indA)
+% % F(r) = r - phi(r);    J = I - dphi/dr
+% Jv = v;                               % start with identity
+% w  = (v + c_SFA.*(n_a*v)) - M*(dpdr.*v); % Added parenthesis for clarity.
+% ia = find(indA);                      % active neurons (ReLU slope 1)
+% Jv(ia) = Jv(ia) - w(ia);
+% end
+% 
+% % ---------- Jacobian‑vector product  J*v  (multi‑τ) --------------------
 % function Jv = Jv_multiSTD(v,r,dpdr,M,c_SFA,n_a,indA)
 % % F(r) = r - phi(r);    J = I - dphi/dr
 % Jv = v;                               % start with identity
@@ -271,4 +306,5 @@ end
              + c_SFA(ia).*n_a.*v(ia) ...  %  + c_SFA·n_a · v
              - M(ia,:)*(dpdr.*v);         %  – M·(dpdr ∘ v)
  end
+
 

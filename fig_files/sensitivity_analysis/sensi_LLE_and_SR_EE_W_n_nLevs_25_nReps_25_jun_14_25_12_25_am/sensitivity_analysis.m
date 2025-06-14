@@ -14,14 +14,14 @@ conditions = { ...
 
 
 
-params_to_analyze = {'EE_factor','mean_weight'}; % Only analyze these parameters
+params_to_analyze = {'EE_factor','mean_weight','n'}; % Only analyze these parameters
 % params_to_analyze = {}; % Empty means analyze all parameters
 
 %% Analysis Parameters
-n_levels = 13; % Number of values to test for each parameter
+n_levels = 25; % Number of values to test for each parameter
 n_reps = 25;   % Number of repetitions with different random seeds for each level
 
-note = 'LLE_and_SR_EE_W'
+note = 'LLE_and_SR_EE_W_n'
 
 % Timestamp for folder name
 dt_str = lower(strrep(datestr(now, 'mmm_dd_yy_hh_MM_AM'), ':', '_'));

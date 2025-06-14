@@ -1,10 +1,10 @@
-function [A, EI_vec] = generate_M(nvars,w,sparseness, EI)
+function [A, EI_vec] = generate_M(n,w,sparsity, EI)
 
     % EI is now a parameter representing the fraction of neurons that are excitatory
-    EI_vec = -1*ones(1,nvars); % vector of E vs I.  E is coded as +1, I is coded as -1, default all to -1
-    EI_vec(1:round(EI*nvars)) = 1; % set the first round(EI*nvars) to be excitatory
-    A=1*randn(nvars,nvars); % generate a gaussian random connection matrix with standard deviation 1.0 (scaled later)
-    A(rand(nvars^2,1)<sparseness) = 0; % delete some connections to make it sparse
+    EI_vec = -1*ones(1,n); % vector of E vs I.  E is coded as +1, I is coded as -1, default all to -1
+    EI_vec(1:round(EI*n)) = 1; % set the first round(EI*n) to be excitatory
+    A=1*randn(n,n); % generate a gaussian random connection matrix with standard deviation 1.0 (scaled later)
+    A(rand(n^2,1)<sparsity) = 0; % delete some connections to make it sparse
 
     % A(:,1) = A(:,1)*2; % make node 1 drive the network harder, prettier example
     % A(1,:) = A(1,:)/1.5; % make ohter nodes drive node 1 weaker
