@@ -13,7 +13,7 @@ conditions = { ...
 };
 
 %% Analysis Parameters
-n_levels = 11; % Number of values to test for each parameter
+n_levels = 15; % Number of values to test for each parameter
 n_reps = 25;   % Number of repetitions with different random seeds for each level
 
 note = 'n_b_2_tau_a_E_2_15_c_SFA_0p5'
@@ -21,17 +21,18 @@ note = 'n_b_2_tau_a_E_2_15_c_SFA_0p5'
 % Timestamp for folder name
 dt_str = lower(strrep(datestr(now, 'mmm_dd_yy_hh_MM_AM'), ':', '_'));
 
-% -------------------------------------------------------------------------
-% Create an ABSOLUTE base directory and be sure it exists
-% -------------------------------------------------------------------------
+%% Create an ABSOLUTE base directory and be sure it exists
 output_dir_base = fullfile(pwd, ...
     ['sensi_' note '_nLevs_' num2str(n_levels) '_nReps_' num2str(n_reps) '_' dt_str]);
 
 if ~exist(output_dir_base, 'dir')
     mkdir(output_dir_base);      % create the directory tree once, up-front
 end
-% -------------------------------------------------------------------------
 
+%% after the output_dir_base is made, copy current mfile (this file) into it
+copyfile(mfilename('fullpath'), fullfile(output_dir_base, [mfilename '.m']));
+
+%%  loop through conditions
 overall_super_start_time = tic;
 all_conditions_summary = struct();
 
@@ -55,7 +56,7 @@ for c_idx = 1:length(conditions)
     p_default.E_self = 0.0;
     p_default.mean_weight = 0.5;
     p_default.DC = 0.1;
-    p_default.sparsity = 0.55;
+    p_default.mean_in_out_degree = 4;
     p_default.tau_a_E_2 = 15;
     p_default.tau_b_E_2 = 1; % if n_b_E == 1, then this value is used.
     p_default.tau_STD = 0.5;
@@ -70,9 +71,9 @@ for c_idx = 1:length(conditions)
     ranges.IE_factor = [0, 4];
     ranges.EI = [1/p_default.n, 1.0];  % Changed from [0, 1.0] to avoid EI=0 issues
     ranges.E_self = [0.0, 0.5];
-    ranges.mean_weight = [1/p_default.n, 4];
+    ranges.mean_weight = [1/p_default.n, 2];
     ranges.DC = [0, 4];
-    ranges.sparsity = [0, 0.8];
+    ranges.mean_in_out_degree = [1, p_default.n-1];
     ranges.tau_a_E_2 = [1, 30];
     ranges.tau_b_E_2 = [2, 30];
     ranges.tau_STD = [0.2, 1];
@@ -142,7 +143,7 @@ for c_idx = 1:length(conditions)
         param_start_time = tic;
 
         % Create vector of parameter levels
-        if ismember(param_name, {'n', 'n_a_E'})
+        if ismember(param_name, {'n', 'n_a_E', 'mean_in_out_degree'})
             param_levels = round(linspace(param_range(1), param_range(2), n_levels));
         else
             param_levels = linspace(param_range(1), param_range(2), n_levels);
@@ -183,7 +184,7 @@ for c_idx = 1:length(conditions)
                     current_p.E_self, ...
                     current_p.mean_weight, ...
                     current_p.DC, ...
-                    current_p.sparsity, ...
+                    current_p.mean_in_out_degree, ...
                     current_p.tau_a_E_2, ...
                     current_p.tau_b_E_2, ...
                     current_p.tau_STD, ...

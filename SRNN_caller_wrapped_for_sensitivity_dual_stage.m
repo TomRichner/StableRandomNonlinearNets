@@ -1,4 +1,4 @@
-function [result] = SRNN_caller_wrapped_for_sensitivity_dual_stage(seed, n, EE_factor, IE_factor, EI, E_self, mean_weight, DC, sparsity, tau_a_E_2, tau_b_E_2, tau_STD, c_SFA_factor, n_a_E, n_b_E, fs)
+function [result] = SRNN_caller_wrapped_for_sensitivity_dual_stage(seed, n, EE_factor, IE_factor, EI, E_self, mean_weight, DC, mean_in_out_degree, tau_a_E_2, tau_b_E_2, tau_STD, c_SFA_factor, n_a_E, n_b_E, fs)
     %SRNN_CALLER_WRAPPED_FOR_SENSITIVITY_DUAL_STAGE Runs a simulation of the Spiking Rate Neural Network model.
     %
     % This function wraps the SRNN simulation and is intended for use in sensitivity
@@ -35,6 +35,9 @@ function [result] = SRNN_caller_wrapped_for_sensitivity_dual_stage(seed, n, EE_f
     w.II = scale*.5; 
     w.selfE = E_self;
     w.selfI = 0;
+
+    density = mean_in_out_degree/(n-1);
+    sparsity = 1-density;
 
     [M, EI_vec] = generate_M(n,w,sparsity, EI);
     EI_vec = EI_vec(:);
