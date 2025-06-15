@@ -176,9 +176,9 @@ if ~strcmpi(Lya_method, 'none')
         % Check if there is any Lyapunov data to plot.
         % t_lya would be empty if divergence occurred before the first interval.
         if ~isempty(t_lya)
+            plot(t_lya, local_lya, 'b', 'LineWidth', 1, 'DisplayName', 'Local LLE');
             plot([t_lya(1) t_lya(end)], [LLE LLE], 'Color',[0.7 0.7 0.7], 'LineWidth', 4, 'DisplayName', sprintf('Global LLE: %.4f', LLE));
             plot(t_lya, finite_lya, 'r', 'LineWidth', 2, 'DisplayName', 'Finite-time LLE');
-            plot(t_lya, local_lya, 'b', 'LineWidth', 1, 'DisplayName', 'Local LLE');
             
             % Adjust y-limits to ensure all data is visible
             ylim_current = get(gca, 'YLim');

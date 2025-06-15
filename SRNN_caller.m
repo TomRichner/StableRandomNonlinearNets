@@ -7,8 +7,8 @@ clc
 tic
 
 %% 
-% seed = 7;
-% rng(seed,'twister');
+seed = 42;
+rng(seed,'twister');
 
 %% Network
 n = 10; % number of neurons
@@ -36,9 +36,9 @@ EI_vec = EI_vec(:); % make it a column
 %% Time
 fs = 1000; %Plotting sample frequency
 dt = 1/fs;
-T = [-20 30];
+T = [-30 200];
 
-T_lya_1 = -10; % s, time to start Lyapunov calculation warmup
+T_lya_1 = -20; % s, time to start Lyapunov calculation warmup
 % T_lya_1 = T(1); % s, time to start Lyapunov calculation warmup
 
 % Validate time interval
@@ -76,7 +76,12 @@ u_dc_profile = ones(1, nt) * DC;
 u_dc_profile(ramp_indices) = ramp_profile;
 u_ex = u_ex + u_dc_profile;
 
-% u_ex(:, 10<t) = u_ex(:, 10<t)+3;
+% add random walk stimulus to 3 neurons
+% [bH,aH] = butter(1,0.1/(fs/2),'high'); 
+% [bL,aL] = butter(1,10/(fs/2),'low');
+% u_ex(1:3,:) = u_ex(1:3,:)+filter(bL,aL,filter(bH,aH,cumsum(10./fs.*randn(3,nt),2),[],2),[],2);
+
+u_ex(:, 100<t) = u_ex(:, 100<t)+5;
 
 % u_ex(:,0.2*fs:0.3*fs) = u_ex(:,0.2*fs:0.3*fs) + 0.1; % a pulse to help Lyapunov exponent to find the direction.
 % u_ex(:,1:fs) = u_ex(:,1:fs)+1./fs.*randn(n,fs); % noise in the first second to help the network get off the trivial saddle node from ICs
@@ -88,6 +93,11 @@ if strcmpi(Lya_method,'benettin')
     noise_indices = max(T_lya_1-20, T(1)) <= t & t <= min(T_lya_1-5, 0);
     u_ex(:, noise_indices) = u_ex(:, noise_indices) + (0.0001./fs .* randn(n, sum(noise_indices))) .* (rand(1, sum(noise_indices)) < 0.05);
 end
+% if strcmpi(Lya_method,'benettin')
+%     noise_indices = T(1) <= t & t <= min(T_lya_1+1, 0);
+%     noise_indices = max(T_lya_1-20, T(1)) <= t & t <= min(T_lya_1-5, 0);
+%     u_ex(:, noise_indices) = u_ex(:, noise_indices) + (0.0001./fs .* randn(n, sum(noise_indices))) .* (rand(1, sum(noise_indices)) < 0.05);
+% end
 
 %% parameters
 
@@ -102,7 +112,7 @@ n_b_I = 0; % typically 0, number of STD timescales for I neurons (typically 0)
 % Define tau_a and tau_b for E and I neurons
 % Ensure these are empty if the corresponding n_a_X or n_b_X is 0
 if n_a_E > 0
-    tau_a_E = logspace(log10(0.3), log10(30), n_a_E); % s, 1 x n_a_E
+    tau_a_E = logspace(log10(0.3), log10(6), n_a_E); % s, 1 x n_a_E
 else
     tau_a_E = [];
 end
@@ -191,7 +201,7 @@ if use_Jacobian
     ode_options = odeset('RelTol', 1e-7, 'AbsTol', 1e-8, 'MaxStep', dt, 'InitialStep', 0.05*dt, 'Jacobian', SRNN_Jacobian_wrapper); % fast
 else
     % ode_options = odeset('RelTol', 1e-5, 'AbsTol', 1e-6, 'MinStep', 0.1*dt,'MaxStep', dt, 'InitialStep', 0.5*dt); % fast
-    ode_options = odeset('RelTol', 1e-7, 'AbsTol', 1e8, 'MaxStep',dt, 'InitialStep', 0.01*dt); % RelTol must be less than perturbation d0, which is 1e-3
+    ode_options = odeset('RelTol', 1e-7, 'AbsTol', 1e8, 'MaxStep',dt, 'InitialStep', 0.1*dt); % RelTol must be less than perturbation d0, which is 1e-3
 end
 
 
@@ -403,7 +413,7 @@ if ~strcmpi(Lya_method, 'none') && ~isempty(fieldnames(lya_results))
             fprintf('LLE Analytic: %f  |  Numerical: (not available)\n', LLE_analytic);
         end
         
-        % Compare Fixed Point
+        % Compare Fixed Po4nt
         % Find a steady-state portion of the simulation to get numerical r0
         % Let's use the last 10% of the simulation, if t>0
         t_positive_idx = find(t>0);

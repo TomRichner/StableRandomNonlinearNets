@@ -193,6 +193,14 @@ function fig_handle = sensitivity_plot(param_file, hist_edges_with_inf, variable
         yticklabels(final_ylabels);
     end
 
+    % Ensure the first parameter level is always an x-tick
+    current_xticks = xticks;
+    if ~isempty(param_levels)
+        if ~any(abs(current_xticks - param_levels(1)) < 1e-9) % Use a tolerance for float comparison
+            xticks(sort([param_levels(1), current_xticks]));
+        end
+    end
+
     % Add grid lines for better readability
     % hold on;
     % for i = 1:length(param_levels)

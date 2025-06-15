@@ -49,7 +49,10 @@ script_dir = fileparts(mfilename('fullpath'));   % Absolute path of this .m file
 % sensitivity_results_dir = 'sensi_quick_LLE_and_SR_nLevs_5_nReps_5_jun_13_25_11_57_pm'
 % sensitivity_results_dir = 'sensi_LLE_and_SR_EE_W_n_nLevs_25_nReps_25_jun_14_25_12_25_am'
 % sensitivity_results_dir = 'sensi_LLE_and_SR_EE_W_nLevs_7_nReps_10_jun_14_25_ 6_53_am'
-sensitivity_results_dir = 'sensi_LLE_and_SR_EE_W_nLevs_7_nReps_10_jun_14_25_ 7_05_am';
+% sensitivity_results_dir = 'sensi_LLE_and_SR_EE_W_nLevs_7_nReps_10_jun_14_25_ 7_05_am';
+% sensitivity_results_dir = 'sensi_LLE_and_SR_EE_W_nLevs_13_nReps_25_jun_14_25_ 7_12_am';
+% sensitivity_results_dir = 'sensi_LLE_and_SR_EE_W_randWalk_nLevs_25_nReps_50_jun_14_25_ 4_55_pm'
+sensitivity_results_dir = 'sensi_LLE_and_SR_EE_W_randWalk_nLevs_25_nReps_50_jun_14_25_10_04_pm';
 
 % If the user left the path relative, prepend the script directory
 if ~isfolder(sensitivity_results_dir)
@@ -69,7 +72,7 @@ n_bins = 25;
 lle_bins = [-inf, linspace(lle_range(1), lle_range(2), n_bins), inf];
 
 % Define Mean Firing Rate histogram parameters
-rate_range = [0, 50];
+rate_range = [0, 5];
 n_bins_rate = 25;
 rate_bins = [linspace(rate_range(1), rate_range(2), n_bins_rate), inf];
 
@@ -217,6 +220,9 @@ function plot_single_metric(sp_ax, param_file, hist_bins, metric_name, y_label_m
 
         % Copy y-tick labels from the temporary figure
         set(sp_ax, 'YTick', get(temp_ax, 'YTick'), 'YTickLabel', get(temp_ax, 'YTickLabel'));
+
+        % Copy x-tick labels from the temporary figure to ensure they are preserved
+        set(sp_ax, 'XTick', get(temp_ax, 'XTick'), 'XTickLabel', get(temp_ax, 'XTickLabel'));
 
         % Manually copy colorbar
         temp_cb = findobj(temp_fig_handle, 'type', 'colorbar');
