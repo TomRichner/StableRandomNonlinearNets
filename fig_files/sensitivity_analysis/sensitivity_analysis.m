@@ -21,7 +21,7 @@ params_to_analyze = {'EE_factor','mean_weight','n'}; % Only analyze these parame
 n_levels = 25; % Number of values to test for each parameter
 n_reps = 50;   % Number of repetitions with different random seeds for each level
 
-note = 'LLE_and_SR_EE_W_randWalk'
+note = 'LLE_and_SR_EE_W_randWalk_tau_b_E_9'
 
 % Timestamp for folder name
 dt_str = lower(strrep(datestr(now, 'mmm_dd_yy_hh_MM_AM'), ':', '_'));
@@ -59,7 +59,7 @@ for c_idx = 1:length(conditions)
     p_default.DC = 0.1;
     p_default.mean_in_out_degree = 5;
     p_default.tau_a_E_2 = 15;
-    p_default.tau_b_E_2 = 1; % if n_b_E == 1, then this value is used.
+    p_default.tau_b_E_2 = 9; % if n_b_E == 1, then this value is used.
     p_default.tau_STD = 0.5;
     p_default.c_SFA_factor = 0.5;
     p_default.n_a_E = current_condition.n_a_E_val;

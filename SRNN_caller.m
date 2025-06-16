@@ -11,12 +11,12 @@ seed = 42;
 rng(seed,'twister');
 
 %% Network
-n = 10; % number of neurons
+n = 4; % number of neurons
 
 Lya_method = 'benettin'; % 'benettin', 'qr', 'svd', or 'none'
 use_Jacobian = false;
 
-mean_in_out_degree = 5; % desired mean number of connections in and out
+mean_in_out_degree = 3; % desired mean number of connections in and out
 density = mean_in_out_degree/(n-1); % each neuron can make up to n-1 connections with other neurons
 sparsity = 1-density;
 
@@ -36,7 +36,7 @@ EI_vec = EI_vec(:); % make it a column
 %% Time
 fs = 1000; %Plotting sample frequency
 dt = 1/fs;
-T = [-30 200];
+T = [-30 400];
 
 T_lya_1 = -20; % s, time to start Lyapunov calculation warmup
 % T_lya_1 = T(1); % s, time to start Lyapunov calculation warmup
@@ -82,6 +82,8 @@ u_ex = u_ex + u_dc_profile;
 % u_ex(1:3,:) = u_ex(1:3,:)+filter(bL,aL,filter(bH,aH,cumsum(10./fs.*randn(3,nt),2),[],2),[],2);
 
 u_ex(:, 100<t) = u_ex(:, 100<t)+5;
+
+u_ex(:, 250<t) = u_ex(:, 250<t)-5;
 
 % u_ex(:,0.2*fs:0.3*fs) = u_ex(:,0.2*fs:0.3*fs) + 0.1; % a pulse to help Lyapunov exponent to find the direction.
 % u_ex(:,1:fs) = u_ex(:,1:fs)+1./fs.*randn(n,fs); % noise in the first second to help the network get off the trivial saddle node from ICs
