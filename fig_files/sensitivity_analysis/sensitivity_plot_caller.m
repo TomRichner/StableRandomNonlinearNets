@@ -52,7 +52,9 @@ script_dir = fileparts(mfilename('fullpath'));   % Absolute path of this .m file
 % sensitivity_results_dir = 'sensi_LLE_and_SR_EE_W_nLevs_7_nReps_10_jun_14_25_ 7_05_am';
 % sensitivity_results_dir = 'sensi_LLE_and_SR_EE_W_nLevs_13_nReps_25_jun_14_25_ 7_12_am';
 % sensitivity_results_dir = 'sensi_LLE_and_SR_EE_W_randWalk_nLevs_25_nReps_50_jun_14_25_ 4_55_pm'
-sensitivity_results_dir = 'sensi_LLE_and_SR_EE_W_randWalk_nLevs_25_nReps_50_jun_14_25_10_04_pm';
+% sensitivity_results_dir = 'sensi_LLE_and_SR_EE_W_randWalk_nLevs_25_nReps_50_jun_14_25_10_04_pm';
+% sensitivity_results_dir = 'sensi_LLE_and_SR_EE_W_randWalk_tau_b_E_9_nLevs_25_nReps_100_jun_16_25_12_02_am'
+sensitivity_results_dir = 'sensi_LLE_and_SR_EE_W_n_randWalk_n_b_E_1_nLevs_11_nReps_8_jun_16_25_ 2_46_pm'
 
 % If the user left the path relative, prepend the script directory
 if ~isfolder(sensitivity_results_dir)
@@ -175,7 +177,18 @@ for i = 1:n_params
                            x_label_str, scale_factor, i, c_idx);
     end
 end
-
+%% add letter to each figure
+num_subplots = n_params * n_conditions;
+if num_subplots > 0
+    % Generate letters (a), (b), ... up to (z)
+    if num_subplots <= 26
+        letters = arrayfun(@(x) sprintf('(%c)', x), 'a':char('a'+num_subplots-1), 'UniformOutput', false);
+        AddLetters2Plots(main_fig_lle, letters, 'FontSize', 18, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.039, 'Location', 'NorthWest');
+        AddLetters2Plots(main_fig_rate, letters, 'FontSize', 18, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.039, 'Location', 'NorthWest');
+    else
+        error('more than 26 subplots, out of letters')
+    end
+end
 % Save the combined figures
 save_some_figs_to_folder_2(output_dir_base, 'sensitivity_LLE_comparison_all_params', main_fig_lle.Number, {'png', 'svg', 'fig'});
 save_some_figs_to_folder_2(output_dir_base, 'sensitivity_rate_comparison_all_params', main_fig_rate.Number, {'png', 'svg', 'fig'});
