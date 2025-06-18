@@ -11,14 +11,14 @@ Thumbs.db
 *.asv          # MATLAB autosave files
 *.m~           # MATLAB backup files
 *.mex*         # MEX files (compiled MATLAB functions)
-*.mat          # MATLAB data files (comment out if you want to track some .mat files)
-*.fig          # MATLAB figure files
+**/*.mat          # MATLAB data files (comment out if you want to track some .mat files)
+**/*.fig          # MATLAB figure files
 *.slx.autosave # Simulink autosave files
 *.slxc         # Simulink cache files
 slprj/         # Simulink project files
 *.slx.original # Simulink backup files
-*.svg
-*.png
+**/*.svg
+**/*.png
 
 # MATLAB Code Generation
 codegen/
@@ -64,6 +64,7 @@ profile_results/
 # figures/ # Your directory seems to be named fig_files/
 data/
 **/figs/
+fig_files/
 **/sensitivity_results/
 **/ICs/
 

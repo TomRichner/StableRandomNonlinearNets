@@ -176,9 +176,10 @@ if ~strcmpi(Lya_method, 'none')
         % Check if there is any Lyapunov data to plot.
         % t_lya would be empty if divergence occurred before the first interval.
         if ~isempty(t_lya)
-            plot(t_lya, local_lya, 'b', 'LineWidth', 1, 'DisplayName', 'Local LLE');
-            plot([t_lya(1) t_lya(end)], [LLE LLE], 'Color',[0.7 0.7 0.7], 'LineWidth', 4, 'DisplayName', sprintf('Global LLE: %.4f', LLE));
-            plot(t_lya, finite_lya, 'r', 'LineWidth', 2, 'DisplayName', 'Finite-time LLE');
+
+            plot([t_lya(1) t_lya(end)], [LLE LLE], 'Color',[0.7 0.7 0.7], 'LineWidth', 4, 'DisplayName', sprintf('Global LLE: %.2f', LLE));
+            % plot(t_lya, finite_lya, 'r', 'LineWidth', 2, 'DisplayName', 'Finite-time LLE');
+            plot(t_lya, local_lya, 'b', 'LineWidth', 1.5, 'DisplayName', 'Local LLE');
             
             % Adjust y-limits to ensure all data is visible
             ylim_current = get(gca, 'YLim');
@@ -215,10 +216,10 @@ if ~strcmpi(Lya_method, 'none')
     hold off;
     ylabel('Lyapunov Exp.');
     xlabel('Time (s)');
-    legend('show', 'Location', 'best');
+    legend('show', 'Location', 'best','FontSize',10);
     grid on;
     box off;
-    ylim([-0.5 0.5])
+    ylim([-0.25 0.25])
 end
 
 % Link all subplots' x-axes and set limits
