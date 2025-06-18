@@ -8,30 +8,30 @@ ehthumbs.db
 Thumbs.db
 
 # MATLAB Files
-*.asv          # MATLAB autosave files
-*.m~           # MATLAB backup files
-*.mex*         # MEX files (compiled MATLAB functions)
-**/*.mat          # MATLAB data files (comment out if you want to track some .mat files)
-**/*.fig          # MATLAB figure files
-*.slx.autosave # Simulink autosave files
-*.slxc         # Simulink cache files
-slprj/         # Simulink project files
-*.slx.original # Simulink backup files
-**/*.svg
-**/*.png
+*.asv
+*.m~
+*.mex*
+*.mat
+*.fig
+*.slx.autosave
+*.slxc
+slprj/
+*.slx.original
+*.svg
+*.png
 
 # MATLAB Code Generation
 codegen/
-*.prj          # MATLAB project files
-*.mltbx        # MATLAB toolbox files
-*.mlappinstall # MATLAB app installer files
-*.mlpkginstall # MATLAB package installer files
+*.prj
+*.mltbx
+*.mlappinstall
+*.mlpkginstall
 
 # MATLAB Profiler
 profile_results/
 
 # MATLAB Live Scripts
-*.mlx~         # Live script backup files
+*.mlx~
 
 # MATLAB Temporary Files
 *.tmp
@@ -61,10 +61,9 @@ profile_results/
 *.rar
 
 # Output Directories (customize based on your project)
-# figures/ # Your directory seems to be named fig_files/
+# figures/
 data/
 **/figs/
-fig_files/
 **/sensitivity_results/
 **/ICs/
 
