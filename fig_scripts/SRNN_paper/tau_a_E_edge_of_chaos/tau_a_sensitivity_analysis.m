@@ -18,7 +18,7 @@ params_to_analyze = {'tau_a_E_2','tau_b_E_2'}; % Only analyze these parameters
 n_levels = 15; % Number of values to test for each parameter
 n_reps = 25;   % Number of repetitions with different random seeds for each level
 
-note = 'tau_a_E_2_tau_b_E_2'
+note = 'tau_a_E_5_tau_b_E_2'
 
 % Timestamp for folder name
 dt_str = lower(strrep(datestr(now, 'mmm_dd_yy_hh_MM_AM'), ':', '_'));
