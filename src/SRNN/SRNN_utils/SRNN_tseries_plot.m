@@ -113,7 +113,7 @@ if ~isempty(E_indices) && params.n_a_E > 0
 end
 hold off;
 if params.n_a_E <= 1 && params.n_a_I <= 1
-    ylabel({'Spike Freq. Adapt.', 'a'});
+    ylabel({'Spike Freq. Adapt., a'});
 else
     ylabel({'Spike Freq. Adapt.', '$\sum\limits_k a_k$'}, 'Interpreter', 'latex');
 end
@@ -149,7 +149,7 @@ if ~isempty(E_indices) && params.n_b_E > 0
 end
 hold off;
 if params.n_b_E <= 1 && params.n_b_I <= 1
-    ylabel({'Syn. Dep.','b'});
+    ylabel({'Syn. Dep., b'});
 else
     ylabel({'Syn. Dep.','$\prod\limits_m b_m$'}, 'Interpreter', 'latex');
 end

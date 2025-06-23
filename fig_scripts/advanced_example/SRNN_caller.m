@@ -7,11 +7,11 @@ clc
 tic
 
 %% 
-seed = 42;
+seed = 7;
 rng(seed,'twister');
 
 %% Network
-n = 4; % number of neurons
+n = 10; % number of neurons
 
 Lya_method = 'benettin'; % 'benettin', 'qr', 'svd', or 'none'
 use_Jacobian = false;
@@ -81,20 +81,19 @@ u_ex = u_ex + u_dc_profile;
 % [bL,aL] = butter(1,10/(fs/2),'low');
 % u_ex(1:3,:) = u_ex(1:3,:)+filter(bL,aL,filter(bH,aH,cumsum(10./fs.*randn(3,nt),2),[],2),[],2);
 
-u_ex(:, 100<t) = u_ex(:, 100<t)+5;
-
-u_ex(:, 250<t) = u_ex(:, 250<t)-5;
+% u_ex(:, 100<t) = u_ex(:, 100<t)+5;
+% u_ex(:, 250<t) = u_ex(:, 250<t)-5;
 
 % u_ex(:,0.2*fs:0.3*fs) = u_ex(:,0.2*fs:0.3*fs) + 0.1; % a pulse to help Lyapunov exponent to find the direction.
 % u_ex(:,1:fs) = u_ex(:,1:fs)+1./fs.*randn(n,fs); % noise in the first second to help the network get off the trivial saddle node from ICs
 % u_ex = u_ex+0.001./fs.*randn(n,nt); % a tiny bit of noise to help the network get off the trivial saddle node from ICs
 
 %% add a bit of sparse noise from T(1) to min(T_lya_1+1, 0)
-if strcmpi(Lya_method,'benettin')
-    noise_indices = T(1) <= t & t <= min(T_lya_1+1, 0);
-    noise_indices = max(T_lya_1-20, T(1)) <= t & t <= min(T_lya_1-5, 0);
-    u_ex(:, noise_indices) = u_ex(:, noise_indices) + (0.0001./fs .* randn(n, sum(noise_indices))) .* (rand(1, sum(noise_indices)) < 0.05);
-end
+% if strcmpi(Lya_method,'benettin')
+%     noise_indices = T(1) <= t & t <= min(T_lya_1+1, 0);
+%     noise_indices = max(T_lya_1-20, T(1)) <= t & t <= min(T_lya_1-5, 0);
+%     u_ex(:, noise_indices) = u_ex(:, noise_indices) + (0.0001./fs .* randn(n, sum(noise_indices))) .* (rand(1, sum(noise_indices)) < 0.05);
+% end
 % if strcmpi(Lya_method,'benettin')
 %     noise_indices = T(1) <= t & t <= min(T_lya_1+1, 0);
 %     noise_indices = max(T_lya_1-20, T(1)) <= t & t <= min(T_lya_1-5, 0);
@@ -108,7 +107,7 @@ tau_STD = 0.5; % scalar, time constant of synaptic depression
 % Define number of timescales for E and I neurons separately
 n_a_E = 3; % typically 3, number of SFA timescales for E neurons
 n_a_I = 0; % typically 0, number of SFA timescales for I neurons (typically 0)
-n_b_E = 2; % typically 1 or 2, number of STD timescales for E neurons
+n_b_E = 1; % typically 1 or 2, number of STD timescales for E neurons
 n_b_I = 0; % typically 0, number of STD timescales for I neurons (typically 0)
 
 % Define tau_a and tau_b for E and I neurons

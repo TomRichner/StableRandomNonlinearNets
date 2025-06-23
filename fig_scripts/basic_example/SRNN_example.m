@@ -72,7 +72,7 @@ tau_STD = 0.5; % scalar, time constant of synaptic depression
 % Define number of timescales for E and I neurons separately
 n_a_E = 3; % typically 3, number of SFA timescales for E neurons
 n_a_I = 0; % typically 0, number of SFA timescales for I neurons (typically 0)
-n_b_E = 2; % typically 1 or 2, number of STD timescales for E neurons
+n_b_E = 1; % typically 1 or 2, number of STD timescales for E neurons
 n_b_I = 0; % typically 0, number of STD timescales for I neurons (typically 0)
 
 % Define tau_a and tau_b for E and I neurons

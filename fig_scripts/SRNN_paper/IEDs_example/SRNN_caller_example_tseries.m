@@ -282,8 +282,8 @@ if ~strcmpi(Lya_method, 'none')
     
     if strcmpi(Lya_method,'qr')
         lya_dt_p1 = 4*tau_d;
-    else
-        lya_dt_p1 = 4*tau_d;
+    elseif strcmpi(Lya_method,'benettin')
+        lya_dt_p1 = 0.5*tau_d; % faster than the fastest time constant in the system
     end
 
     switch lower(Lya_method)
