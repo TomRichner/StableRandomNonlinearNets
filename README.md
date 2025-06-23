@@ -4,15 +4,15 @@ This is a theoretical neuroscience project investigating two forms of adaptation
 
 ## How to Run the code
 
-###Setup
+### Setup
 - Run fig_scripts/set_SRNN_paths.m, which will add all necessary paths to run all scripts
-- Optional: fig_scripts/set_fig_defaults.m, which was modify the default line widths, font sizes, and lines colormap until Matlab is restarted.
+- Optional: fig_scripts/set_fig_defaults.m, which will modify the default line widths, font sizes, and lines colormap until Matlab is restarted.
 
-###Basic and advanced examples
+### Basic and advanced examples
 - fig_scripts/basic_example/SRNN_basic_example.m % a basic example with all of the extras removed
 - fig_scripts/advanced_example/SRNN_adv_example.m % an example with many extras added
 
-###Figures for the paper are in fig_scripts/SRNN_paper
+### Figures for the paper are in fig_scripts/SRNN_paper
 - Fig 1: fig_scripts/SRNN_paper/tseries_example/SRNN_example_tseries.m
 
 - Fig 2: first: fig_scripts/SRNN_paper/sensitivity_analysis/sensitivity_analysis.m
@@ -53,7 +53,7 @@ The model consists of **n neurons** with the following variable dimensions:
 
 Our primary research focus examines:
 
-Motivating question: How are global dynamical properties maintained through **biologically plausible** (i.e., local) development rules? The stability of LTI dynamical systems (i.e, systems of first-order differential equations) are 100% determined by connectivity (i.e., eigenvalues). Is this true for biomimetic recurrent nonlinear networks?
+Motivating question: How are global dynamical properties maintained through **biologically plausible** (i.e., local) development rules? The stability of LTI dynamical systems (i.e, systems of first-order differential equations) is 100% determined by connectivity (i.e., eigenvalues). Is this true for biomimetic recurrent nonlinear networks?
 
 Hypothesis: We hypothesize that dual adaptation helps decouple global dynamical properties from the details of connectivity. We expect that the time constants of adaptation will play a role.
 
@@ -69,7 +69,7 @@ We investigate the worst case scenario where synaptic weights are drawn from a r
 - [x] Created a **Lorenz test system** with known largest Lyapunov exponent for algorithm verification
 - [x] Implemented **Benettin's method** for Lyapunov exponent calculation
 - [x] Implemented **Benettin's QR factorization** methods to compute the full Lyapunov spectrum
-- [x] Write **MATLAB function** for the nonlinear RNN
+- [x] Write **a MATLAB function** for the nonlinear RNN
 - [x] Perform **sensitivity analysis** of connectivity distribution parameters
 
 ### 🔄 In Progress / Planned
