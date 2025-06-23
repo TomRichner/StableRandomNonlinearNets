@@ -2,6 +2,32 @@
 
 This is a theoretical neuroscience project investigating two forms of adaptation found in the brain: (1) weight adaptation and (2) bias adaptation. Mechanistically these most closely align with short-term synaptic depression and spike frequency adaptation, respectively. We model the effect of dual adaptation on continuous time recurrent neural networks.
 
+## How to Run the code
+
+###Setup
+- Run fig_scripts/set_SRNN_paths.m, which will add all necessary paths to run all scripts
+- Optional: fig_scripts/set_fig_defaults.m, which was modify the default line widths, font sizes, and lines colormap until Matlab is restarted.
+
+###Basic and advanced examples
+- fig_scripts/basic_example/SRNN_basic_example.m % a basic example with all of the extras removed
+- fig_scripts/advanced_example/SRNN_adv_example.m % an example with many extras added
+
+###Figures for the paper are in fig_scripts/SRNN_paper
+- Fig 1: fig_scripts/SRNN_paper/tseries_example/SRNN_example_tseries.m
+
+- Fig 2: first: fig_scripts/SRNN_paper/sensitivity_analysis/sensitivity_analysis.m
+         second: fig_scripts/SRNN_paper/sensitivity_analysis/sensitivity_plot_caller.m
+
+- Fig 3: first: fig_scripts/SRNN_paper/parameter_space_analysis/network_parameter_space_analysis.m
+         You can stop network_parameter_space_analysis.m after about 15 minutes.  
+         second: run fig_scripts/SRNN_paper/parameter_space_analysis/consolidate_parameter_space_results.m to consolidate data created in previous step
+         third: fig_scripts/SRNN_paper/parameter_space_analysis/plot_parameter_space_results.m
+
+- Fig 4: first: fig_scripts/SRNN_paper/tau_a_E_edge_of_chaos/tau_a_sensitivity_analysis.m
+         second: fig_scripts/SRNN_paper/tau_a_E_edge_of_chaos/tau_a_sensitivity_plot_caller.m
+
+- Fig 5: fig_scripts/SRNN_paper/IEDs_example/SRNN_caller_example_tseries.m 
+
 ## Project Overview
 
 Our neural network model includes:
@@ -11,7 +37,7 @@ Our neural network model includes:
 
 ## Model Equations
 
-<img src="equations.png" alt="Model Equations" width="300"/>
+<img src="docs/equations/equations.png" alt="Model Equations" width="400"/>
 
 The model consists of **n neurons** with the following variable dimensions:
 - **r**, **u_d**, **u_ex**, and **p** are **n × 1 vectors**
@@ -21,23 +47,7 @@ The model consists of **n neurons** with the following variable dimensions:
 - Each neuron has **one dendrite state variable u_d**
 - The **total state size** is therefore **n × k + n × m + n × 1**
 - **r** and **p** are derived quantities from the state variables
-- **c_SFA**, **F_STD**, **τ_d**, and **τ_STD** are typically scalars, but **c_SFA** and **F_STD** are set to zero for inhibitory neurons
-
-## Adaptation Control Parameters
-
-The model now includes explicit control over which adaptation mechanisms are applied to each neuron through two key parameters:
-
-- **c_SFA**: Controls the strength of **Spike Frequency Adaptation (SFA)** for each neuron. This parameter determines the bias adaptation component, where higher values lead to stronger adaptation of the neuron's bias term in response to sustained activity.
-
-- **F_STD**: Controls the strength of **Short-Term Depression (STD)** for each neuron. This parameter determines the weight adaptation component, where higher values lead to stronger adaptation of synaptic efficacy in response to presynaptic activity.
-
-These parameters allow for fine-grained control over the adaptation profile of individual neurons:
-- Setting **c_SFA = 0** disables spike frequency adaptation for that neuron
-- Setting **F_STD = 0** disables short-term depression for that neuron  
-- Both parameters are typically set to zero for **inhibitory neurons**, ensuring adaptation only occurs in excitatory populations
-- The parameters can be neuron-specific vectors, allowing heterogeneous adaptation profiles across the network
-
-This explicit parameterization enables systematic investigation of how different combinations of adaptation mechanisms affect network dynamics and stability properties.
+- **c_SFA**, **τ_d**, and **τ_STD** are constants
 
 ## Research Questions
 
@@ -52,28 +62,20 @@ Hypothesis: We hypothesize that dual adaptation helps decouple global dynamical 
 We investigate the worst case scenario where synaptic weights are drawn from a random distribution, an approach used in **random matrix theory**. We extend concepts of random matrix theory to our nonlinear RNN by:
 - Simulating random networks
 - Computing the Lyapunov spectrum
-- Determining the level of chaos with the **Kolmogorov-Sinai entropy**
 
 ## Current Status and Roadmap
 
 ### ✅ Completed
 - [x] Created a **Lorenz test system** with known largest Lyapunov exponent for algorithm verification
 - [x] Implemented **Benettin's method** for Lyapunov exponent calculation
+- [x] Implemented **Benettin's QR factorization** methods to compute the full Lyapunov spectrum
+- [x] Write **MATLAB function** for the nonlinear RNN
+- [x] Perform **sensitivity analysis** of connectivity distribution parameters
 
 ### 🔄 In Progress / Planned
-- [x] Implement **Benettin's QR factorization** methods to compute the full Lyapunov spectrum
-- [x] Update README with **LaTeX equations** for the RNN model
-- [x] Write **MATLAB function** for the nonlinear RNN
-- [x] Create **example implementations** using the RNN function
 - [ ] Add a fixed point solver for ICs
 - [ ] Add an analytic LLE solver for comparison
-- [ ] Perform **sensitivity analysis** of connectivity distribution parameters
-- [ ] Incorporate figures into manuscript (already written based on prior code base)
 
 ## License
 
 MIT License 
-
-## Notes:
-We need to remove unused states due to c_SFA and F_STD because they cause a false zero Lyapunov exponent for systems which are stable!
-And systems which are truely edge of chaos maybe difficult to measure with Benettins method.
