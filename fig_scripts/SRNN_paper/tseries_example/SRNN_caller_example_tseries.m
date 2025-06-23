@@ -14,7 +14,7 @@ rng(seed,'twister');
 n = 10; % number of neurons
 
 Lya_method = 'benettin'; % 'benettin', 'qr', 'svd', or 'none'
-use_Jacobian = false;
+use_Jacobian = false; 
 
 mean_in_out_degree = 5; % desired mean number of connections in and out
 density = mean_in_out_degree/(n-1); % each neuron can make up to n-1 connections with other neurons
