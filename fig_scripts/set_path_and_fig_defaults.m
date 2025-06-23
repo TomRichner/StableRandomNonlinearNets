@@ -1,8 +1,13 @@
-addpath(fileparts(mfilename('fullpath'))); % add the directory that set_path_and_fig_defaults.m is in
-addpath('supporting_functions');
-addpath('ode_solvers');
-addpath(['analytic_fixed_point_spectrum'])
+% Add paths to necessary functions
+addpath('../src/algorithms/Kaplan_Yorke');
+addpath('../src/algorithms/Lyapunov');
+addpath('../src/algorithms/analytic_fixed_point_spectrum');
+addpath('../src/algorithms/ode_solvers');
+addpath('../src/SRNN');
+addpath('../src/SRNN/SRNN_utils');
+addpath('../src/supporting_functions/plotting_saving');
 
+% Figure defaults
 set(groot, 'DefaultFigureRenderer', 'painters'); % painters is better for SVG
 set(groot, 'DefaultAxesFontSize', 18);
 set(groot, 'DefaultTextFontSize', 16);

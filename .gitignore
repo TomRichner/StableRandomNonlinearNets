@@ -62,10 +62,7 @@ profile_results/
 
 # Output Directories (customize based on your project)
 # figures/
-data/
-**/figs/
-**/sensitivity_results/
-**/ICs/
+# data/
 
 # Large Data Files (uncomment if you want to exclude large datasets)
 # *.csv
