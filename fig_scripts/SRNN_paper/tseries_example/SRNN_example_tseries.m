@@ -7,7 +7,7 @@ clc
 tic
 
 %% 
-seed = 42;
+seed = 1;
 rng(seed,'twister');
 
 %% Network
@@ -16,7 +16,7 @@ n = 10; % number of neurons
 Lya_method = 'benettin'; % 'benettin', 'qr', 'svd', or 'none'
 use_Jacobian = false; 
 
-mean_in_out_degree = 5; % desired mean number of connections in and out
+mean_in_out_degree = 3; % desired mean number of connections in and out
 density = mean_in_out_degree/(n-1); % each neuron can make up to n-1 connections with other neurons
 sparsity = 1-density;
 
@@ -218,8 +218,8 @@ deci = 1; % deci > 1 does not work for benettin's method.  Need to fix this
 ode_RKn_wrapper = @(odefun, tspan, y0, options) deal(tspan(:), ode_RKn_deci_bounded(odefun, tspan, y0, solver_method, false, deci, get_minMaxRange(params))); % Pass params to get_minMaxRange
 
 %% pick an ODE solver
-ode_solver = ode_RKn_wrapper; % fixed step RK 1, 2, or 4th order, with boundary enforcement
-% ode_solver = @ode45; % variable step
+% ode_solver = ode_RKn_wrapper; % fixed step RK 1, 2, or 4th order, with boundary enforcement
+ode_solver = @ode45; % variable step
 % ode_solver = @ode4_wrapper; % basic RK4 for comparison
 % ode_solver = @ode15s; % stiff ode solver
 

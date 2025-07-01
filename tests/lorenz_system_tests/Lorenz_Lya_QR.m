@@ -8,7 +8,7 @@ rng(42,'twister') % For reproducibility
 % 'qr'       - QR decomposition method (full Lyapunov spectrum)
 % 'benettin' - Benettin's algorithm (largest Lyapunov exponent only)
 % 'none'     - No Lyapunov computation (trajectory only)
-method = 'qr'; % Change this to switch methods
+method = 'benettin'; % Change this to switch methods
 
 % --- 1. Lorenz System Parameters ---
 sigma = 10.0;
@@ -22,9 +22,9 @@ N_states = 3; % Number of states in the system
 X_0 = [-4.7795941536989090537; -8.8325236589201416848; 10.425932436960884786]; % X_0 as a column vector
 
 % --- 3. Time and sampling parameters ---
-fs = 100; % Plotting sample frequency (Hz)
+fs = 300; % Plotting sample frequency (Hz)
 dt = 1/fs; % Plotting sample time (s)
-T = [-100, 200]; % Plotting time interval [start, end] (s)
+T = [-1, 50]; % Plotting time interval [start, end] (s)
 % T(1) to 0 is considered warmup/settling time.
 
 % Validate time interval
@@ -304,6 +304,9 @@ function [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X, t, dt, fs, 
 
     LLE = sum_log_stretching_factors / T(2);  % finite-time estimate from t = 0 to T(2)
 end
+
+figure;
+plot3(X_fid_traj(:,1),X_fid_traj(:,2),X_fid_traj(:,3))
 
 % --- Lyapunov Spectrum QR Algorithm ---
 function [LE_spectrum, local_LE_spectrum_t, finite_LE_spectrum_t, t_lya_vec] = ...
