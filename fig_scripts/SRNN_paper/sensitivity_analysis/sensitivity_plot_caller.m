@@ -108,8 +108,8 @@ n_params = length(unique_param_names);
 n_conditions = length(conditions);
 
 % Create a separate large figure for each metric
-main_fig_lle = figure('Name', 'LLE Sensitivity', 'Position', [100, 100, 250 * n_params, 250 * n_conditions], 'Visible', 'on');
-main_fig_rate = figure('Name', 'Mean Rate Sensitivity', 'Position', [150, 150, 250 * n_params, 250 * n_conditions], 'Visible', 'on');
+main_fig_lle = figure('Name', 'LLE Sensitivity', 'Position', [100, 100, 265 * n_params, 250 * n_conditions], 'Visible', 'on');
+main_fig_rate = figure('Name', 'Mean Rate Sensitivity', 'Position', [150, 150, 265 * n_params, 250 * n_conditions], 'Visible', 'on');
 
 %% Process each parameter across all conditions
 for i = 1:n_params
@@ -188,8 +188,8 @@ if num_subplots > 0
     % Generate letters (a), (b), ... up to (z)
     if num_subplots <= 26
         letters = arrayfun(@(x) sprintf('(%c)', x), 'a':char('a'+num_subplots-1), 'UniformOutput', false);
-        AddLetters2Plots(main_fig_lle, letters, 'FontSize', 18, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.039, 'Location', 'NorthWest');
-        AddLetters2Plots(main_fig_rate, letters, 'FontSize', 18, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.039, 'Location', 'NorthWest');
+        AddLetters2Plots(main_fig_lle, letters, 'FontSize', 18, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.033, 'Location', 'NorthWest');
+        AddLetters2Plots(main_fig_rate, letters, 'FontSize', 18, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.033, 'Location', 'NorthWest');
     else
         error('more than 26 subplots, out of letters')
     end
