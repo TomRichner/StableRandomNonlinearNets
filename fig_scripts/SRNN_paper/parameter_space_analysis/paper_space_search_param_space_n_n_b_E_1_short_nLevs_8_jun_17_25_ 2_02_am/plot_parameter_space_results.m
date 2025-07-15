@@ -12,17 +12,15 @@ clc;
 
 % Define whether to plot raw counts or probability density function (PDF)
 % Options: 'counts' or 'pdf'
-counts_or_pdf = 'pdf'; % User can change this to 'pdf'
-invisible_y_axis = true;
+counts_or_pdf = 'counts'; % User can change this to 'pdf'
 
 % Define LLE histogram parameters
-% lle_range = [-1.5, 1.5];
-lle_range = [-1, 1];
+lle_range = [-1.5, 1.5];
 n_bins_lle = 25;
 lle_bins = [-inf, linspace(lle_range(1), lle_range(2), n_bins_lle), inf];
 
 % Define Mean Firing Rate histogram parameters
-rate_range = [0, 10];
+rate_range = [0, 15];
 n_bins_rate = 25;
 % For rate, we use a lower bound of 0 instead of -inf
 % We use n_bins_rate intervals, so we need n_bins_rate+1 edges for linspace
@@ -32,9 +30,8 @@ rate_bins = [linspace(rate_range(1), rate_range(2), n_bins_rate + 1), inf];
 outer_bin_width_multiplier = 1;
 
 % Define manual ticks for the plots
-% middle_ticks_lle = [-1.0, 0, 1.0];
-middle_ticks_lle = [0];
-middle_ticks_rate = [0, 5];
+middle_ticks_lle = [-1.0, 0, 1.0];
+middle_ticks_rate = [0, 5, 10];
 
 % Readable titles for conditions
 condition_titles = containers.Map(...
@@ -102,14 +99,14 @@ for i = 1:num_conditions
 end
 
 %% Create the plots
-% Create a single figure with num_conditions rows x 2 columns
-fig_main = figure('Name', 'LLE and Mean Rate Distributions', 'Position', [100, 100, 640, 1200]);
+% Create a single 2x4 figure
+fig_main = figure('Name', 'LLE and Mean Rate Distributions', 'Position', [100, 100, 1200, 640]);
 
-% --- LLE Plots (Column 1) ---
-ax_lle = gobjects(num_conditions, 1); % Store axes handles for linking
+% --- LLE Plots (Row 1) ---
+ax_lle = gobjects(1, num_conditions); % Store axes handles for linking
 for i = 1:num_conditions
     condition_name = conditions_to_plot{i};
-    ax_lle(i) = subplot(num_conditions, 2, 2*i-1); % Column 1, row i
+    ax_lle(i) = subplot(2, num_conditions, i);
     
     % Get histogram counts using the original infinite bins
     [counts, ~] = histcounts(extracted_values.(condition_name).lles, lle_bins);
@@ -126,8 +123,7 @@ for i = 1:num_conditions
     if strcmpi(counts_or_pdf, 'pdf')
         % Calculate PDF values. The total area will be 1.
         bin_widths = diff(lle_bins_finite);
-        % plot_values = counts ./ (n_bins_lle * total_samples * bin_widths);
-        plot_values = counts ./ (sum(counts) .* bin_widths);
+        plot_values = counts ./ (total_samples * bin_widths);
         y_label_text = 'Probability Density';
     else % Default to counts
         plot_values = counts;
@@ -135,34 +131,15 @@ for i = 1:num_conditions
     end
 
     % Plot using histogram object with specified values and finite bins
-    h = histogram('BinEdges', lle_bins_finite, 'BinCounts', plot_values, 'EdgeColor', 'none', 'FaceColor', [0.5 0.5 0.5]);
+    h = histogram('BinEdges', lle_bins_finite, 'BinCounts', plot_values);
 
-    % Add x-label only to the bottom row
-    if i == num_conditions
-        xlabel('LLE (\lambda_1)','FontSize',22);
-    end
-    % Add y-label with condition name to each row
-    if i == 1
-        % Always use text for ylabel
-        text(-0.2, 0.5, sprintf('%s\n%s', condition_titles(condition_name), ''), ...
-            'Units', 'normalized', 'Rotation', 90, 'FontSize', 22, ...
-            'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle');
-        text(-0.18, 0.5, sprintf('%s\n%s', '', y_label_text), ...
-            'Units', 'normalized', 'Rotation', 90, 'FontSize', 18, ...
-            'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle');
-    else
-        % Always use text for ylabel
-        text(-0.2, 0.5, sprintf('%s\n%s', condition_titles(condition_name), ''), ...
-            'Units', 'normalized', 'Rotation', 90, 'FontSize', 22, ...
-            'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle');
+    title(condition_titles(condition_name), 'FontSize', 18, 'FontWeight','normal');
+    xlabel('LLE (\lambda_1)');
+    if i == 1 % Only label the y-axis on the first plot of the row
+        ylabel(y_label_text);
     end
     % grid on;
     box off;
-    
-    % Make y-axis invisible if requested
-    if invisible_y_axis
-        set(gca, 'YTick', [], 'YTickLabel', [], 'YColor', 'none');
-    end
     
     % --- Custom Tick Labeling ---
     ax = gca;
@@ -187,11 +164,11 @@ for i = 1:num_conditions
     ax.XTickLabelRotation = 45;
 end
 
-% --- Mean Rate Plots (Column 2) ---
-ax_rate = gobjects(num_conditions, 1); % Store axes handles for linking
+% --- Mean Rate Plots (Row 2) ---
+ax_rate = gobjects(1, num_conditions); % Store axes handles for linking
 for i = 1:num_conditions
     condition_name = conditions_to_plot{i};
-    ax_rate(i) = subplot(num_conditions, 2, 2*i); % Column 2, row i
+    ax_rate(i) = subplot(2, num_conditions, i + num_conditions);
     
     % Get histogram counts using the original bins
     [counts, ~] = histcounts(extracted_values.(condition_name).mean_rates, rate_bins);
@@ -209,8 +186,7 @@ for i = 1:num_conditions
     if strcmpi(counts_or_pdf, 'pdf')
         % Calculate PDF values. The total area will be 1.
         bin_widths = diff(rate_bins_finite);
-        % plot_values = counts ./ (n_bins_rate * total_samples * bin_widths);
-        plot_values = counts ./ (sum(counts) .* bin_widths);
+        plot_values = counts ./ (total_samples * bin_widths);
         y_label_text = 'Probability Density';
     else % Default to counts
         plot_values = counts;
@@ -218,20 +194,15 @@ for i = 1:num_conditions
     end
 
     % Plot using histogram object with specified values and finite bins
-    h = histogram('BinEdges', rate_bins_finite, 'BinCounts', plot_values, 'EdgeColor', 'none', 'FaceColor', [0.5 0.5 0.5]);
+    h = histogram('BinEdges', rate_bins_finite, 'BinCounts', plot_values);
 
-    % Add x-label only to the bottom row
-    if i == num_conditions
-        xlabel('Mean Firing Rate (Hz)','FontSize',22);
+    title(condition_titles(condition_name), 'FontSize', 18, 'FontWeight','normal');
+    xlabel('Mean Firing Rate (Hz)');
+    if i == 1 % Only label the y-axis on the first plot of the row
+        ylabel(y_label_text);
     end
-    
     % grid on;
     box off;
-    
-    % Make y-axis invisible if requested
-    if invisible_y_axis
-        set(gca, 'YTick', [], 'YTickLabel', [], 'YColor', 'none');
-    end
     
     % --- Custom Tick Labeling ---
     ax = gca;
@@ -254,9 +225,7 @@ for i = 1:num_conditions
     ax.XTickLabelRotation = 45;
 end
 
-% Link all y-axes together
-% all_axes = [ax_lle; ax_rate];
-% linkaxes(all_axes, 'y');
+% Link the y-axes for each row
 linkaxes(ax_lle, 'y');
 linkaxes(ax_rate, 'y');
 
@@ -265,7 +234,7 @@ num_subplots = 2 * num_conditions;
 if num_subplots > 0
     if num_subplots <= 26
         letters = arrayfun(@(x) sprintf('(%c)', x), 'a':char('a' + num_subplots - 1), 'UniformOutput', false);
-        AddLetters2Plots(fig_main, letters, 'FontSize', 20, 'FontWeight', 'Normal', 'HShift', -0.027, 'VShift', -0.03, 'Location', 'NorthWest');
+        AddLetters2Plots(fig_main, letters, 'FontSize', 18, 'FontWeight', 'Normal', 'HShift', -0.027, 'VShift', -0.05, 'Location', 'NorthWest');
     else
         error('More than 26 subplots, cannot add panel letters.');
     end
@@ -281,4 +250,4 @@ fprintf('\nSaving figure to: %s\n', output_dir_for_figs);
 save_some_figs_to_folder_2(output_dir_for_figs, 'LLE_and_rate_distributions', fig_main.Number, {'fig', 'svg', 'png'});
 
 fprintf('Plotting complete.\n');
-beep; pause(0.5); beep % wake up
+beep; 
