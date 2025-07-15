@@ -441,16 +441,10 @@ end
 %% Make plots using the plotting function
 
 % Call the plotting function
-% if ~strcmpi(Lya_method, 'none') && ~isempty(fieldnames(lya_results))
-%     SRNN_tseries_plot(t, u_ex, r, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T, Lya_method, lya_results);
-% else
-%     SRNN_tseries_plot(t, u_ex, r, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T, Lya_method);
-% end
-
 if ~strcmpi(Lya_method, 'none') && ~isempty(fieldnames(lya_results))
-    SRNN_tseries_figure(t, u_ex, r, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T, Lya_method, lya_results);
+    SRNN_tseries_plot(t, u_ex, r, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T, Lya_method, lya_results);
 else
-    SRNN_tseries_figure(t, u_ex, r, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T, Lya_method);
+    SRNN_tseries_plot(t, u_ex, r, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T, Lya_method);
 end
 
 figure(1)
@@ -480,12 +474,12 @@ end
 
 
 %% save the figs
-% warning('not saving figs')
-disp('Saving figures...');
-save_folder = fullfile(fileparts(mfilename('fullpath')), 'v2_output_figs');
-save_name = ['example_tseries_seed' num2str(seed)];
-save_some_figs_to_folder_2(save_folder, save_name, [], []);
-disp(['Figures saved to ' save_folder]);
+warning('not saving figs')
+% disp('Saving figures...');
+% save_folder = fullfile(fileparts(mfilename('fullpath')), 'output_figs');
+% save_name = ['example_tseries_seed' num2str(seed)];
+% save_some_figs_to_folder_2(save_folder, save_name, [], []);
+% disp(['Figures saved to ' save_folder]);
 
 
 
