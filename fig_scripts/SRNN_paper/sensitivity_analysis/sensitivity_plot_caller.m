@@ -197,9 +197,8 @@ if num_subplots > 0
     end
 end
 % Save the combined figures
-warning('Not saving for now while developing')
-save_some_figs_to_folder_2(output_dir_base, 'sensitivity_LLE_comparison_all_params', main_fig_lle.Number, {'png', 'svg', 'fig'});
-save_some_figs_to_folder_2(output_dir_base, 'sensitivity_rate_comparison_all_params', main_fig_rate.Number, {'png', 'svg', 'fig'});
+save_some_figs_to_folder_2([output_dir_base filesep 'lle_fig'], 'sensitivity_LLE_comparison_all_params', main_fig_lle.Number, {'png', 'svg', 'fig'});
+save_some_figs_to_folder_2([output_dir_base filesep 'rate_fig'], 'sensitivity_rate_comparison_all_params', main_fig_rate.Number, {'png', 'svg', 'fig'});
 
 % close(main_fig_lle); % Don't close figure after saving to allow inspection
 % close(main_fig_rate);
