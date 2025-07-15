@@ -108,8 +108,8 @@ n_params = length(unique_param_names);
 n_conditions = length(conditions);
 
 % Create a separate large figure for each metric
-main_fig_lle = figure('Name', 'LLE Sensitivity', 'Position', [100, 100, 250 * n_params, 250 * n_conditions], 'Visible', 'on');
-main_fig_rate = figure('Name', 'Mean Rate Sensitivity', 'Position', [150, 150, 250 * n_params, 250 * n_conditions], 'Visible', 'on');
+main_fig_lle = figure('Name', 'LLE Sensitivity', 'Position', [100, 100, 250 * n_conditions, 250 * n_params], 'Visible', 'on');
+main_fig_rate = figure('Name', 'Mean Rate Sensitivity', 'Position', [150, 150, 250 * n_conditions, 250 * n_params], 'Visible', 'on');
 
 %% Process each parameter across all conditions
 for i = 1:n_params
@@ -168,15 +168,15 @@ for i = 1:n_params
 
         % --- LLE Plot ---
         figure(main_fig_lle);
-        subplot_idx = (c_idx - 1) * n_params + i;
-        sp_ax_lle = subplot(n_conditions, n_params, subplot_idx);
+        subplot_idx = (i - 1) * n_conditions + c_idx;
+        sp_ax_lle = subplot(n_params, n_conditions, subplot_idx);
         plot_single_metric(sp_ax_lle, param_file, lle_bins, 'LLE', '$\lambda_1$', ...
                            param_name, condition_name, condition_title, ...
                            x_label_str, scale_factor, i, c_idx, y_ticks_lle);
         
         % --- Mean Rate Plot ---
         figure(main_fig_rate);
-        sp_ax_rate = subplot(n_conditions, n_params, subplot_idx);
+        sp_ax_rate = subplot(n_params, n_conditions, subplot_idx);
         plot_single_metric(sp_ax_rate, param_file, rate_bins, 'mean_rate', 'Mean Rate (Hz)', ...
                            param_name, condition_name, condition_title, ...
                            x_label_str, scale_factor, i, c_idx, y_ticks_rate);
@@ -195,9 +195,8 @@ if num_subplots > 0
     end
 end
 % Save the combined figures
-warning('Not saving for now while developing')
-% save_some_figs_to_folder_2(output_dir_base, 'sensitivity_LLE_comparison_all_params', main_fig_lle.Number, {'png', 'svg', 'fig'});
-% save_some_figs_to_folder_2(output_dir_base, 'sensitivity_rate_comparison_all_params', main_fig_rate.Number, {'png', 'svg', 'fig'});
+save_some_figs_to_folder_2(output_dir_base, 'sensitivity_LLE_comparison_all_params', main_fig_lle.Number, {'png', 'svg', 'fig'});
+save_some_figs_to_folder_2(output_dir_base, 'sensitivity_rate_comparison_all_params', main_fig_rate.Number, {'png', 'svg', 'fig'});
 
 % close(main_fig_lle); % Don't close figure after saving to allow inspection
 % close(main_fig_rate);
