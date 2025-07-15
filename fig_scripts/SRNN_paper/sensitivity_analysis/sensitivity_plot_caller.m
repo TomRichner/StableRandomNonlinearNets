@@ -172,14 +172,16 @@ for i = 1:n_params
         sp_ax_lle = subplot(n_conditions, n_params, subplot_idx);
         plot_single_metric(sp_ax_lle, param_file, lle_bins, 'LLE', '$\lambda_1$', ...
                            param_name, condition_name, condition_title, ...
-                           x_label_str, scale_factor, i, c_idx, y_ticks_lle);
+                           x_label_str, scale_factor, i, c_idx, y_ticks_lle, ...
+                           n_conditions, n_params);
         
         % --- Mean Rate Plot ---
         figure(main_fig_rate);
         sp_ax_rate = subplot(n_conditions, n_params, subplot_idx);
         plot_single_metric(sp_ax_rate, param_file, rate_bins, 'mean_rate', 'Mean Rate (Hz)', ...
                            param_name, condition_name, condition_title, ...
-                           x_label_str, scale_factor, i, c_idx, y_ticks_rate);
+                           x_label_str, scale_factor, i, c_idx, y_ticks_rate, ...
+                           n_conditions, n_params);
     end
 end
 %% add letter to each figure
@@ -188,16 +190,16 @@ if num_subplots > 0
     % Generate letters (a), (b), ... up to (z)
     if num_subplots <= 26
         letters = arrayfun(@(x) sprintf('(%c)', x), 'a':char('a'+num_subplots-1), 'UniformOutput', false);
-        AddLetters2Plots(main_fig_lle, letters, 'FontSize', 18, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.033, 'Location', 'NorthWest');
-        AddLetters2Plots(main_fig_rate, letters, 'FontSize', 18, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.033, 'Location', 'NorthWest');
+        AddLetters2Plots(main_fig_lle, letters, 'FontSize', 20, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.033, 'Location', 'NorthWest');
+        AddLetters2Plots(main_fig_rate, letters, 'FontSize', 20, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.033, 'Location', 'NorthWest');
     else
         error('more than 26 subplots, out of letters')
     end
 end
 % Save the combined figures
 warning('Not saving for now while developing')
-% save_some_figs_to_folder_2(output_dir_base, 'sensitivity_LLE_comparison_all_params', main_fig_lle.Number, {'png', 'svg', 'fig'});
-% save_some_figs_to_folder_2(output_dir_base, 'sensitivity_rate_comparison_all_params', main_fig_rate.Number, {'png', 'svg', 'fig'});
+save_some_figs_to_folder_2(output_dir_base, 'sensitivity_LLE_comparison_all_params', main_fig_lle.Number, {'png', 'svg', 'fig'});
+save_some_figs_to_folder_2(output_dir_base, 'sensitivity_rate_comparison_all_params', main_fig_rate.Number, {'png', 'svg', 'fig'});
 
 % close(main_fig_lle); % Don't close figure after saving to allow inspection
 % close(main_fig_rate);
@@ -208,18 +210,10 @@ fprintf('Plots saved to: %s\n', output_dir_base);
 
 function plot_single_metric(sp_ax, param_file, hist_bins, metric_name, y_label_metric, ...
                             param_name, condition_name, condition_title, ...
-                            x_label_str, scale_factor, i, c_idx, custom_y_ticks)
+                            x_label_str, scale_factor, i, c_idx, custom_y_ticks, ...
+                            n_conditions, n_params)
     if ~exist(param_file, 'file')
-        fprintf('Warning: File not found: %s. Skipping plot for this condition.\n', param_file);
-        if i == 1
-            title(strrep(condition_name, '_', ' '));
-        end
-        if c_idx == 1
-            ylabel(sp_ax, strrep(param_name, '_', '\_'));
-        end
-        axis off;
-        text(0.5, 0.5, 'Data not found', 'HorizontalAlignment', 'center', 'Parent', sp_ax);
-        return;
+        error(['File not found: ' param_file])
     end
     
     try
@@ -251,21 +245,35 @@ function plot_single_metric(sp_ax, param_file, hist_bins, metric_name, y_label_m
         end
         
         % Set titles and labels for the grid
-        if i == 1           % top-row → write condition title
-            title(sp_ax, condition_title, ...
-                  'Interpreter','none', ...   % plain text
-                  'FontWeight','normal');     % not bold
+        if i == 1           % first column → add rotated condition label on left
+            % Add rotated condition name to the left of the y-axis
+            ylim_current = ylim(sp_ax);
+            y_center = mean(ylim_current);
+            xlim_current = xlim(sp_ax);
+            x_left_offset = xlim_current(1) - 0.375 * (xlim_current(2) - xlim_current(1)); % Position to the left
+            
+            text(x_left_offset, y_center, condition_title, ...
+                'Rotation', 90, ...
+                'HorizontalAlignment', 'center', ...
+                'VerticalAlignment', 'bottom', ...
+                'FontSize', 22, ...
+                'Parent', sp_ax);
         end
         
         % Set y-label for the first column only
-        if c_idx == 1 
-            ylabel(sp_ax, y_label_metric, 'Interpreter', 'latex', 'FontSize', 22);
+        if i == 1 
+            yl = ylabel(sp_ax, y_label_metric, 'Interpreter', 'latex', 'FontSize', 22);
+            yl_pos = get(yl, 'Position');
+            set(yl, 'Position', [yl_pos(1) * 0.75, yl_pos(2), yl_pos(3)]); % Move closer by reducing x-offset
         end
 
         % Set custom x-label for the row, assuming LaTeX interpreter
-        xlabel(sp_ax, x_label_str, ...
-               'Interpreter','none', ...      % plain text
-               'FontWeight','normal');
+        if c_idx == n_conditions
+            xlabel(sp_ax, x_label_str, ...
+                   'Interpreter','none', ...      % plain text
+                   'FontWeight','normal',...
+                   'FontSize',20);
+        end
         
         % Rescale x-ticks if a factor is specified
         if scale_factor ~= 1.0
@@ -284,8 +292,5 @@ function plot_single_metric(sp_ax, param_file, hist_bins, metric_name, y_label_m
         if ~isempty(ME.stack)
             fprintf('  Location: %s (line %d)\n', ME.stack(1).name, ME.stack(1).line);
         end
-        % Also set labels for error plots for grid consistency
-        if i == 1, title(sp_ax, strrep(condition_name, '_', ' ')); end
-        if c_idx == 1, ylabel(sp_ax, strrep(param_name, '_', '\_')); end
     end
 end 
