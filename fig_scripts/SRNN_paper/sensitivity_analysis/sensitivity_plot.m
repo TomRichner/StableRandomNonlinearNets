@@ -208,6 +208,23 @@ function fig_handle = sensitivity_plot(param_file, hist_edges_with_inf, variable
         end
     end
 
+    % Ensure there are at most 3 x ticks
+    max_n_x_ticks = 3;
+    current_xticks = xticks;
+    if max_n_x_ticks < numel(current_xticks)
+        % Keep first, last, and most central tick
+        first_tick = current_xticks(1);
+        last_tick = current_xticks(end);
+        
+        % Find the most central tick
+        middle_idx = round(length(current_xticks) / 2);
+        central_tick = current_xticks(middle_idx);
+        
+        new_xticks = [first_tick, central_tick, last_tick];
+        xticks(sort(unique(new_xticks))); % Use unique to avoid duplicate ticks
+    end
+
+
     % Add grid lines for better readability
     % hold on;
     % for i = 1:length(param_levels)
