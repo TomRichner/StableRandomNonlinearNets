@@ -1,4 +1,4 @@
-function SRNN_tseries_figure(t, u_ex, r_ts, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T_plot_limits, Lya_method, varargin)
+function SRNN_tseries_figure(t, u_ex, r_ts, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T_plot_limits, Lya_method, sr_or_poisson, varargin)
 % SRNN_tseries_plot - Plot time series results from SRNN simulation
 %
 % Inputs:
@@ -13,6 +13,7 @@ function SRNN_tseries_figure(t, u_ex, r_ts, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_
 %   params   - Parameter structure
 %   T_plot_limits - Time interval [T_start, T_end] for x-axis limits
 %   Lya_method - Lyapunov calculation method ('benettin', 'qr', or 'none')
+%   sr_or_poisson - 'sr' for spike rate plot, 'poisson' for raster plot
 %   varargin - Optional Lyapunov results struct
 
 % Parse optional Lyapunov inputs
@@ -43,16 +44,27 @@ E_indices = params.E_indices; % from params struct
 I_indices = params.I_indices; % from params struct
 M = params.M; % from params struct
 
+% Set default for sr_or_poisson if not provided
+if nargin < 12 || isempty(sr_or_poisson)
+    sr_or_poisson = 'sr';
+end
 
 %% Make plots
 
-figure('Position', [100, 100, 740, 900]);
+figure('Position', [100, 100, 740, 940]);
 
-num_subplots = 5;
+num_subplots_base = 5;
 if ~strcmpi(Lya_method, 'none')
-    num_subplots = 6;
+    num_subplots_base = 6;
 end
-ax_handles = gobjects(num_subplots, 1);
+
+plot_offset = 0;
+if strcmpi(sr_or_poisson, 'poisson')
+    plot_offset = 1;
+end
+num_subplots = num_subplots_base + plot_offset;
+
+ax_handles = gobjects(num_subplots_base, 1);
 
 plot_indices = round(linspace(1, nt, min(nt, 2000)));
 t_display = t(plot_indices);
@@ -65,7 +77,7 @@ if any(has_stim)
 else
     plot(t_display, zeros(length(t_display),1)); 
 end
-ylabel('External Input');
+ylabel('Input');
 box off;
 set(gca, 'XTickLabel', []);
 set(gca, 'XTick', []);
@@ -88,27 +100,145 @@ set(gca, 'XTickLabel', []);
 set(gca, 'XTick', []);
 leg = legend;
 leg_pos = leg.Position;
-leg.Position = [leg_pos(1) - 0.000, leg_pos(2) + 0.03, leg_pos(3), leg_pos(4)]; % move this legend up and left a bit
+leg.Position = [leg_pos(1) - 0.4, leg_pos(2) + 0.031, leg_pos(3), leg_pos(4)]; % move this legend up and left a bit
 leg.Box = 'off';
 
-% Subplot 3: Firing rates r_ts (was subplot 2)
-ax_handles(3) = subplot(num_subplots, 1, 3);
-hold on;
-if ~isempty(I_indices)
-    plot(t_display, r_ts(I_indices, plot_indices)', 'r');
+% Subplot 3: Firing rates r_ts or Poisson raster plot
+if strcmpi(sr_or_poisson, 'poisson')
+    ax_handles(3) = subplot(num_subplots, 1, 3:4);
+else
+    ax_handles(3) = subplot(num_subplots, 1, 3);
 end
-if ~isempty(E_indices)
-    set(gca,'ColorOrderIndex',1); 
-    plot(t_display, r_ts(E_indices, plot_indices)');
+
+if strcmpi(sr_or_poisson, 'poisson')
+    % Poisson raster plot implementation
+    step_factor = 1;  % sample every dt for Poisson draw
+    dt = t(2) - t(1);  % time step from input
+    dt_poisson = step_factor * dt;
+    
+    % Down-sample the spike-rate matrix
+    idx_sample = 1:step_factor:nt;
+    t_sample = t(idx_sample);
+    r_sample = r_ts(:, idx_sample);
+    
+    % Poisson draw: number of spikes per bin ~ Poisson(lambda)
+    lambda = r_sample * dt_poisson;  % expected spikes per bin
+    spike_counts = poissrnd(lambda);
+    
+    % Find all (neuron, time) bins with ≥1 spike
+    [spk_neuron, spk_time_idx] = find(spike_counts > 0);
+    spk_times = t_sample(spk_time_idx);
+    counts_in_bin = spike_counts(sub2ind(size(spike_counts), spk_neuron, spk_time_idx));
+    
+    % Dither extra spikes in time instead of making taller ticks
+    % Create arrays to hold all individual spike times and neuron IDs
+    all_spike_times = [];
+    all_spike_neurons = [];
+    
+    dither_amount = dt_poisson * 5; % Dither within ±30% of the bin width
+    
+    for i = 1:length(spk_times)
+        n_spikes = counts_in_bin(i);
+        base_time = spk_times(i);
+        neuron_id = spk_neuron(i);
+        
+        if n_spikes == 1
+            % Single spike - no dithering needed
+            all_spike_times = [all_spike_times; base_time];
+            all_spike_neurons = [all_spike_neurons; neuron_id];
+        else
+            % Multiple spikes - dither them around the base time
+            dithered_times = base_time + dither_amount * randn(n_spikes, 1);
+            all_spike_times = [all_spike_times; dithered_times];
+            all_spike_neurons = [all_spike_neurons; repmat(neuron_id, n_spikes, 1)];
+        end
+    end
+    
+    % Plot parameters for vertical ticks
+    tick_base_height_val = 0.75;  % Base height for a single spike
+    tick_line_width = 2;
+    inh_color_rgb = [1 0 0];  % Red for inhibitory
+    
+    % Get colormap for excitatory neurons
+    if ~isempty(E_indices)
+        cmap_exc = lines(numel(E_indices));
+    else
+        cmap_exc = [];
+    end
+    
+    hold on;
+    
+    % Plot inhibitory neurons first (red)
+    if ~isempty(I_indices)
+        for k_loop_inh = 1:numel(I_indices)
+            n_neuron = I_indices(k_loop_inh);
+            spike_indices_for_neuron = find(all_spike_neurons == n_neuron);
+            
+            for i_spike = 1:length(spike_indices_for_neuron)
+                spike_idx = spike_indices_for_neuron(i_spike);
+                x_time = all_spike_times(spike_idx);
+                y_center = n_neuron;
+                
+                % All spikes have the same height now
+                current_tick_h = tick_base_height_val;
+                y_coords = [y_center - current_tick_h/2, y_center + current_tick_h/2];
+                
+                plot([x_time x_time], y_coords, ...
+                     'Color', inh_color_rgb, ...
+                     'LineWidth', tick_line_width);
+            end
+        end
+    end
+    
+    % Plot excitatory neurons with lines colormap
+    if ~isempty(E_indices)
+        for k_loop_exc = 1:numel(E_indices)
+            n_neuron = E_indices(k_loop_exc);
+            spike_indices_for_neuron = find(all_spike_neurons == n_neuron);
+            neuron_color_rgb = cmap_exc(k_loop_exc, :);
+            
+            for i_spike = 1:length(spike_indices_for_neuron)
+                spike_idx = spike_indices_for_neuron(i_spike);
+                x_time = all_spike_times(spike_idx);
+                y_center = n_neuron;
+                
+                % All spikes have the same height now
+                current_tick_h = tick_base_height_val;
+                y_coords = [y_center - current_tick_h/2, y_center + current_tick_h/2];
+                
+                plot([x_time x_time], y_coords, ...
+                     'Color', neuron_color_rgb, ...
+                     'LineWidth', tick_line_width);
+            end
+        end
+    end
+    
+    hold off;
+    ylabel('Spike Raster');
+    ylim([0 n+0.5]);
+    yticks([])
+    set(gca, 'XColor', 'none');
+    
+else
+    % Original spike rate plot
+    hold on;
+    if ~isempty(I_indices)
+        plot(t_display, r_ts(I_indices, plot_indices)', 'r');
+    end
+    if ~isempty(E_indices)
+        set(gca,'ColorOrderIndex',1); 
+        plot(t_display, r_ts(E_indices, plot_indices)');
+    end
+    hold off;
+    ylabel('Spike Rate');
 end
-hold off;
-ylabel('Spike Rate');
+
 box off;
 set(gca, 'XTickLabel', []);
 set(gca, 'XTick', []);
 
 % Subplot 4: SFA sum (was subplot 3)
-ax_handles(4) = subplot(num_subplots, 1, 4);
+ax_handles(4) = subplot(num_subplots, 1, 4 + plot_offset);
 a_sum_plot = zeros(n, nt); % Initialize as n x nt
 if params.n_E > 0 && params.n_a_E > 0 && ~isempty(a_E_ts)
     % a_E_ts is n_E x n_a_E x nt. sum across 2nd dim -> n_E x 1 x nt. Squeeze -> n_E x nt
@@ -139,14 +269,14 @@ if params.n_a_E <= 1 && params.n_a_I <= 1
     ylabel({'Spike Freq. Adapt., a'});
 else
     % ylabel({'Spike Freq. Adapt.', '$\sum\limits_k a_k$'}, 'Interpreter', 'latex');
-    ylabel({'Spike Frequency', 'Adaptation'});
+    ylabel({'Spike Freq.', 'Adaptation'});
 end
 box off;
 set(gca, 'XTickLabel', []);
 set(gca, 'XTick', []);
 
 % Subplot 5: STD product (was subplot 4)
-ax_handles(5) = subplot(num_subplots, 1, 5);
+ax_handles(5) = subplot(num_subplots, 1, 5 + plot_offset);
 b_prod_plot = ones(n, nt); % Initialize as n x nt, default product is 1
 if params.n_E > 0 && params.n_b_E > 0 && ~isempty(b_E_ts)
     % b_E_ts is n_E x n_b_E x nt. prod across 2nd dim -> n_E x 1 x nt. Squeeze -> n_E x nt
@@ -175,13 +305,13 @@ end
 hold off;
 if params.n_b_E <= 1 && params.n_b_I <= 1
     % ylabel({'Syn. Dep., b'});
-    ylabel({'Short-Term', 'Synaptic Depression'})
+    ylabel({'Short-Term', 'Syn. Dep.'})
 else
     ylabel({'Syn. Dep.','$\prod\limits_m b_m$'}, 'Interpreter', 'latex');
 end
 box off;
 ylim([0 1.1]); 
-if num_subplots == 5
+if num_subplots_base == 5
     xlabel('Time (s)');
 else
     set(gca, 'XTickLabel', []);
@@ -190,7 +320,7 @@ end
 
 % Subplot 6: Lyapunov Exponents (was subplot 5, if calculated)
 if ~strcmpi(Lya_method, 'none')
-    ax_handles(6) = subplot(num_subplots, 1, 6);
+    ax_handles(6) = subplot(num_subplots, 1, 6 + plot_offset);
     hold on;
     if strcmpi(Lya_method, 'benettin')
         % Check if there is any Lyapunov data to plot.
@@ -236,10 +366,11 @@ if ~strcmpi(Lya_method, 'none')
     hold off;
     ylabel({'Lyapunov', 'Exponent'});
     xlabel('Time (s)');
-    legend('show', 'Location', 'best','FontSize',10);
-    grid on;
+    % legend('show', 'Location', 'best','FontSize',10);
+    leg = legend('show', 'Location', 'North');
+    leg.Box = 'off';
     box off;
-    ylim([-0.25 0.25])
+    ylim([-0.15 0.15])
 end
 
 % Link all subplots' x-axes and set limits

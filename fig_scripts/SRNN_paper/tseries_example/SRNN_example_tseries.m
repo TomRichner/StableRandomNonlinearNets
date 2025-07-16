@@ -7,7 +7,7 @@ clc
 tic
 
 %% 
-seed = 1;
+seed = 42;
 rng(seed,'twister');
 
 %% Network
@@ -16,7 +16,7 @@ n = 10; % number of neurons
 Lya_method = 'benettin'; % 'benettin', 'qr', 'svd', or 'none'
 use_Jacobian = false; 
 
-mean_in_out_degree = 3; % desired mean number of connections in and out
+mean_in_out_degree = 4; % desired mean number of connections in and out
 density = mean_in_out_degree/(n-1); % each neuron can make up to n-1 connections with other neurons
 sparsity = 1-density;
 
@@ -36,7 +36,7 @@ EI_vec = EI_vec(:); % make it a column
 %% Time
 fs = 1000; %Plotting sample frequency
 dt = 1/fs;
-T = [-30 15];
+T = [-30 70];
 
 T_lya_1 = -15; % s, time to start Lyapunov calculation warmup
 % T_lya_1 = T(1); % s, time to start Lyapunov calculation warmup
@@ -57,12 +57,22 @@ t = linspace(T(1), T(2), nt)'; % Plotting time vector
 u_ex = zeros(n, nt);
 % sine and square wave stim
 stim_b0 = 0.5; amp = 0.5;
-dur = 3; % duration of sine
-f_sin = 1.*ones(1,fs*dur);
+dur = 3*5; % duration of sine
+f_sin = 0.2.*ones(1,fs*dur);
 % f_sin = logspace(log10(0.5),log10(3),fs*5);
-u_ex(1,-t(1)*fs+fix(fs*6)+(1:fix(fs*dur))) = stim_b0+amp.*sign(sin(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))'));
-u_ex(1,-t(1)*fs+fix(fs*1)+(1:fix(fs*dur))) = stim_b0+amp.*-cos(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))');
-u_ex = u_ex*1;
+% u_ex(1,-t(1)*fs+fix(fs*6)+(1:fix(fs*dur))) = stim_b0+amp.*sign(sin(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))'));
+% u_ex(1,-t(1)*fs+fix(fs*1)+(1:fix(fs*dur))) = stim_b0+amp.*-cos(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))');
+
+% u_ex(1,-t(1)*fs+fix(fs*60)+(1:fix(fs*dur))) = stim_b0+amp.*sign(sin(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))'));
+% u_ex(1,-t(1)*fs+fix(fs*10)+(1:fix(fs*dur))) = stim_b0+amp.*-cos(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))');
+
+% u_ex(1:5,-t(1)*fs+fix(fs*60)+(1:fix(fs*dur))) = 1*[1;2;3;4;5]*(stim_b0+amp.*sign(sin(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))')));
+% u_ex(1:5,-t(1)*fs+fix(fs*10)+(1:fix(fs*dur))) = 1*[1;2;3;4;5]*(stim_b0+amp.*-cos(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))'));
+
+u_ex(1:3,-t(1)*fs+fix(fs*30)+(1:fix(fs*dur))) = 1*[3;2;1]*(stim_b0+amp.*sign(sin(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))')));
+u_ex(1:3,-t(1)*fs+fix(fs*5)+(1:fix(fs*dur))) = 1*[3;2;1]*(stim_b0+amp.*-cos(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))'));
+
+u_ex = 1.5*u_ex;
 % u_ex = u_ex(:,1:nt);
 DC = 0.1;
 % Ramp up to DC over the first 5 seconds from t=T(1)
@@ -447,14 +457,16 @@ end
 %     SRNN_tseries_plot(t, u_ex, r, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T, Lya_method);
 % end
 
+sr_or_poisson = 'poisson';
+
 if ~strcmpi(Lya_method, 'none') && ~isempty(fieldnames(lya_results))
-    SRNN_tseries_figure(t, u_ex, r, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T, Lya_method, lya_results);
+    SRNN_tseries_figure(t, u_ex, r, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T, Lya_method, sr_or_poisson, lya_results);
 else
-    SRNN_tseries_figure(t, u_ex, r, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T, Lya_method);
+    SRNN_tseries_figure(t, u_ex, r, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T, Lya_method, sr_or_poisson);
 end
 
 figure(1)
-xlim([0 10])
+xlim([0 47])
 
 % add subplots
 
@@ -480,12 +492,12 @@ end
 
 
 %% save the figs
-warning('not saving figs')
-% disp('Saving figures...');
-% save_folder = fullfile(fileparts(mfilename('fullpath')), 'v2_output_figs');
-% save_name = ['example_tseries_seed' num2str(seed)];
-% save_some_figs_to_folder_2(save_folder, save_name, [], []);
-% disp(['Figures saved to ' save_folder]);
+% warning('not saving figs')
+disp('Saving figures...');
+save_folder = fullfile(fileparts(mfilename('fullpath')), 'v2_output_figs');
+save_name = ['example_tseries_seed' num2str(seed)];
+save_some_figs_to_folder_2(save_folder, save_name, [], []);
+disp(['Figures saved to ' save_folder]);
 
 
 
