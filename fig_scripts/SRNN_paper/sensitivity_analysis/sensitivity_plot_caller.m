@@ -62,7 +62,7 @@ if ~exist(output_dir_base, 'dir')
 end
 
 % Define LLE histogram parameters
-lle_range = [-1, 1];
+lle_range = [-1.5, 1.5];
 n_bins = 25;
 lle_bins = [-inf, linspace(lle_range(1), lle_range(2), n_bins), inf];
 
@@ -184,22 +184,53 @@ for i = 1:n_params
                            n_conditions, n_params);
     end
 end
-%% add letter to each figure
+
+% %% add letter to each figure
+% num_subplots = n_params * n_conditions;
+% if num_subplots > 0
+%     % Generate letters (a), (b), ... up to (z)
+%     if num_subplots <= 26
+%         letters = arrayfun(@(x) sprintf('(%c)', x), 'a':char('a'+num_subplots-1), 'UniformOutput', false);
+%         AddLetters2Plots(main_fig_lle, letters, 'FontSize', 20, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.033, 'Location', 'NorthWest');
+%         AddLetters2Plots(main_fig_rate, letters, 'FontSize', 20, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.033, 'Location', 'NorthWest');
+%     else
+%         error('more than 26 subplots, out of letters')
+%     end
+% end
+
+%% Add a letter to the first subplot of each row
 num_subplots = n_params * n_conditions;
 if num_subplots > 0
-    % Generate letters (a), (b), ... up to (z)
-    if num_subplots <= 26
-        letters = arrayfun(@(x) sprintf('(%c)', x), 'a':char('a'+num_subplots-1), 'UniformOutput', false);
-        AddLetters2Plots(main_fig_lle, letters, 'FontSize', 20, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.033, 'Location', 'NorthWest');
-        AddLetters2Plots(main_fig_rate, letters, 'FontSize', 20, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.033, 'Location', 'NorthWest');
-    else
-        error('more than 26 subplots, out of letters')
+    letters = cell(1, num_subplots);
+    letter_char_code = 'a';
+    current_subplot_idx = 1;
+
+    if n_conditions > 26
+        error('More than 26 conditions, out of letters for labeling rows.');
     end
+
+    % Iterate through rows (conditions) and columns (parameters) to build
+    % the cell array of labels.
+    for c_idx = 1:n_conditions
+        for i = 1:n_params
+            if i == 1 % Only add a letter to the first column
+                letters{current_subplot_idx} = sprintf('(%c)', letter_char_code);
+                letter_char_code = letter_char_code + 1;
+            else
+                letters{current_subplot_idx} = '';
+            end
+            current_subplot_idx = current_subplot_idx + 1;
+        end
+    end
+
+    AddLetters2Plots(main_fig_lle, letters, 'FontSize', 20, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.033, 'Location', 'NorthWest');
+    AddLetters2Plots(main_fig_rate, letters, 'FontSize', 20, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.033, 'Location', 'NorthWest');
 end
+
 % Save the combined figures
 % warning('not saving figs')
-save_some_figs_to_folder_2([output_dir_base filesep 'lle_fig'], 'sensitivity_LLE_comparison_all_params', main_fig_lle.Number, {'png', 'svg', 'fig'});
-save_some_figs_to_folder_2([output_dir_base filesep 'rate_fig'], 'sensitivity_rate_comparison_all_params', main_fig_rate.Number, {'png', 'svg', 'fig'});
+save_some_figs_to_folder_2([output_dir_base filesep 'lle_fig_v3'], 'sensitivity_LLE_v3', main_fig_lle.Number, {'png', 'svg', 'fig'});
+save_some_figs_to_folder_2([output_dir_base filesep 'rate_fig_v3'], 'sensitivity_rate_v3', main_fig_rate.Number, {'png', 'svg', 'fig'});
 
 % close(main_fig_lle); % Don't close figure after saving to allow inspection
 % close(main_fig_rate);
