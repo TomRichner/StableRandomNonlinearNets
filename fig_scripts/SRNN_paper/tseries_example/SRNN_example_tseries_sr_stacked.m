@@ -486,13 +486,13 @@ sim_t_dived_by_rt = sim_dur./(T(2)-T(1))
 %% Add letters to plot
 fig1 = figure(1);
 % Get axes, excluding legends/colorbars, to determine how many letters.
-axes_in_fig = findall(fig1, 'type', 'axes', '-not', {'Tag', 'legend'}, '-not', {'Tag', 'Colorbar'});
+axes_in_fig = get_axes_of_subplots_in_fig(fig1);
 num_subplots = numel(axes_in_fig);
 
 if num_subplots > 0
     if num_subplots <= 26
         letters = arrayfun(@(x) sprintf('(%c)', x), 'a':char('a'+num_subplots-1), 'UniformOutput', false);
-        AddLetters2Plots(fig1, letters, 'FontSize', 18, 'FontWeight', 'Normal', 'HShift', -0.015, 'VShift', -0.032, 'Location', 'NorthWest');
+        AddLetters2Plots(num2cell(axes_in_fig), letters, 'FontSize', 18, 'FontWeight', 'Normal', 'HShift', -0.015, 'VShift', -0.032, 'Location', 'NorthWest');
     else
         warning('More than 26 subplots in Figure 1, not adding letters.');
     end
@@ -500,7 +500,7 @@ end
 
 
 %% save the figs
-warning('not saving figs')
+% warning('not saving figs')
 disp('Saving figures...');
 save_folder = fullfile(fileparts(mfilename('fullpath')), 'v6_output_figs_sr_stacked_short');
 save_name = ['example_sr_stacked_v6_tseries_seed' num2str(seed)];

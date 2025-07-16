@@ -111,7 +111,12 @@ if isa(Fg_or_axes, 'matlab.ui.Figure')
         if isa(Children(iCh), 'matlab.graphics.axis.Axes') || ...
                 isa(Children(iCh), 'matlab.graphics.axis.GeographicAxes') ||...
                 isa(Children(iCh), 'matlab.graphics.chart.GeographicBubbleChart')
-            lAxes{end + 1} = Children(iCh);
+
+            % Exclude axes that are tagged as internal components
+            ax_tag = get(Children(iCh), 'Tag');
+            if ~strcmp(ax_tag, 'scalebar_text_ax')
+                lAxes{end + 1} = Children(iCh);
+            end
         end
     end
     %sort lAxes by position

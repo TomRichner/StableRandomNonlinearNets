@@ -10,6 +10,10 @@ tic
 seed = 7;
 rng(seed,'twister');
 
+%% plot params
+sr_or_poisson = 'sr_stacked';
+include_sum_E_I_SR = false;
+
 %% Network
 n = 10; % number of neurons
 
@@ -37,7 +41,7 @@ EI_vec = EI_vec(:); % make it a column
 %% Time
 fs = 1000; %Plotting sample frequency
 dt = 1/fs;
-T = [-30 50];
+T = [-30 48];
 
 T_lya_1 = -15; % s, time to start Lyapunov calculation warmup
 % T_lya_1 = T(1); % s, time to start Lyapunov calculation warmup
@@ -449,10 +453,16 @@ end
 %% Make plots using the plotting function
 
 % Call the plotting function
+% if ~strcmpi(Lya_method, 'none') && ~isempty(fieldnames(lya_results))
+%     SRNN_tseries_plot(t, u_ex, r, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T, Lya_method, lya_results);
+% else
+%     SRNN_tseries_plot(t, u_ex, r, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T, Lya_method);
+% end
+
 if ~strcmpi(Lya_method, 'none') && ~isempty(fieldnames(lya_results))
-    SRNN_tseries_plot(t, u_ex, r, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T, Lya_method, lya_results);
+    SRNN_tseries_figure_IED(t, u_ex, r, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T, Lya_method, sr_or_poisson, include_sum_E_I_SR, lya_results);
 else
-    SRNN_tseries_plot(t, u_ex, r, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T, Lya_method);
+    SRNN_tseries_figure_IED(t, u_ex, r, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T, Lya_method, sr_or_poisson, include_sum_E_I_SR);
 end
 
 figure(1)
@@ -468,23 +478,24 @@ sim_t_dived_by_rt = sim_dur./(T(2)-T(1))
 %% Add letters to plot
 fig1 = figure(1);
 % Get axes, excluding legends/colorbars, to determine how many letters.
-axes_in_fig = findall(fig1, 'type', 'axes', '-not', {'Tag', 'legend'}, '-not', {'Tag', 'Colorbar'});
+axes_in_fig = get_axes_of_subplots_in_fig(fig1);
 num_subplots = numel(axes_in_fig);
 
 if num_subplots > 0
     if num_subplots <= 26
         letters = arrayfun(@(x) sprintf('(%c)', x), 'a':char('a'+num_subplots-1), 'UniformOutput', false);
-        AddLetters2Plots(fig1, letters, 'FontSize', 18, 'FontWeight', 'Normal', 'HShift', -0.03, 'VShift', -0.03, 'Location', 'NorthWest');
+        AddLetters2Plots(num2cell(axes_in_fig), letters, 'FontSize', 18, 'FontWeight', 'Normal', 'HShift', -0.01, 'VShift', -0.032, 'Location', 'NorthWest');
     else
         warning('More than 26 subplots in Figure 1, not adding letters.');
     end
 end
-
+% AddLetters2Plots(fig1, {'(a)','(b)'}, 'FontSize', 18, 'FontWeight', 'Normal', 'HShift', -0.01, 'VShift', -0.032, 'Location', 'NorthWest');
 
 %% save the figs
+% warning('not saving')
 disp('Saving figures...');
-save_folder = fullfile(fileparts(mfilename('fullpath')), 'output_figs');
-save_name = ['IEDs_seed' num2str(seed)];
+save_folder = fullfile(fileparts(mfilename('fullpath')), 'paper_IED_figs_v2');
+save_name = ['v2_IEDs_seed' num2str(seed)];
 save_some_figs_to_folder_2(save_folder, save_name, [], []);
 disp(['Figures saved to ' save_folder]);
 

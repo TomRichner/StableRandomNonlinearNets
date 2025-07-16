@@ -1,4 +1,4 @@
-function SRNN_tseries_figure(t, u_ex, r_ts, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T_plot_limits, Lya_method, sr_or_poisson, include_sum_E_I_SR, varargin)
+function SRNN_tseries_figure_IED(t, u_ex, r_ts, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T_plot_limits, Lya_method, sr_or_poisson, include_sum_E_I_SR, varargin)
 % SRNN_tseries_plot - Plot time series results from SRNN simulation
 %
 % Inputs:
@@ -153,7 +153,7 @@ else
 end
 
 if strcmpi(sr_or_poisson, 'poisson')
-    % Poisson raster plot implementation
+    % Poisson raster plot implementasbtion
     step_factor = 2;  % sample every dt for Poisson draw
     dt = t(2) - t(1);  % time step from input
     dt_poisson = step_factor * dt;
@@ -304,13 +304,16 @@ elseif strcmpi(sr_or_poisson, 'sr_stacked')
     hold off;
     ylabel('Spike Rate');
     yticks([]);
-    set(gca, 'XColor', 'none');
-    
-    scale_bar_height_data = 5;
+    % set(gca, 'XColor', 'none');
+    xlabel('Time, (s)')
+
+    % add a vertical scale bar
+    scale_bar_height_data = 25;
     % Defer the call by storing the necessary info
     scale_bar_info.ax = gca;
     scale_bar_info.height = scale_bar_height_data;
     scale_bar_info.label = [num2str(scale_bar_height_data) ' Hz'];
+
 else
     % Original spike rate plot
     hold on;
@@ -326,162 +329,162 @@ else
 end
 
 box off;
-set(gca, 'XTickLabel', []);
-set(gca, 'XTick', []);
+% set(gca, 'XTickLabel', []);
+% set(gca, 'XTick', []);
 
-% Subplot 4: SFA sum (was subplot 3)
-ax_handles(end+1) = subplot(num_subplots, 1, sp_idx);
-sp_idx = sp_idx + 1;
-a_sum_plot = zeros(n, nt); % Initialize as n x nt
-if params.n_E > 0 && params.n_a_E > 0 && ~isempty(a_E_ts)
-    % a_E_ts is n_E x n_a_E x nt. sum across 2nd dim -> n_E x 1 x nt. Squeeze -> n_E x nt
-    a_sum_plot(E_indices, :) = squeeze(sum(a_E_ts, 2));
-end
-if params.n_I > 0 && params.n_a_I > 0 && ~isempty(a_I_ts)
-    a_sum_plot(I_indices, :) = squeeze(sum(a_I_ts, 2));
-end
+% % Subplot 4: SFA sum (was subplot 3)
+% ax_handles(end+1) = subplot(num_subplots, 1, sp_idx);
+% sp_idx = sp_idx + 1;
+% a_sum_plot = zeros(n, nt); % Initialize as n x nt
+% if params.n_E > 0 && params.n_a_E > 0 && ~isempty(a_E_ts)
+%     % a_E_ts is n_E x n_a_E x nt. sum across 2nd dim -> n_E x 1 x nt. Squeeze -> n_E x nt
+%     a_sum_plot(E_indices, :) = squeeze(sum(a_E_ts, 2));
+% end
+% if params.n_I > 0 && params.n_a_I > 0 && ~isempty(a_I_ts)
+%     a_sum_plot(I_indices, :) = squeeze(sum(a_I_ts, 2));
+% end
 
-hold on;
-% Plot I neurons SFA sum if they have SFA states and c_SFA is non-zero for them
-if ~isempty(I_indices) && params.n_a_I > 0
-    active_I_sfa = params.c_SFA(I_indices) ~= 0;
-    if any(active_I_sfa)
-         inh_color_rgb = [1 0 0];  % Red for inhibitory
-         plot(t_display, a_sum_plot(I_indices(active_I_sfa), plot_indices)', 'Color', inh_color_rgb);
-    end
-end
-% Plot E neurons SFA sum
-if ~isempty(E_indices) && params.n_a_E > 0
-    active_E_sfa = params.c_SFA(E_indices) ~= 0;
-    if any(active_E_sfa)
-        cmap_exc = lines(numel(E_indices));
-        for k = numel(E_indices):-1:1
-            if active_E_sfa(k)
-                i = E_indices(k);
-                plot_color = cmap_exc(k, :);
-                plot(t_display, a_sum_plot(i, plot_indices)', 'Color', plot_color);
-            end
-        end
-    end
-end
-hold off;
-if params.n_a_E <= 1 && params.n_a_I <= 1
-    ylabel({'Spike Freq. Adapt., a'});
-else
-    % ylabel({'Spike Freq. Adapt.', '$\sum\limits_k a_k$'}, 'Interpreter', 'latex');
-    ylabel({'Spike Freq.', 'Adaptation'});
-end
-box off;
-set(gca, 'XTickLabel', []);
-set(gca, 'XTick', []);
+% hold on;
+% % Plot I neurons SFA sum if they have SFA states and c_SFA is non-zero for them
+% if ~isempty(I_indices) && params.n_a_I > 0
+%     active_I_sfa = params.c_SFA(I_indices) ~= 0;
+%     if any(active_I_sfa)
+%          inh_color_rgb = [1 0 0];  % Red for inhibitory
+%          plot(t_display, a_sum_plot(I_indices(active_I_sfa), plot_indices)', 'Color', inh_color_rgb);
+%     end
+% end
+% % Plot E neurons SFA sum
+% if ~isempty(E_indices) && params.n_a_E > 0
+%     active_E_sfa = params.c_SFA(E_indices) ~= 0;
+%     if any(active_E_sfa)
+%         cmap_exc = lines(numel(E_indices));
+%         for k = numel(E_indices):-1:1
+%             if active_E_sfa(k)
+%                 i = E_indices(k);
+%                 plot_color = cmap_exc(k, :);
+%                 plot(t_display, a_sum_plot(i, plot_indices)', 'Color', plot_color);
+%             end
+%         end
+%     end
+% end
+% hold off;
+% if params.n_a_E <= 1 && params.n_a_I <= 1
+%     ylabel({'Spike Freq. Adapt., a'});
+% else
+%     % ylabel({'Spike Freq. Adapt.', '$\sum\limits_k a_k$'}, 'Interpreter', 'latex');
+%     ylabel({'Spike Freq.', 'Adaptation'});
+% end
+% box off;
+% set(gca, 'XTickLabel', []);
+% set(gca, 'XTick', []);
 
-% Subplot 5: STD product (was subplot 4)
-ax_handles(end+1) = subplot(num_subplots, 1, sp_idx);
-sp_idx = sp_idx + 1;
-b_prod_plot = ones(n, nt); % Initialize as n x nt, default product is 1
-if params.n_E > 0 && params.n_b_E > 0 && ~isempty(b_E_ts)
-    % b_E_ts is n_E x n_b_E x nt. prod across 2nd dim -> n_E x 1 x nt. Squeeze -> n_E x nt
-    b_prod_plot(E_indices, :) = squeeze(prod(b_E_ts, 2));
-end
-if params.n_I > 0 && params.n_b_I > 0 && ~isempty(b_I_ts)
-    b_prod_plot(I_indices, :) = squeeze(prod(b_I_ts, 2));
-end
+% % Subplot 5: STD product (was subplot 4)
+% ax_handles(end+1) = subplot(num_subplots, 1, sp_idx);
+% sp_idx = sp_idx + 1;
+% b_prod_plot = ones(n, nt); % Initialize as n x nt, default product is 1
+% if params.n_E > 0 && params.n_b_E > 0 && ~isempty(b_E_ts)
+%     % b_E_ts is n_E x n_b_E x nt. prod across 2nd dim -> n_E x 1 x nt. Squeeze -> n_E x nt
+%     b_prod_plot(E_indices, :) = squeeze(prod(b_E_ts, 2));
+% end
+% if params.n_I > 0 && params.n_b_I > 0 && ~isempty(b_I_ts)
+%     b_prod_plot(I_indices, :) = squeeze(prod(b_I_ts, 2));
+% end
 
-hold on;
-% Plot I neurons STD product if they have STD states and F_STD is non-zero
-if ~isempty(I_indices) && params.n_b_I > 0
-    active_I_std = params.F_STD(I_indices) ~= 0;
-    if any(active_I_std)
-        inh_color_rgb = [1 0 0];  % Red for inhibitory
-        plot(t_display, b_prod_plot(I_indices(active_I_std), plot_indices)', 'Color', inh_color_rgb);
-    end
-end
-% Plot E neurons STD product
-if ~isempty(E_indices) && params.n_b_E > 0
-    active_E_std = params.F_STD(E_indices) ~= 0;
-    if any(active_E_std)
-        cmap_exc = lines(numel(E_indices));
-        for k = numel(E_indices):-1:1
-            if active_E_std(k)
-                i = E_indices(k);
-                plot_color = cmap_exc(k, :);
-                plot(t_display, b_prod_plot(i, plot_indices)', 'Color', plot_color);
-            end
-        end
-    end
-end
-hold off;
-if params.n_b_E <= 1 && params.n_b_I <= 1
-    % ylabel({'Syn. Dep., b'});
-    ylabel({'Short-Term', 'Syn. Dep.'})
-else
-    ylabel({'Syn. Dep.','$\prod\limits_m b_m$'}, 'Interpreter', 'latex');
-end
-box off;
-ylim([0 1.1]); 
-yticks([0 1]);
-if strcmpi(Lya_method, 'none')
-    xlabel('Time (s)');
-else
-    set(gca, 'XTickLabel', []);
-    set(gca, 'XTick', []);
-end
+% hold on;
+% % Plot I neurons STD product if they have STD states and F_STD is non-zero
+% if ~isempty(I_indices) && params.n_b_I > 0
+%     active_I_std = params.F_STD(I_indices) ~= 0;
+%     if any(active_I_std)
+%         inh_color_rgb = [1 0 0];  % Red for inhibitory
+%         plot(t_display, b_prod_plot(I_indices(active_I_std), plot_indices)', 'Color', inh_color_rgb);
+%     end
+% end
+% % Plot E neurons STD product
+% if ~isempty(E_indices) && params.n_b_E > 0
+%     active_E_std = params.F_STD(E_indices) ~= 0;
+%     if any(active_E_std)
+%         cmap_exc = lines(numel(E_indices));
+%         for k = numel(E_indices):-1:1
+%             if active_E_std(k)
+%                 i = E_indices(k);
+%                 plot_color = cmap_exc(k, :);
+%                 plot(t_display, b_prod_plot(i, plot_indices)', 'Color', plot_color);
+%             end
+%         end
+%     end
+% end
+% hold off;
+% if params.n_b_E <= 1 && params.n_b_I <= 1
+%     % ylabel({'Syn. Dep., b'});
+%     ylabel({'Short-Term', 'Syn. Dep.'})
+% else
+%     ylabel({'Syn. Dep.','$\prod\limits_m b_m$'}, 'Interpreter', 'latex');
+% end
+% box off;
+% ylim([0 1.1]); 
+% yticks([0 1]);
+% if strcmpi(Lya_method, 'none')
+%     xlabel('Time (s)');
+% else
+%     set(gca, 'XTickLabel', []);
+%     set(gca, 'XTick', []);
+% end
 
-% Subplot 6: Lyapunov Exponents (was subplot 5, if calculated)
-if ~strcmpi(Lya_method, 'none')
-    ax_handles(end+1) = subplot(num_subplots, 1, sp_idx);
-    sp_idx = sp_idx + 1;
-    hold on;
-    if strcmpi(Lya_method, 'benettin')
-        % Check if there is any Lyapunov data to plot.
-        % t_lya would be empty if divergence occurred before the first interval.
-        if ~isempty(t_lya)
+% % Subplot 6: Lyapunov Exponents (was subplot 5, if calculated)
+% if ~strcmpi(Lya_method, 'none')
+%     ax_handles(end+1) = subplot(num_subplots, 1, sp_idx);
+%     sp_idx = sp_idx + 1;
+%     hold on;
+%     if strcmpi(Lya_method, 'benettin')
+%         % Check if there is any Lyapunov data to plot.
+%         % t_lya would be empty if divergence occurred before the first interval.
+%         if ~isempty(t_lya)
 
-            plot([t_lya(1) t_lya(end)], [LLE LLE], 'Color',[0.7 0.7 0.7], 'LineWidth', 4, 'DisplayName', sprintf('Global LLE: %.2f', LLE));
-            % plot(t_lya, finite_lya, 'r', 'LineWidth', 2, 'DisplayName', 'Finite-time LLE');
-            plot(t_lya, local_lya, 'b', 'LineWidth', 1.5, 'DisplayName', 'Local LLE');
+%             plot([t_lya(1) t_lya(end)], [LLE LLE], 'Color',[0.7 0.7 0.7], 'LineWidth', 4, 'DisplayName', sprintf('Global LLE: %.2f', LLE));
+%             % plot(t_lya, finite_lya, 'r', 'LineWidth', 2, 'DisplayName', 'Finite-time LLE');
+%             plot(t_lya, local_lya, 'b', 'LineWidth', 1.5, 'DisplayName', 'Local LLE');
             
-            % Adjust y-limits to ensure all data is visible
-            ylim_current = get(gca, 'YLim');
-            ylim_new = [min(ylim_current(1), LLE - 0.05*abs(LLE)), max(ylim_current(2), LLE + 0.05*abs(LLE))];
-            if all(isfinite(ylim_new))
-                ylim(ylim_new);
-            end
-        else
-            text(0.5, 0.5, 'No Lyapunov data (diverged early)', 'Units', 'normalized', 'HorizontalAlignment', 'center');
-        end
+%             % Adjust y-limits to ensure all data is visible
+%             ylim_current = get(gca, 'YLim');
+%             ylim_new = [min(ylim_current(1), LLE - 0.05*abs(LLE)), max(ylim_current(2), LLE + 0.05*abs(LLE))];
+%             if all(isfinite(ylim_new))
+%                 ylim(ylim_new);
+%             end
+%         else
+%             text(0.5, 0.5, 'No Lyapunov data (diverged early)', 'Units', 'normalized', 'HorizontalAlignment', 'center');
+%         end
 
-    elseif strcmpi(Lya_method, 'qr')
-        if ~isempty(LE_spectrum) && ~isempty(t_lya) && ~isempty(N_sys_eqs_lya)
-            colors = lines(N_sys_eqs_lya);
-            if ~isempty(local_LE_spectrum_t)
-                for i = 1:N_sys_eqs_lya
-                    plot(t_lya, local_LE_spectrum_t(:,i), '--', 'Color', colors(i,:), 'DisplayName', sprintf('Local LE(%d)', i));
-                end
-            end
-            if ~isempty(finite_LE_spectrum_t)
-                for i = 1:N_sys_eqs_lya
-                    plot(t_lya, finite_LE_spectrum_t(:,i), '-', 'Color', colors(i,:), 'LineWidth', 1.5, 'DisplayName', sprintf('Finite LE(%d)', i));
-                end
-            end
-            for i = 1:N_sys_eqs_lya
-                plot([t_lya(1) t_lya(end)], [LE_spectrum(i) LE_spectrum(i)], ':', 'Color', colors(i,:), 'LineWidth', 2, 'DisplayName', sprintf('Global LE(%d): %.4f', i, LE_spectrum(i)));
-            end
-            % For QR method, fix y-limits for better comparability of spectra
-            ylim([-0.5 0.5]);
-        else
-             text(0.5, 0.5, 'No Lyapunov data to plot', 'Units', 'normalized', 'HorizontalAlignment', 'center');
-        end
-    end
-    hold off;
-    ylabel({'Lyapunov', 'Exponent'});
-    xlabel('Time (s)');
-    % legend('show', 'Location', 'best','FontSize',10);
-    leg = legend('show', 'Location', 'North');
-    leg.Box = 'off';
-    box off;
-    ylim([-0.15 0.15])
-end
+%     elseif strcmpi(Lya_method, 'qr')
+%         if ~isempty(LE_spectrum) && ~isempty(t_lya) && ~isempty(N_sys_eqs_lya)
+%             colors = lines(N_sys_eqs_lya);
+%             if ~isempty(local_LE_spectrum_t)
+%                 for i = 1:N_sys_eqs_lya
+%                     plot(t_lya, local_LE_spectrum_t(:,i), '--', 'Color', colors(i,:), 'DisplayName', sprintf('Local LE(%d)', i));
+%                 end
+%             end
+%             if ~isempty(finite_LE_spectrum_t)
+%                 for i = 1:N_sys_eqs_lya
+%                     plot(t_lya, finite_LE_spectrum_t(:,i), '-', 'Color', colors(i,:), 'LineWidth', 1.5, 'DisplayName', sprintf('Finite LE(%d)', i));
+%                 end
+%             end
+%             for i = 1:N_sys_eqs_lya
+%                 plot([t_lya(1) t_lya(end)], [LE_spectrum(i) LE_spectrum(i)], ':', 'Color', colors(i,:), 'LineWidth', 2, 'DisplayName', sprintf('Global LE(%d): %.4f', i, LE_spectrum(i)));
+%             end
+%             % For QR method, fix y-limits for better comparability of spectra
+%             ylim([-0.5 0.5]);
+%         else
+%              text(0.5, 0.5, 'No Lyapunov data to plot', 'Units', 'normalized', 'HorizontalAlignment', 'center');
+%         end
+%     end
+%     hold off;
+%     ylabel({'Lyapunov', 'Exponent'});
+%     xlabel('Time (s)');
+%     % legend('show', 'Location', 'best','FontSize',10);
+%     leg = legend('show', 'Location', 'North');
+%     leg.Box = 'off';
+%     box off;
+%     ylim([-0.15 0.15])
+% end
 
 % Link all subplots' x-axes and set limits
 if numel(ax_handles) > 0 && all(isgraphics(ax_handles))
