@@ -82,7 +82,33 @@ ax_handles(end+1) = subplot(num_subplots, 1, sp_idx);
 sp_idx = sp_idx + 1;
 has_stim = any(abs(u_ex(:, plot_indices)) > 1e-6, 2); 
 if any(has_stim)
-    plot(t_display, u_ex(has_stim, plot_indices)');
+    hold on;
+    
+    inh_color_rgb = [1 0 0]; % Red for inhibitory
+
+    % Plot inhibitory neurons with stimulus
+    if ~isempty(I_indices)
+        for k = 1:numel(I_indices)
+            i = I_indices(k);
+            if has_stim(i)
+                plot(t_display, u_ex(i, plot_indices)', 'Color', inh_color_rgb);
+            end
+        end
+    end
+
+    % Plot excitatory neurons with stimulus
+    if ~isempty(E_indices)
+        cmap_exc = lines(numel(E_indices));
+        for k = numel(E_indices):-1:1
+            i = E_indices(k);
+            if has_stim(i)
+                plot_color = cmap_exc(k, :);
+                plot(t_display, u_ex(i, plot_indices)', 'Color', plot_color);
+            end
+        end
+    end
+
+    hold off;
 else
     plot(t_display, zeros(length(t_display),1)); 
 end
@@ -312,15 +338,22 @@ hold on;
 if ~isempty(I_indices) && params.n_a_I > 0
     active_I_sfa = params.c_SFA(I_indices) ~= 0;
     if any(active_I_sfa)
-         plot(t_display, a_sum_plot(I_indices(active_I_sfa), plot_indices)', 'r');
+         inh_color_rgb = [1 0 0];  % Red for inhibitory
+         plot(t_display, a_sum_plot(I_indices(active_I_sfa), plot_indices)', 'Color', inh_color_rgb);
     end
 end
 % Plot E neurons SFA sum
 if ~isempty(E_indices) && params.n_a_E > 0
     active_E_sfa = params.c_SFA(E_indices) ~= 0;
     if any(active_E_sfa)
-        set(gca,'ColorOrderIndex',1);
-        plot(t_display, a_sum_plot(E_indices(active_E_sfa), plot_indices)');
+        cmap_exc = lines(numel(E_indices));
+        for k = numel(E_indices):-1:1
+            if active_E_sfa(k)
+                i = E_indices(k);
+                plot_color = cmap_exc(k, :);
+                plot(t_display, a_sum_plot(i, plot_indices)', 'Color', plot_color);
+            end
+        end
     end
 end
 hold off;
@@ -351,15 +384,22 @@ hold on;
 if ~isempty(I_indices) && params.n_b_I > 0
     active_I_std = params.F_STD(I_indices) ~= 0;
     if any(active_I_std)
-        plot(t_display, b_prod_plot(I_indices(active_I_std), plot_indices)', 'r');
+        inh_color_rgb = [1 0 0];  % Red for inhibitory
+        plot(t_display, b_prod_plot(I_indices(active_I_std), plot_indices)', 'Color', inh_color_rgb);
     end
 end
 % Plot E neurons STD product
 if ~isempty(E_indices) && params.n_b_E > 0
     active_E_std = params.F_STD(E_indices) ~= 0;
     if any(active_E_std)
-        set(gca,'ColorOrderIndex',1);
-        plot(t_display, b_prod_plot(E_indices(active_E_std), plot_indices)');
+        cmap_exc = lines(numel(E_indices));
+        for k = numel(E_indices):-1:1
+            if active_E_std(k)
+                i = E_indices(k);
+                plot_color = cmap_exc(k, :);
+                plot(t_display, b_prod_plot(i, plot_indices)', 'Color', plot_color);
+            end
+        end
     end
 end
 hold off;

@@ -502,8 +502,8 @@ end
 %% save the figs
 warning('not saving figs')
 disp('Saving figures...');
-save_folder = fullfile(fileparts(mfilename('fullpath')), 'v5_output_figs_sr_stacked_short');
-save_name = ['example_sr_stacked_short_tseries_seed' num2str(seed)];
+save_folder = fullfile(fileparts(mfilename('fullpath')), 'v6_output_figs_sr_stacked_short');
+save_name = ['example_sr_stacked_v6_tseries_seed' num2str(seed)];
 save_some_figs_to_folder_2(save_folder, save_name, [], []);
 disp(['Figures saved to ' save_folder]);
 
