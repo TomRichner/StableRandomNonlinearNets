@@ -48,9 +48,9 @@ M = params.M; % from params struct
 
 figure('Position', [100, 100, 740, 900]);
 
-num_subplots = 4;
+num_subplots = 5;
 if ~strcmpi(Lya_method, 'none')
-    num_subplots = 5;
+    num_subplots = 6;
 end
 ax_handles = gobjects(num_subplots, 1);
 
@@ -68,9 +68,31 @@ end
 ylabel('External Input');
 box off;
 set(gca, 'XTickLabel', []);
+set(gca, 'XTick', []);
 
-% Subplot 2: Firing rates r_ts
+% Subplot 2: Mean spike rates (NEW)
 ax_handles(2) = subplot(num_subplots, 1, 2);
+hold on;
+if ~isempty(E_indices)
+    sum_E_rate = sum(r_ts(E_indices, plot_indices), 1);
+    plot(t_display, sum_E_rate, 'b', 'LineWidth', 2, 'DisplayName', 'excitatory neurons, sum rate');
+end
+if ~isempty(I_indices)
+    sum_I_rate = sum(r_ts(I_indices, plot_indices), 1);
+    plot(t_display, sum_I_rate, 'r', 'LineWidth', 2, 'DisplayName', 'inhibitory neurons');
+end
+hold off;
+ylabel('Spike Rate');
+box off;
+set(gca, 'XTickLabel', []);
+set(gca, 'XTick', []);
+leg = legend;
+leg_pos = leg.Position;
+leg.Position = [leg_pos(1) - 0.000, leg_pos(2) + 0.03, leg_pos(3), leg_pos(4)]; % move this legend up and left a bit
+leg.Box = 'off';
+
+% Subplot 3: Firing rates r_ts (was subplot 2)
+ax_handles(3) = subplot(num_subplots, 1, 3);
 hold on;
 if ~isempty(I_indices)
     plot(t_display, r_ts(I_indices, plot_indices)', 'r');
@@ -83,9 +105,10 @@ hold off;
 ylabel('Spike Rate');
 box off;
 set(gca, 'XTickLabel', []);
+set(gca, 'XTick', []);
 
-% Subplot 3: SFA sum
-ax_handles(3) = subplot(num_subplots, 1, 3);
+% Subplot 4: SFA sum (was subplot 3)
+ax_handles(4) = subplot(num_subplots, 1, 4);
 a_sum_plot = zeros(n, nt); % Initialize as n x nt
 if params.n_E > 0 && params.n_a_E > 0 && ~isempty(a_E_ts)
     % a_E_ts is n_E x n_a_E x nt. sum across 2nd dim -> n_E x 1 x nt. Squeeze -> n_E x nt
@@ -120,9 +143,10 @@ else
 end
 box off;
 set(gca, 'XTickLabel', []);
+set(gca, 'XTick', []);
 
-% Subplot 4: STD product
-ax_handles(4) = subplot(num_subplots, 1, 4);
+% Subplot 5: STD product (was subplot 4)
+ax_handles(5) = subplot(num_subplots, 1, 5);
 b_prod_plot = ones(n, nt); % Initialize as n x nt, default product is 1
 if params.n_E > 0 && params.n_b_E > 0 && ~isempty(b_E_ts)
     % b_E_ts is n_E x n_b_E x nt. prod across 2nd dim -> n_E x 1 x nt. Squeeze -> n_E x nt
@@ -157,15 +181,16 @@ else
 end
 box off;
 ylim([0 1.1]); 
-if num_subplots == 4
+if num_subplots == 5
     xlabel('Time (s)');
 else
     set(gca, 'XTickLabel', []);
+    set(gca, 'XTick', []);
 end
 
-% Subplot 5: Lyapunov Exponents (if calculated)
+% Subplot 6: Lyapunov Exponents (was subplot 5, if calculated)
 if ~strcmpi(Lya_method, 'none')
-    ax_handles(5) = subplot(num_subplots, 1, 5);
+    ax_handles(6) = subplot(num_subplots, 1, 6);
     hold on;
     if strcmpi(Lya_method, 'benettin')
         % Check if there is any Lyapunov data to plot.

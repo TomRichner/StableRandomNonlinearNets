@@ -415,7 +415,7 @@ if ~strcmpi(Lya_method, 'none') && ~isempty(fieldnames(lya_results))
             fprintf('LLE Analytic: %f  |  Numerical: (not available)\n', LLE_analytic);
         end
         
-        % Compare Fixed Po4nt
+        % Compare Fixed Point
         % Find a steady-state portion of the simulation to get numerical r0
         % Let's use the last 10% of the simulation, if t>0
         t_positive_idx = find(t>0);
@@ -480,12 +480,12 @@ end
 
 
 %% save the figs
-% warning('not saving figs')
-disp('Saving figures...');
-save_folder = fullfile(fileparts(mfilename('fullpath')), 'v2_output_figs');
-save_name = ['example_tseries_seed' num2str(seed)];
-save_some_figs_to_folder_2(save_folder, save_name, [], []);
-disp(['Figures saved to ' save_folder]);
+warning('not saving figs')
+% disp('Saving figures...');
+% save_folder = fullfile(fileparts(mfilename('fullpath')), 'v2_output_figs');
+% save_name = ['example_tseries_seed' num2str(seed)];
+% save_some_figs_to_folder_2(save_folder, save_name, [], []);
+% disp(['Figures saved to ' save_folder]);
 
 
 
