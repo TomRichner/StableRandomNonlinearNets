@@ -14,7 +14,9 @@ function [h_digraph, dgA] = plot_network_graph_widthRange_color_R(A,max_weight,E
     n_E = sum(EI_vec==1);
     n_I = sum(EI_vec==-1);
     % NodeColor_mat = [repmat(B,n_E,1); repmat(R,n_I,1)];
-    NodeColor_mat = [lines(n_E); repmat([1 0 0],n_I,1)];
+
+    inhibitory_node_color = [0.7 0 0]; % dark red
+    NodeColor_mat = [lines(n_E); repmat(inhibitory_node_color,n_I,1)];
 
 % %     h_digraph = plot(dgA,'EdgeLabel',round(dgA.Edges.Weight*100)/100,'LineWidth',LWidths,'ArrowSize',15,'ArrowPosition',0.92,'NodeColor', lines(length(A)),'MarkerSize',18,'NodeLabel',{});
 %     h_digraph = plot(dgA,'Layout','circle','EdgeLabel',{},'LineWidth',LWidths,'ArrowSize',ASize,'ArrowPosition',0.94,'NodeColor', lines(length(A)),'MarkerSize',18,'NodeLabel',{},'LineStyle','-');

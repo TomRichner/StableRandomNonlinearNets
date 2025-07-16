@@ -238,8 +238,8 @@ elseif strcmpi(sr_or_poisson, 'sr_stacked')
     hold on;
     
     % y_spacing is a factor of the 95th percentile of r_ts. This can be adjusted.
-    y_spacing_factor = 2.5;
-    p95_rate = prctile(r_ts(:), 95);
+    y_spacing_factor = 3;
+    p95_rate = prctile(r_ts(:), 97);
     y_spacing = y_spacing_factor * p95_rate;
     if y_spacing == 0
         y_spacing = max(r_ts(:)); % Fallback if 95th percentile is 0
@@ -248,42 +248,33 @@ elseif strcmpi(sr_or_poisson, 'sr_stacked')
         end
     end
 
-    inh_color_rgb = [1 0 0]; % Red for inhibitory
-    max_y_val = 0;
+    inh_color_rgb = [0.75 0 0]; % Red for inhibitory
 
     % Plot inhibitory neurons
     if ~isempty(I_indices)
         for k = 1:numel(I_indices)
             i = I_indices(k);
-            y_level = (i-1) * y_spacing;
+            y_level = -numel(I_indices)*y_spacing + (k-1)*y_spacing;
             plot_data = r_ts(i, plot_indices) + y_level;
             plot(t_display, plot_data, 'Color', inh_color_rgb);
-            current_max_y = max(plot_data);
-            if current_max_y > max_y_val, max_y_val = current_max_y; end
         end
     end
 
     % Get colormap for and plot excitatory neurons
     if ~isempty(E_indices)
         cmap_exc = lines(numel(E_indices));
-        for k = 1:numel(E_indices)
+        % for k = 1:numel(E_indices)
+        for k = numel(E_indices):-1:1
             i = E_indices(k);
             plot_color = cmap_exc(k, :);
             y_level = (i-1) * y_spacing;
             plot_data = r_ts(i, plot_indices) + y_level;
             plot(t_display, plot_data, 'Color', plot_color);
-            current_max_y = max(plot_data);
-            if current_max_y > max_y_val, max_y_val = current_max_y; end
         end
     end
     
     hold off;
     ylabel('Spike Rate');
-    if max_y_val > 0
-        ylim([-0.5*y_spacing, max_y_val * 1.05]);
-    elseif n > 0 % handle all zero rates
-        ylim([-0.5*y_spacing, n * y_spacing]);
-    end
     yticks([]);
     set(gca, 'XColor', 'none');
 else
