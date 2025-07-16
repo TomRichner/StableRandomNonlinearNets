@@ -17,7 +17,7 @@ invisible_y_axis = true;
 
 % Define LLE histogram parameters
 % lle_range = [-1.5, 1.5];
-lle_range = [-1, 1];
+lle_range = [-1.5, 1.5];
 n_bins_lle = 25;
 lle_bins = [-inf, linspace(lle_range(1), lle_range(2), n_bins_lle), inf];
 
@@ -103,7 +103,7 @@ end
 
 %% Create the plots
 % Create a single figure with num_conditions rows x 2 columns
-fig_main = figure('Name', 'LLE and Mean Rate Distributions', 'Position', [100, 100, 640, 1200]);
+fig_main = figure('Name', 'LLE and Mean Rate Distributions', 'Position', [100, 100, 540, 1020]);
 
 % --- LLE Plots (Column 1) ---
 ax_lle = gobjects(num_conditions, 1); % Store axes handles for linking
@@ -127,7 +127,9 @@ for i = 1:num_conditions
         % Calculate PDF values. The total area will be 1.
         bin_widths = diff(lle_bins_finite);
         % plot_values = counts ./ (n_bins_lle * total_samples * bin_widths);
-        plot_values = counts ./ (sum(counts) .* bin_widths);
+        % plot_values = counts ./ (sum(counts) .* bin_widths);
+        plot_values = counts ./ (sum(counts));
+
         y_label_text = 'Probability Density';
     else % Default to counts
         plot_values = counts;
@@ -210,7 +212,8 @@ for i = 1:num_conditions
         % Calculate PDF values. The total area will be 1.
         bin_widths = diff(rate_bins_finite);
         % plot_values = counts ./ (n_bins_rate * total_samples * bin_widths);
-        plot_values = counts ./ (sum(counts) .* bin_widths);
+        % plot_values = counts ./ (sum(counts) .* bin_widths);
+        plot_values = counts ./ (sum(counts));
         y_label_text = 'Probability Density';
     else % Default to counts
         plot_values = counts;
@@ -255,30 +258,53 @@ for i = 1:num_conditions
 end
 
 % Link all y-axes together
-% all_axes = [ax_lle; ax_rate];
-% linkaxes(all_axes, 'y');
-linkaxes(ax_lle, 'y');
-linkaxes(ax_rate, 'y');
+all_axes = [ax_lle; ax_rate];
+linkaxes(all_axes, 'y');
+% linkaxes(ax_lle, 'y');
+% linkaxes(ax_rate, 'y');
 
-%% Add letters to subplots
-num_subplots = 2 * num_conditions;
-if num_subplots > 0
-    if num_subplots <= 26
-        letters = arrayfun(@(x) sprintf('(%c)', x), 'a':char('a' + num_subplots - 1), 'UniformOutput', false);
-        AddLetters2Plots(fig_main, letters, 'FontSize', 20, 'FontWeight', 'Normal', 'HShift', -0.027, 'VShift', -0.03, 'Location', 'NorthWest');
-    else
-        error('More than 26 subplots, cannot add panel letters.');
+% %% Add letters to subplots
+% num_subplots = 2 * num_conditions;
+% if num_subplots > 0
+%     if num_subplots <= 26
+%         letters = arrayfun(@(x) sprintf('(%c)', x), 'a':char('a' + num_subplots - 1), 'UniformOutput', false);
+%         AddLetters2Plots(fig_main, letters, 'FontSize', 20, 'FontWeight', 'Normal', 'HShift', -0.027, 'VShift', -0.03, 'Location', 'NorthWest');
+%     else
+%         error('More than 26 subplots, cannot add panel letters.');
+%     end
+% end
+
+%% Add a letter to the first subplot of each row
+num_subplots = num_conditions * 2;
+
+letters = cell(1, num_subplots);
+letter_char_code = 'a';
+current_subplot_idx = 1;
+
+% Iterate through rows columns to build
+% the cell array of labels.
+for i_row = 1:num_conditions
+    for i_col = 1:2
+        if i_col == 1 % Only add a letter to the first column
+            letters{current_subplot_idx} = sprintf('(%c)', letter_char_code);
+            letter_char_code = letter_char_code + 1;
+        else
+            letters{current_subplot_idx} = '';
+        end
+        current_subplot_idx = current_subplot_idx + 1;
     end
 end
 
+AddLetters2Plots(fig_main, letters, 'FontSize', 20, 'FontWeight', 'Normal', 'HShift', -0.026, 'VShift', -0.028, 'Location', 'NorthWest');
+
 %% Save figures
-output_dir_for_figs = fullfile(base_dir, 'analysis_plots');
+output_dir_for_figs = fullfile(base_dir, 'analysis_plots_v3');
 if ~exist(output_dir_for_figs, 'dir')
     mkdir(output_dir_for_figs);
 end
 
 fprintf('\nSaving figure to: %s\n', output_dir_for_figs);
-save_some_figs_to_folder_2(output_dir_for_figs, 'LLE_and_rate_distributions', fig_main.Number, {'fig', 'svg', 'png'});
+save_some_figs_to_folder_2(output_dir_for_figs, 'LLE_and_rate_distributions_v3', fig_main.Number, {'fig', 'svg', 'png'});
 
 fprintf('Plotting complete.\n');
 beep; pause(0.5); beep % wake up

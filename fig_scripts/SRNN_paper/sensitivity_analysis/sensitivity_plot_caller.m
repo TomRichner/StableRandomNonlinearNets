@@ -200,32 +200,32 @@ end
 
 %% Add a letter to the first subplot of each row
 num_subplots = n_params * n_conditions;
-if num_subplots > 0
-    letters = cell(1, num_subplots);
-    letter_char_code = 'a';
-    current_subplot_idx = 1;
 
-    if n_conditions > 26
-        error('More than 26 conditions, out of letters for labeling rows.');
-    end
+letters = cell(1, num_subplots);
+letter_char_code = 'a';
+current_subplot_idx = 1;
 
-    % Iterate through rows (conditions) and columns (parameters) to build
-    % the cell array of labels.
-    for c_idx = 1:n_conditions
-        for i = 1:n_params
-            if i == 1 % Only add a letter to the first column
-                letters{current_subplot_idx} = sprintf('(%c)', letter_char_code);
-                letter_char_code = letter_char_code + 1;
-            else
-                letters{current_subplot_idx} = '';
-            end
-            current_subplot_idx = current_subplot_idx + 1;
-        end
-    end
-
-    AddLetters2Plots(main_fig_lle, letters, 'FontSize', 20, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.033, 'Location', 'NorthWest');
-    AddLetters2Plots(main_fig_rate, letters, 'FontSize', 20, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.033, 'Location', 'NorthWest');
+if n_conditions > 26
+    error('More than 26 conditions, out of letters for labeling rows.');
 end
+
+% Iterate through rows (conditions) and columns (parameters) to build
+% the cell array of labels.
+for c_idx = 1:n_conditions
+    for i = 1:n_params
+        if i == 1 % Only add a letter to the first column
+            letters{current_subplot_idx} = sprintf('(%c)', letter_char_code);
+            letter_char_code = letter_char_code + 1;
+        else
+            letters{current_subplot_idx} = '';
+        end
+        current_subplot_idx = current_subplot_idx + 1;
+    end
+end
+
+AddLetters2Plots(main_fig_lle, letters, 'FontSize', 20, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.033, 'Location', 'NorthWest');
+AddLetters2Plots(main_fig_rate, letters, 'FontSize', 20, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.033, 'Location', 'NorthWest');
+
 
 % Save the combined figures
 % warning('not saving figs')
