@@ -1,4 +1,4 @@
-function SRNN_tseries_figure(t, u_ex, r_ts, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T_plot_limits, Lya_method, sr_or_poisson, varargin)
+function SRNN_tseries_figure(t, u_ex, r_ts, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T_plot_limits, Lya_method, sr_or_poisson, include_sum_E_I_SR, varargin)
 % SRNN_tseries_plot - Plot time series results from SRNN simulation
 %
 % Inputs:
@@ -14,7 +14,10 @@ function SRNN_tseries_figure(t, u_ex, r_ts, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_
 %   T_plot_limits - Time interval [T_start, T_end] for x-axis limits
 %   Lya_method - Lyapunov calculation method ('benettin', 'qr', or 'none')
 %   sr_or_poisson - 'sr' for spike rate plot, 'poisson' for raster plot
+%   include_sum_E_I_SR - boolean to control plotting of sum E/I spike rates
 %   varargin - Optional Lyapunov results struct
+
+% --- Plotting options ---
 
 % Parse optional Lyapunov inputs
 LLE = [];
@@ -51,26 +54,32 @@ end
 
 %% Make plots
 
-figure('Position', [100, 100, 740, 940]);
+figure('Position', [100, 100, 870, 1130]);
 
-num_subplots_base = 5;
+% Calculate total number of subplots
+num_subplots_base = 4; % Input, Rates, SFA, STD
+if include_sum_E_I_SR
+    num_subplots_base = num_subplots_base + 1;
+end
 if ~strcmpi(Lya_method, 'none')
-    num_subplots_base = 6;
+    num_subplots_base = num_subplots_base + 1;
 end
 
 plot_offset = 0;
-if strcmpi(sr_or_poisson, 'poisson')
+if strcmpi(sr_or_poisson, 'poisson') || strcmpi(sr_or_poisson, 'sr_stacked')
     plot_offset = 1;
 end
 num_subplots = num_subplots_base + plot_offset;
 
-ax_handles = gobjects(num_subplots_base, 1);
+ax_handles = gobjects(0);
+sp_idx = 1;
 
 plot_indices = round(linspace(1, nt, min(nt, 2000)));
 t_display = t(plot_indices);
 
 % Subplot 1: External input u_ex
-ax_handles(1) = subplot(num_subplots, 1, 1);
+ax_handles(end+1) = subplot(num_subplots, 1, sp_idx);
+sp_idx = sp_idx + 1;
 has_stim = any(abs(u_ex(:, plot_indices)) > 1e-6, 2); 
 if any(has_stim)
     plot(t_display, u_ex(has_stim, plot_indices)');
@@ -82,37 +91,42 @@ box off;
 set(gca, 'XTickLabel', []);
 set(gca, 'XTick', []);
 
-% Subplot 2: Mean spike rates (NEW)
-ax_handles(2) = subplot(num_subplots, 1, 2);
-hold on;
-if ~isempty(E_indices)
-    sum_E_rate = sum(r_ts(E_indices, plot_indices), 1);
-    plot(t_display, sum_E_rate, 'b', 'LineWidth', 2, 'DisplayName', 'excitatory neurons, sum rate');
+% Subplot 2: Sum E and I spike rates
+if include_sum_E_I_SR
+    ax_handles(end+1) = subplot(num_subplots, 1, sp_idx);
+    sp_idx = sp_idx + 1;
+    hold on;
+    if ~isempty(E_indices)
+        sum_E_rate = sum(r_ts(E_indices, plot_indices), 1);
+        plot(t_display, sum_E_rate, 'b', 'LineWidth', 2, 'DisplayName', 'excitatory neurons, sum rate');
+    end
+    if ~isempty(I_indices)
+        sum_I_rate = sum(r_ts(I_indices, plot_indices), 1);
+        plot(t_display, sum_I_rate, 'r', 'LineWidth', 2, 'DisplayName', 'inhibitory neurons');
+    end
+    hold off;
+    ylabel('Spike Rate');
+    box off;
+    set(gca, 'XTickLabel', []);
+    set(gca, 'XTick', []);
+    leg = legend;
+    leg_pos = leg.Position;
+    leg.Position = [leg_pos(1) - 0.4, leg_pos(2) + 0.031, leg_pos(3), leg_pos(4)]; % move this legend up and left a bit
+    leg.Box = 'off';
 end
-if ~isempty(I_indices)
-    sum_I_rate = sum(r_ts(I_indices, plot_indices), 1);
-    plot(t_display, sum_I_rate, 'r', 'LineWidth', 2, 'DisplayName', 'inhibitory neurons');
-end
-hold off;
-ylabel('Spike Rate');
-box off;
-set(gca, 'XTickLabel', []);
-set(gca, 'XTick', []);
-leg = legend;
-leg_pos = leg.Position;
-leg.Position = [leg_pos(1) - 0.4, leg_pos(2) + 0.031, leg_pos(3), leg_pos(4)]; % move this legend up and left a bit
-leg.Box = 'off';
 
 % Subplot 3: Firing rates r_ts or Poisson raster plot
-if strcmpi(sr_or_poisson, 'poisson')
-    ax_handles(3) = subplot(num_subplots, 1, 3:4);
+if strcmpi(sr_or_poisson, 'poisson') || strcmpi(sr_or_poisson, 'sr_stacked')
+    ax_handles(end+1) = subplot(num_subplots, 1, sp_idx:(sp_idx + plot_offset));
+    sp_idx = sp_idx + 1 + plot_offset;
 else
-    ax_handles(3) = subplot(num_subplots, 1, 3);
+    ax_handles(end+1) = subplot(num_subplots, 1, sp_idx);
+    sp_idx = sp_idx + 1;
 end
 
 if strcmpi(sr_or_poisson, 'poisson')
     % Poisson raster plot implementation
-    step_factor = 1;  % sample every dt for Poisson draw
+    step_factor = 2;  % sample every dt for Poisson draw
     dt = t(2) - t(1);  % time step from input
     dt_poisson = step_factor * dt;
     
@@ -219,6 +233,59 @@ if strcmpi(sr_or_poisson, 'poisson')
     yticks([])
     set(gca, 'XColor', 'none');
     
+elseif strcmpi(sr_or_poisson, 'sr_stacked')
+    % New stacked continuous spike rate plot
+    hold on;
+    
+    % y_spacing is a factor of the 95th percentile of r_ts. This can be adjusted.
+    y_spacing_factor = 2.5;
+    p95_rate = prctile(r_ts(:), 95);
+    y_spacing = y_spacing_factor * p95_rate;
+    if y_spacing == 0
+        y_spacing = max(r_ts(:)); % Fallback if 95th percentile is 0
+        if y_spacing == 0
+            y_spacing = 1; % Fallback if all rates are 0
+        end
+    end
+
+    inh_color_rgb = [1 0 0]; % Red for inhibitory
+    max_y_val = 0;
+
+    % Plot inhibitory neurons
+    if ~isempty(I_indices)
+        for k = 1:numel(I_indices)
+            i = I_indices(k);
+            y_level = (i-1) * y_spacing;
+            plot_data = r_ts(i, plot_indices) + y_level;
+            plot(t_display, plot_data, 'Color', inh_color_rgb);
+            current_max_y = max(plot_data);
+            if current_max_y > max_y_val, max_y_val = current_max_y; end
+        end
+    end
+
+    % Get colormap for and plot excitatory neurons
+    if ~isempty(E_indices)
+        cmap_exc = lines(numel(E_indices));
+        for k = 1:numel(E_indices)
+            i = E_indices(k);
+            plot_color = cmap_exc(k, :);
+            y_level = (i-1) * y_spacing;
+            plot_data = r_ts(i, plot_indices) + y_level;
+            plot(t_display, plot_data, 'Color', plot_color);
+            current_max_y = max(plot_data);
+            if current_max_y > max_y_val, max_y_val = current_max_y; end
+        end
+    end
+    
+    hold off;
+    ylabel('Spike Rate');
+    if max_y_val > 0
+        ylim([-0.5*y_spacing, max_y_val * 1.05]);
+    elseif n > 0 % handle all zero rates
+        ylim([-0.5*y_spacing, n * y_spacing]);
+    end
+    yticks([]);
+    set(gca, 'XColor', 'none');
 else
     % Original spike rate plot
     hold on;
@@ -238,7 +305,8 @@ set(gca, 'XTickLabel', []);
 set(gca, 'XTick', []);
 
 % Subplot 4: SFA sum (was subplot 3)
-ax_handles(4) = subplot(num_subplots, 1, 4 + plot_offset);
+ax_handles(end+1) = subplot(num_subplots, 1, sp_idx);
+sp_idx = sp_idx + 1;
 a_sum_plot = zeros(n, nt); % Initialize as n x nt
 if params.n_E > 0 && params.n_a_E > 0 && ~isempty(a_E_ts)
     % a_E_ts is n_E x n_a_E x nt. sum across 2nd dim -> n_E x 1 x nt. Squeeze -> n_E x nt
@@ -276,7 +344,8 @@ set(gca, 'XTickLabel', []);
 set(gca, 'XTick', []);
 
 % Subplot 5: STD product (was subplot 4)
-ax_handles(5) = subplot(num_subplots, 1, 5 + plot_offset);
+ax_handles(end+1) = subplot(num_subplots, 1, sp_idx);
+sp_idx = sp_idx + 1;
 b_prod_plot = ones(n, nt); % Initialize as n x nt, default product is 1
 if params.n_E > 0 && params.n_b_E > 0 && ~isempty(b_E_ts)
     % b_E_ts is n_E x n_b_E x nt. prod across 2nd dim -> n_E x 1 x nt. Squeeze -> n_E x nt
@@ -311,7 +380,8 @@ else
 end
 box off;
 ylim([0 1.1]); 
-if num_subplots_base == 5
+yticks([0 1]);
+if strcmpi(Lya_method, 'none')
     xlabel('Time (s)');
 else
     set(gca, 'XTickLabel', []);
@@ -320,7 +390,8 @@ end
 
 % Subplot 6: Lyapunov Exponents (was subplot 5, if calculated)
 if ~strcmpi(Lya_method, 'none')
-    ax_handles(6) = subplot(num_subplots, 1, 6 + plot_offset);
+    ax_handles(end+1) = subplot(num_subplots, 1, sp_idx);
+    sp_idx = sp_idx + 1;
     hold on;
     if strcmpi(Lya_method, 'benettin')
         % Check if there is any Lyapunov data to plot.

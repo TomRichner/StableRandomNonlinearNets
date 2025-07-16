@@ -7,7 +7,7 @@ clc
 tic
 
 %% 
-seed = 42;
+seed = 1;
 rng(seed,'twister');
 
 %% plotting parameters
@@ -40,7 +40,7 @@ EI_vec = EI_vec(:); % make it a column
 %% Time
 fs = 1000; %Plotting sample frequency
 dt = 1/fs;
-T = [-30 70];
+T = [-30 20];
 
 T_lya_1 = -15; % s, time to start Lyapunov calculation warmup
 % T_lya_1 = T(1); % s, time to start Lyapunov calculation warmup
@@ -61,8 +61,8 @@ t = linspace(T(1), T(2), nt)'; % Plotting time vector
 u_ex = zeros(n, nt);
 % sine and square wave stim
 stim_b0 = 0.5; amp = 0.5;
-dur = 3*5; % duration of sine
-f_sin = 0.2.*ones(1,fs*dur);
+dur = 3*1; % duration of sine
+f_sin = 1.*ones(1,fs*dur);
 % f_sin = logspace(log10(0.5),log10(3),fs*5);
 % u_ex(1,-t(1)*fs+fix(fs*6)+(1:fix(fs*dur))) = stim_b0+amp.*sign(sin(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))'));
 % u_ex(1,-t(1)*fs+fix(fs*1)+(1:fix(fs*dur))) = stim_b0+amp.*-cos(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))');
@@ -76,8 +76,11 @@ f_sin = 0.2.*ones(1,fs*dur);
 % u_ex(1:3,-t(1)*fs+fix(fs*30)+(1:fix(fs*dur))) = 1*[3;2;1]*(stim_b0+amp.*sign(sin(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))')));
 % u_ex(1:3,-t(1)*fs+fix(fs*5)+(1:fix(fs*dur))) = 1*[3;2;1]*(stim_b0+amp.*-cos(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))'));
 
-u_ex(1:3,-t(1)*fs+fix(fs*30)+(1:fix(fs*dur))) = 1*[1;2;3]*(stim_b0+amp.*sign(sin(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))')));
-u_ex(1:3,-t(1)*fs+fix(fs*5)+(1:fix(fs*dur))) = 1*[1;2;3]*(stim_b0+amp.*-cos(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))'));
+u_ex(1:3,-t(1)*fs+fix(fs*6)+(1:fix(fs*dur))) = 1*[1;2;3]*(stim_b0+amp.*sign(sin(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))')));
+u_ex(1:3,-t(1)*fs+fix(fs*1)+(1:fix(fs*dur))) = 1*[1;2;3]*(stim_b0+amp.*-cos(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))'));
+% u_ex(1:1,-t(1)*fs+fix(fs*6)+(1:fix(fs*dur))) = 1*[1]*(stim_b0+amp.*sign(sin(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))')));
+% u_ex(1:1,-t(1)*fs+fix(fs*1)+(1:fix(fs*dur))) = 1*[1]*(stim_b0+amp.*-cos(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))'));
+
 
 u_ex = 1.5*u_ex;
 % u_ex = u_ex(:,1:nt);
@@ -471,7 +474,7 @@ else
 end
 
 figure(1)
-xlim([0 47])
+xlim([0 10])
 
 % add subplots
 
@@ -489,7 +492,7 @@ num_subplots = numel(axes_in_fig);
 if num_subplots > 0
     if num_subplots <= 26
         letters = arrayfun(@(x) sprintf('(%c)', x), 'a':char('a'+num_subplots-1), 'UniformOutput', false);
-        AddLetters2Plots(fig1, letters, 'FontSize', 18, 'FontWeight', 'Normal', 'HShift', -0.025, 'VShift', -0.032, 'Location', 'NorthWest');
+        AddLetters2Plots(fig1, letters, 'FontSize', 18, 'FontWeight', 'Normal', 'HShift', -0.015, 'VShift', -0.032, 'Location', 'NorthWest');
     else
         warning('More than 26 subplots in Figure 1, not adding letters.');
     end
@@ -499,8 +502,8 @@ end
 %% save the figs
 warning('not saving figs')
 disp('Saving figures...');
-save_folder = fullfile(fileparts(mfilename('fullpath')), 'v4_output_figs_sr_stacked');
-save_name = ['example_sr_stacked_tseries_seed' num2str(seed)];
+save_folder = fullfile(fileparts(mfilename('fullpath')), 'v5_output_figs_sr_stacked_short');
+save_name = ['example_sr_stacked_short_tseries_seed' num2str(seed)];
 save_some_figs_to_folder_2(save_folder, save_name, [], []);
 disp(['Figures saved to ' save_folder]);
 
