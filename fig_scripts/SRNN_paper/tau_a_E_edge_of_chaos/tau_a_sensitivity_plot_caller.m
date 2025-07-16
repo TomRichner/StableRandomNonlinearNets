@@ -13,8 +13,8 @@ custom_x_labels = containers.Map('KeyType', 'char', 'ValueType', 'char');
 custom_x_labels('EE_factor') = 'Mean E-to-E Weight';
 custom_x_labels('mean_weight') = 'Mean Weight';
 custom_x_labels('n') = '\# Neurons in Network';
-custom_x_labels('tau_a_E_2') = '$\max(\tau_a)$';
-custom_x_labels('tau_b_E_2') = '$\tau_b$';
+custom_x_labels('tau_a_E_2') = '$\max(\tau_a),  (s)$';
+custom_x_labels('tau_b_E_2') = '$\tau_b,  (s)$';
 
 % Define scaling factors for x-tick labels for specific parameters
 rescale_x_ticks = containers.Map('KeyType', 'char', 'ValueType', 'double');
@@ -113,8 +113,8 @@ n_params = length(unique_param_names);
 n_conditions = length(conditions);
 
 % Create a separate large figure for each metric
-main_fig_lle = figure('Name', 'LLE Sensitivity', 'Position', [100, 100, 300 * n_conditions, 300 * n_params], 'Visible', 'on');
-main_fig_rate = figure('Name', 'Mean Rate Sensitivity', 'Position', [150, 150, 250 * n_conditions, 250 * n_params], 'Visible', 'on');
+main_fig_lle = figure('Name', 'LLE Sensitivity', 'Position', [100, 100, 400 * n_conditions, 400 * n_params], 'Visible', 'on');
+main_fig_rate = figure('Name', 'Mean Rate Sensitivity', 'Position', [150, 150, 400 * n_conditions, 400 * n_params], 'Visible', 'on');
 
 %% Process each parameter across all conditions
 for i = 1:n_params
@@ -207,8 +207,8 @@ if num_subplots > 0
     end
 end
 % Save the combined figures
-save_some_figs_to_folder_2(output_dir_base, 'sensitivity_LLE_comparison_all_params', main_fig_lle.Number, {'png', 'svg', 'fig'});
-save_some_figs_to_folder_2(output_dir_base, 'sensitivity_rate_comparison_all_params', main_fig_rate.Number, {'png', 'svg', 'fig'});
+save_some_figs_to_folder_2([output_dir_base filesep 'figs'], 'sensitivity_LLE_comparison_all_params', main_fig_lle.Number, {'png', 'svg', 'fig'});
+save_some_figs_to_folder_2([output_dir_base filesep 'figs'], 'sensitivity_rate_comparison_all_params', main_fig_rate.Number, {'png', 'svg', 'fig'});
 
 % close(main_fig_lle); % Don't close figure after saving to allow inspection
 % close(main_fig_rate);
