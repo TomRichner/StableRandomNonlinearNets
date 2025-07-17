@@ -17,7 +17,6 @@ Thumbs.db
 *.slxc
 slprj/
 *.slx.original
-*.svg
 
 # MATLAB Code Generation
 codegen/
