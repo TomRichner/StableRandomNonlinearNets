@@ -13,8 +13,8 @@ custom_x_labels = containers.Map('KeyType', 'char', 'ValueType', 'char');
 custom_x_labels('EE_factor') = 'Mean E-to-E Weight';
 custom_x_labels('mean_weight') = 'Mean Weight';
 custom_x_labels('n') = '\# Neurons in Network';
-custom_x_labels('tau_a_E_2') = '$\max(\tau_a),  (s)$';
-custom_x_labels('tau_b_E_2') = '$\tau_b,  (s)$';
+custom_x_labels('tau_a_E_2') = '$\max(\tau_a),  s$';
+custom_x_labels('tau_b_E_2') = '$\tau_b,  s$';
 
 % Define scaling factors for x-tick labels for specific parameters
 rescale_x_ticks = containers.Map('KeyType', 'char', 'ValueType', 'double');
@@ -262,11 +262,11 @@ function plot_single_metric(sp_ax, param_file, hist_bins, metric_name, y_label_m
         end
         
         % Set titles and labels for the grid
-        if i == 1           % top-row → write condition title
-            title(sp_ax, condition_title, ...
-                  'Interpreter','none', ...   % plain text
-                  'FontWeight','normal');     % not bold
-        end
+        % if i == 1           % top-row → write condition title
+        %     title(sp_ax, condition_title, ...
+        %           'Interpreter','none', ...   % plain text
+        %           'FontWeight','normal');     % not bold
+        % end
         
         % Set y-label for the first column only
         if c_idx == 1 

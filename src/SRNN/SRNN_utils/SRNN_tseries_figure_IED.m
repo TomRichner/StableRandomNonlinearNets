@@ -305,7 +305,7 @@ elseif strcmpi(sr_or_poisson, 'sr_stacked')
     ylabel('Spike Rate');
     yticks([]);
     % set(gca, 'XColor', 'none');
-    xlabel('Time, (s)')
+    xlabel('Time, s')
 
     % add a vertical scale bar
     scale_bar_height_data = 25;

@@ -421,7 +421,7 @@ box off;
 ylim([0 1.1]); 
 yticks([0 1]);
 if strcmpi(Lya_method, 'none')
-    xlabel('Time (s)');
+    xlabel('Time, s');
 else
     set(gca, 'XTickLabel', []);
     set(gca, 'XTick', []);
