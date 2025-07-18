@@ -13,20 +13,25 @@ This is a theoretical neuroscience project investigating two forms of adaptation
 - fig_scripts/advanced_example/SRNN_adv_example.m % an example with many extras added
 
 ### Figures for the paper are in fig_scripts/SRNN_paper
-- Fig 1: fig_scripts/SRNN_paper/tseries_example/SRNN_example_tseries.m
+- Fig 1: Time series example
+    - run: `fig_scripts/SRNN_paper/tseries_example/SRNN_example_tseries_sr_stacked.m`
 
-- Fig 2: first: fig_scripts/SRNN_paper/sensitivity_analysis/sensitivity_analysis.m
-         second: fig_scripts/SRNN_paper/sensitivity_analysis/sensitivity_plot_caller.m
+- Fig 2: Sensitivity analysis of stability on connectivity parameters
+    - first: `fig_scripts/SRNN_paper/sensitivity_analysis/sensitivity_analysis.m`
+    - second: `fig_scripts/SRNN_paper/sensitivity_analysis/sensitivity_plot_caller.m`
 
-- Fig 3: first: fig_scripts/SRNN_paper/parameter_space_analysis/network_parameter_space_analysis.m
-         You can stop network_parameter_space_analysis.m after about 15 minutes.  
-         second: run fig_scripts/SRNN_paper/parameter_space_analysis/consolidate_parameter_space_results.m to consolidate data created in previous step
-         third: fig_scripts/SRNN_paper/parameter_space_analysis/plot_parameter_space_results.m
+- Fig 3: Stability and spike rate distributions
+    - first: `fig_scripts/SRNN_paper/parameter_space_analysis/network_parameter_space_analysis.m`
+      You can stop `network_parameter_space_analysis.m` after about 15 minutes.
+    - second: `fig_scripts/SRNN_paper/parameter_space_analysis/consolidate_parameter_space_results.m` to consolidate data created in the previous step.
+    - third: `fig_scripts/SRNN_paper/parameter_space_analysis/plot_parameter_space_results.m`
 
-- Fig 4: first: fig_scripts/SRNN_paper/tau_a_E_edge_of_chaos/tau_a_sensitivity_analysis.m
-         second: fig_scripts/SRNN_paper/tau_a_E_edge_of_chaos/tau_a_sensitivity_plot_caller.m
+- Fig 4: Edge of chaos dependence on adaptation time constants
+    - first: `fig_scripts/SRNN_paper/tau_a_E_edge_of_chaos/tau_a_sensitivity_analysis.m`
+    - second: `fig_scripts/SRNN_paper/tau_a_E_edge_of_chaos/tau_a_sensitivity_plot_caller.m`
 
-- Fig 5: fig_scripts/SRNN_paper/IEDs_example/SRNN_caller_example_tseries.m 
+- Fig 5: Discharges suppressed by stimulation example
+    - run: `fig_scripts/SRNN_paper/IEDs_example/SRNN_caller_example_tseries.m` 
 
 ## Project Overview
 
