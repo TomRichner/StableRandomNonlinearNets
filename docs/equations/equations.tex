@@ -1,4 +1,5 @@
 \documentclass{article}
+\documentclass{article}
 \usepackage{amsmath}
 \usepackage{amssymb}
 
@@ -12,30 +13,18 @@
 \]
 
 \[
-0 < c_{\text{SFA}}
-\]
-
-\[
 \frac{d \boldsymbol{a}_k}{dt}
-= \frac{-\boldsymbol{a}_k + \boldsymbol{r}}{\tau_{a_k}}
-\]
-
-\[
-\boldsymbol{p} = \boldsymbol{r} \prod_m \boldsymbol{b}_m
-\]
-
-\[
-\frac{d \boldsymbol{b}_m}{dt}
-= \frac{1 - \boldsymbol{b}_m}{\tau_{b_m}} - \frac{F_{\text{STD}}}{\tau_{\text{STD}}} \boldsymbol{p}
-\]
-
-\[
-0 \leq \boldsymbol{b}_m \leq 1 \qquad F_{\text{STD}} \in \{0, 1\}
+= \frac{-\boldsymbol{a}_k + \boldsymbol{r}}{\boldsymbol{\tau}_{a_k}}
 \]
 
 \[
 \frac{d \boldsymbol{u}_d}{dt}
-= \frac{-\boldsymbol{u}_d + \boldsymbol{u}_{\text{ex}} + M * \boldsymbol{p}}{\tau_d}
+= \frac{-\boldsymbol{u}_d + \boldsymbol{u}_{\text{ex}} + M \left( \boldsymbol{b} \circ \boldsymbol{r} \right)}{\tau_d}
 \]
 
-\end{document} 
+\[
+\frac{d \boldsymbol{b}}{dt}
+= \frac{1 - \boldsymbol{b}}{\tau_b} - \frac{\boldsymbol{b} \circ \boldsymbol{r}}{\tau_{\text{STD}}}
+\]
+
+\end{document}
