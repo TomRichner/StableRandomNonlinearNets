@@ -63,8 +63,7 @@ for it = 1:maxIt
     p = r ./ (1 + gamma .* r);
     u_d = u_ex + M*p;
     u_eff = u_d - c_SFA .* n_a .* r;
-    r_raw = max(0, u_e
-    ff);
+    r_raw = max(0, u_eff);
     r_new = (1-alpha)*r + alpha*r_raw;   % Damped update
     
     if norm(r_new - r,inf) < tol_fp
