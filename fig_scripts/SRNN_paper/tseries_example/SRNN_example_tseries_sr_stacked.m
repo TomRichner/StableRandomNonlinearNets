@@ -25,8 +25,8 @@ density = mean_in_out_degree/(n-1); % each neuron can make up to n-1 connections
 sparsity = 1-density;
 
 EI = 0.7;
-scale = 0.5/0.79782; % overall scaling factor of weights
-w.EE = scale*1; % E to E. Change to scale*2 for bursting
+scale = 0.5/0.79782; % overall scaling factor of weights, dividing by 0.75 ensures that after imposing Dales law, the neurons have a mean synaptic strength of 0.5 (due to normal distribution)
+w.EE = scale*1; % E to E.
 w.EI = scale*1; % E to I connections
 w.IE = scale*1; % I to E
 w.II = scale*.5; % I to I
@@ -500,12 +500,12 @@ end
 
 
 %% save the figs
-warning('not saving figs')
-% disp('Saving figures...');
-% save_folder = fullfile(fileparts(mfilename('fullpath')), 'v6_output_figs_sr_stacked_short');
-% save_name = ['example_sr_stacked_v6_tseries_seed' num2str(seed)];
-% save_some_figs_to_folder_2(save_folder, save_name, [], []);
-% disp(['Figures saved to ' save_folder]);
+% warning('not saving figs')
+disp('Saving figures...');
+save_folder = fullfile(fileparts(mfilename('fullpath')), 'v6_output_figs_sr_stacked_short');
+save_name = ['example_sr_stacked_v6_tseries_seed' num2str(seed)];
+save_some_figs_to_folder_2(save_folder, save_name, [], []);
+disp(['Figures saved to ' save_folder]);
 
 % save_data_figs_mfiles(input_folder_path, output_folder_path, folder_name, note_string, save_mat_files, save_m_files, save_open_figs, varargin) % could also save current mfile for reproducibility
 
