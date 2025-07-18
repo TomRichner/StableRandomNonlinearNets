@@ -49,32 +49,11 @@ The model consists of **n neurons** with the following variable dimensions:
 - **r** and **p** are derived quantities from the state variables
 - **c_SFA**, **τ_d**, and **τ_STD** are constants
 
-## Research Questions
+## Abstract
 
-Our primary research focus examines:
+The brain is a highly recurrent neural network (RNN) that must remain dynamically stable, but near the edge of chaos. However, the dynamical stability of large continuous RNNs is tenuous, because the probability of unstable modes increases dramatically as network size and connectivity grows (May, 1972).  Intuitively, positive feedback loops within the brain have the potential to cause runaway re-excitation, leading to chaos. However, overly chaotic systems, as well as overly stable systems, underperform those on the edge of chaos (Langton, 1990). Moreover, the stability of linear dynamical systems depends entirely on connectivity (Lyapunov, 1892), so we might expect that learning rules must ensure dynamical stability. However, the brain is highly nonlinear and adaptive due to rectification, short-term synaptic depression (STD), and spike frequency adaptation (SFA).  We hypothesized that STD and SFA, which dynamically adapt connection weights and biases, respectively, will improve the stability of RNNs.  We investigated the scenario in which connectivity is random, sparse, and unbalanced. We found that (1) STD and SFA stabilize a wide range of RNNs, (2) STD and SFA keep these networks near the edge of chaos, depending on the longest timescale of adaptation, and (3) external stimulation engages STD and SFA to suppress hyperexcitability.
 
-Motivating question: How are global dynamical properties maintained through **biologically plausible** (i.e., local) development rules? The stability of LTI dynamical systems (i.e, systems of first-order differential equations) is 100% determined by connectivity (i.e., eigenvalues). Is this true for biomimetic recurrent nonlinear networks?
-
-Hypothesis: We hypothesize that dual adaptation helps decouple global dynamical properties from the details of connectivity. We expect that the time constants of adaptation will play a role.
-
-## Methodology
-
-We investigate the worst case scenario where synaptic weights are drawn from a random distribution, an approach used in **random matrix theory**. We extend concepts of random matrix theory to our nonlinear RNN by:
-- Simulating random networks
-- Computing the Lyapunov spectrum
-
-## Current Status and Roadmap
-
-### ✅ Completed
-- [x] Created a **Lorenz test system** with known largest Lyapunov exponent for algorithm verification
-- [x] Implemented **Benettin's method** for Lyapunov exponent calculation
-- [x] Implemented **Benettin's QR factorization** methods to compute the full Lyapunov spectrum
-- [x] Write **a MATLAB function** for the nonlinear RNN
-- [x] Perform **sensitivity analysis** of connectivity distribution parameters
-
-### 🔄 In Progress / Planned
-- [ ] Add a fixed point solver for ICs
-- [ ] Add an analytic LLE solver for comparison
+In conclusion, dynamic adaptation of both weights and biases via STD and SFA renders a wide range of networks stable and near the edge of chaos without any tuning of synaptic weights. Therefore, adaptation may be as important as connectivity with respect to stability, and learning rules need not ensure dynamical stability over the short term.  Further, we propose that stimulation may improve stability by engaging adaptation rather than simply inducing recurrent inhibition. Together, STD and SFA may be sufficient to stabilize the brain onto the edge of chaos.
 
 ## License
 
