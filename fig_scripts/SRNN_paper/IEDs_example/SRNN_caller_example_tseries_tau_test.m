@@ -83,8 +83,8 @@ u_ex = u_ex + u_dc_profile;
 
 period1 = and(20<t, t<35);
 period2 = and(35<t, t<45);
-u_ex(:,period1) = u_ex(:,period1)+0.03;
-u_ex(:,period2) = u_ex(:,period2)+0.3;
+u_ex(:,period1) = u_ex(:,period1)+0.08;
+u_ex(:,period2) = u_ex(:,period2)+0.48;
 
 
 
@@ -115,7 +115,7 @@ end
 
 %% parameters
 
-tau_STD = 0.5; % scalar, time constant of synaptic depression
+tau_STD = 1; % scalar, time constant of synaptic depression
 
 % Define number of timescales for E and I neurons separately
 n_a_E = 3; % typically 3, number of SFA timescales for E neurons
