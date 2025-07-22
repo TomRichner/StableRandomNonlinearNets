@@ -125,21 +125,26 @@ if include_sum_E_I_SR
     sp_idx = sp_idx + 1;
     hold on;
     if ~isempty(E_indices)
-        sum_E_rate = sum(r_ts(E_indices, plot_indices), 1);
-        plot(t_display, sum_E_rate, 'b', 'LineWidth', 2, 'DisplayName', 'excitatory neurons, sum rate');
+        % sum_E_rate = sum(r_ts(E_indices, plot_indices), 1);
+        % plot(t_display, sum_E_rate, 'b', 'LineWidth', 2, 'DisplayName', 'excitatory neurons, sum rate');
+        mean_E_rate = mean(r_ts(E_indices, plot_indices), 1);
+        plot(t_display, mean_E_rate, 'b', 'LineWidth', 2, 'DisplayName', 'excitatory neurons');
     end
     if ~isempty(I_indices)
-        sum_I_rate = sum(r_ts(I_indices, plot_indices), 1);
-        plot(t_display, sum_I_rate, 'r', 'LineWidth', 2, 'DisplayName', 'inhibitory neurons');
+        % sum_I_rate = sum(r_ts(I_indices, plot_indices), 1);
+        % plot(t_display, sum_I_rate, 'r', 'LineWidth', 2, 'DisplayName', 'inhibitory neurons');
+        mean_I_rate = mean(r_ts(I_indices, plot_indices), 1);
+        plot(t_display, mean_I_rate, 'r', 'LineWidth', 2, 'DisplayName', 'inhibitory neurons');
     end
     hold off;
-    ylabel('Spike Rate');
+    ylabel('Mean Firing Rate');
     box off;
     set(gca, 'XTickLabel', []);
     set(gca, 'XTick', []);
     leg = legend;
     leg_pos = leg.Position;
-    leg.Position = [leg_pos(1) - 0.4, leg_pos(2) + 0.031, leg_pos(3), leg_pos(4)]; % move this legend up and left a bit
+    % leg.Position = [leg_pos(1) - 0.4, leg_pos(2) + 0.031, leg_pos(3), leg_pos(4)]; % move this legend up and left a bit
+    leg.Position = [leg_pos(1) - 0.0, leg_pos(2) + 0.031, leg_pos(3), leg_pos(4)]; % move this legend up and left a bit
     leg.Box = 'off';
 end
 
@@ -177,7 +182,7 @@ if strcmpi(sr_or_poisson, 'poisson')
     all_spike_times = [];
     all_spike_neurons = [];
     
-    dither_amount = dt_poisson * 5; % Dither within ±30% of the bin width
+    dither_amount = dt_poisson * 10; % Dither within ±10x of the bin width
     
     for i = 1:length(spk_times)
         n_spikes = counts_in_bin(i);
