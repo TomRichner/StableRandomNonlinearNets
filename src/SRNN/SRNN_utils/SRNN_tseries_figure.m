@@ -125,15 +125,19 @@ if include_sum_E_I_SR
     sp_idx = sp_idx + 1;
     hold on;
     if ~isempty(E_indices)
-        sum_E_rate = sum(r_ts(E_indices, plot_indices), 1);
-        plot(t_display, sum_E_rate, 'b', 'LineWidth', 2, 'DisplayName', 'excitatory neurons, sum rate');
+        % sum_E_rate = sum(r_ts(E_indices, plot_indices), 1);
+        % plot(t_display, sum_E_rate, 'b', 'LineWidth', 2, 'DisplayName', 'excitatory neurons, sum rate');
+        mean_E_rate = mean(r_ts(E_indices, plot_indices), 1);
+        plot(t_display, mean_E_rate, 'b', 'LineWidth', 2, 'DisplayName', 'excitatory neurons');
     end
     if ~isempty(I_indices)
-        sum_I_rate = sum(r_ts(I_indices, plot_indices), 1);
-        plot(t_display, sum_I_rate, 'r', 'LineWidth', 2, 'DisplayName', 'inhibitory neurons');
+        % sum_I_rate = sum(r_ts(I_indices, plot_indices), 1);
+        % plot(t_display, sum_I_rate, 'r', 'LineWidth', 2, 'DisplayName', 'inhibitory neurons');
+        mean_I_rate = mean(r_ts(I_indices, plot_indices), 1);
+        plot(t_display, mean_I_rate, 'r', 'LineWidth', 2, 'DisplayName', 'inhibitory neurons');
     end
     hold off;
-    ylabel('Spike Rate');
+    ylabel('Mean Firing Rate');
     box off;
     set(gca, 'XTickLabel', []);
     set(gca, 'XTick', []);

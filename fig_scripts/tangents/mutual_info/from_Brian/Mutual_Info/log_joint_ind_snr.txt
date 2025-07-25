@@ -1,0 +1,8 @@
+Plot comparing 2 intervals using joint vs independent probability distributions
+
+data stored in: 
+frb217_joint_ind_snr.mat
+
+created using matlab files:
+joint_ind_snr.m
+plot_snr_depend.m
