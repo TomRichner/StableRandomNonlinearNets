@@ -1,18 +1,17 @@
 %--- SRNN_caller.m
 
-% close all
-clear all % must clear all due to use of persistant variables in SRNN.m
 close all
+clear all % must clear all due to use of persistant variables in SRNN.m
 clc
 
 tic
 
 %% 
-seed = 45;
+seed = 42;
 rng(seed,'twister');
 
 %% 
-sfa_std_both_none = 'none'; % 'sfa', 'std', 'both', or 'none'
+sfa_std_both_none = 'both'; % 'sfa', 'std', 'both', or 'none'
 
 %% plotting parameters
 sr_or_poisson = 'sr'; % sr, poisson, or sr_stacked
@@ -24,7 +23,7 @@ n = 10; % number of neurons
 Lya_method = 'benettin'; % 'benettin', 'qr', 'svd', or 'none'
 use_Jacobian = false; 
 
-mean_in_out_degree = 5; % desired mean number of connections in and out
+mean_in_out_degree = 4; % desired mean number of connections in and out
 density = mean_in_out_degree/(n-1); % each neuron can make up to n-1 connections with other neurons
 sparsity = 1-density;
 
@@ -44,7 +43,7 @@ EI_vec = EI_vec(:); % make it a column
 %% Time
 fs = 1000; %Plotting sample frequency
 dt = 1/fs;
-T = [-30 240];
+T = [-30 300];
 
 T_lya_1 = -15; % s, time to start Lyapunov calculation warmup
 % T_lya_1 = T(1); % s, time to start Lyapunov calculation warmup
@@ -64,14 +63,33 @@ t = linspace(T(1), T(2), nt)'; % Plotting time vector
 
 u_ex = zeros(n, nt);
 
-[bH, aH] = butter(1,0.05/(fs/2),'high');
-mu = 1;
-sigma = 30;
-randsignal = sigma*(1/fs).*randn(1,nt); % scale by 1/fs?
-randWalk = cumsum(randsignal,2);
-randWalk = filtfilt(bH,aH,randWalk);
+n_in = 3;
+ch_in = 1:n_in; % input channels
+sigma = 0.25; % standard deviation of gaussian random noise
+dur = 2; % duration in seconds of each level
+mu_vec = [1, 2, 3]; % mean levels
+n_levels = length(mu_vec); % number of mean levels
+n_time_chunks = floor(T(2)/dur);
 
-u_ex(1,:) = mu+randWalk;
+level_sequence = randi(n_levels,1,n_time_chunks);
+mu_sequence = mu_vec(level_sequence);
+
+nt_time_chunk = fs*dur;
+
+mu_t = 0.5*ones(1,nt);
+T0_index = find(t==0);
+if isempty(T0_index)
+    error('did not find t == 0 index')
+end
+
+mu = reshape(repmat(mu_sequence,nt_time_chunk,1),[],1)';
+
+mu_start_index = T0_index + (0:(n_time_chunks-1)).*nt_time_chunk;
+mu_end_index = T0_index + (0:(n_time_chunks-1)).*nt_time_chunk+nt_time_chunk;
+
+mu_t(1,T0_index+(1:length(mu))) = mu;
+
+u_ex(ch_in,:) = mu_t + sigma.*randn(length(ch_in),nt);
 
 DC = 0.1;
 
@@ -85,19 +103,6 @@ ramp_profile = linspace(0, DC, num_ramp_points);
 u_dc_profile = ones(1, nt) * DC;
 u_dc_profile(ramp_indices) = ramp_profile;
 u_ex = u_ex + u_dc_profile;
-
-% add random walk stimulus to 3 neurons
-% [bH,aH] = butter(1,0.1/(fs/2),'high'); 
-% [bL,aL] = butter(1,10/(fs/2),'low');
-% u_ex(1:3,:) = u_ex(1:3,:)+filter(bL,aL,filter(bH,aH,cumsum(10./fs.*randn(3,nt),2),[],2),[],2);
-
-% u_ex(:, 100<t) = u_ex(:, 100<t)+5;
-
-% u_ex(:, 250<t) = u_ex(:, 250<t)-5;
-
-% u_ex(:,0.2*fs:0.3*fs) = u_ex(:,0.2*fs:0.3*fs) + 0.1; % a pulse to help Lyapunov exponent to find the direction.
-% u_ex(:,1:fs) = u_ex(:,1:fs)+1./fs.*randn(n,fs); % noise in the first second to help the network get off the trivial saddle node from ICs
-% u_ex = u_ex+0.001./fs.*randn(n,nt); % a tiny bit of noise to help the network get off the trivial saddle node from ICs
 
 %% parameters
 
@@ -126,6 +131,7 @@ elseif strcmpi(sfa_std_both_none,'none')
 else
     error('sfa_std_both_none must be sfa, std, both, or none')
 end
+
 % Define tau_a and tau_b for E and I neurons
 % Ensure these are empty if the corresponding n_a_X or n_b_X is 0
 if n_a_E > 0
@@ -229,21 +235,6 @@ ode_solver = ode_RKn_wrapper; % fixed step RK 1, 2, or 4th order, with boundary 
 if strcmpi(Lya_method,'qr') && ~isequal(ode_solver, @ode15s)
     warning('QR method typically requires ode15s for stability. Current solver may cause issues.');
 end
-
-% Use the wrapper instead of ode15s
-% [t_ode, X] = ode_solver(SRNN_wrapper, t, X_0, ode_options);
-
-% assert(all(abs(t_ode - t) < 1e-11), 'ODE solver did not return results exactly at the requested times for fiducial trajectory.');
-% clear t_ode % t_ode is same as t
-
-%% Analytic LLE Calculation
-% fprintf('--- Analytic LLE Calculation ---\n');
-% [r0_analytic, LLE_analytic] = LLE_analytic_SRNN_robust_extra_stable_fcn(n, n_E, n_I, M, DC, n_a_E, tau_a_E, c_SFA, n_b_E, tau_b_E, F_STD, tau_STD, tau_d);
-% if ~isnan(LLE_analytic)
-%     fprintf('Analytic  Λ_max = %+8.5f  1/s\n',LLE_analytic);
-%     fprintf('Max analytic fixed point rate = %f Hz\n', max(r0_analytic));
-% end
-% fprintf('--------------------------------\n');
 
 %% Two-phase LLE computation: pre-check for stability then full run
 
@@ -384,63 +375,6 @@ end
 % This function will need to be updated or defined to handle the new state structure
 [r, p] = compute_dependent_variables(a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params);
 
-% %% print the LLE analytic and compare to numerical LLE
-% if ~strcmpi(Lya_method, 'none') && ~isempty(fieldnames(lya_results))
-%     fprintf('----------------------------------------------------\n');
-%     if strcmpi(Lya_method, 'benettin')
-%         fprintf('Estimated Largest Lyapunov Exponent (LLE): %f\n', lya_results.LLE);
-%     else % qr or svd
-%         LE_sorted = sort(lya_results.LE_spectrum,'descend');
-%         fprintf('Estimated Lyapunov Spectrum (Global):\n');
-%         for i = 1:lya_results.N_sys_eqs
-%             fprintf('  LE(%d): %f\n', i, LE_sorted(i));
-%         end
-%         fprintf('Sum of exponents: %f (should be < 0 for dissipative systems)\n', sum(lya_results.LE_spectrum));
-%         fprintf('Kaplan-Yorke Dimension: %f\n', kaplan_yorke_dim(LE_sorted));
-%     end
-%     fprintf('----------------------------------------------------\n');
-% 
-%     % --- Comparison of Analytic and Numerical Results ---
-%     if exist('LLE_analytic', 'var') && ~isnan(LLE_analytic)
-%         fprintf('--- Comparison of Results ---\n');
-%         % Compare LLE
-%         numerical_LLE = NaN;
-%         if strcmpi(Lya_method, 'benettin')
-%             numerical_LLE = lya_results.LLE;
-%         else % qr or svd
-%             if isfield(lya_results, 'LE_spectrum') && ~isempty(lya_results.LE_spectrum)
-%                 numerical_LLE = max(lya_results.LE_spectrum(isfinite(lya_results.LE_spectrum)));
-%             end
-%         end
-%         if ~isnan(numerical_LLE)
-%             fprintf('LLE Analytic: %f  |  Numerical: %f\n', LLE_analytic, numerical_LLE);
-%         else
-%             fprintf('LLE Analytic: %f  |  Numerical: (not available)\n', LLE_analytic);
-%         end
-% 
-%         % Compare Fixed Point
-%         % Find a steady-state portion of the simulation to get numerical r0
-%         % Let's use the last 10% of the simulation, if t>0
-%         t_positive_idx = find(t>0);
-%         if ~isempty(t_positive_idx)
-%             start_idx_fp = t_positive_idx(1) + round(0.9 * numel(t_positive_idx));
-%             r0_numerical = mean(r(:, start_idx_fp:end), 2);
-% 
-%             fprintf('Max Fixed Point Rate (r0):\n');
-%             fprintf('  Analytic: %f Hz | Numerical: %f Hz\n', max(r0_analytic), max(r0_numerical));
-% 
-%             % Print norm of difference
-%             fp_diff_norm = norm(r0_analytic - r0_numerical);
-%             fprintf('Norm of difference between analytic and numerical fixed points: %f\n', fp_diff_norm);
-%         else
-%             fprintf('Could not determine numerical fixed point (no simulation time > 0).\n');
-%         end
-%         fprintf('-----------------------------\n');
-%     end
-% else
-%      fprintf('Skipping Lyapunov calculation - trajectory only.\n');
-% end
-
 %% Make plots using the plotting function
 
 % Call the plotting function
@@ -459,12 +393,17 @@ end
 % figure(1)
 % xlim([0 47])
 
-% add subplots
-
 sim_dur = toc
 
 sim_t_dived_by_rt = sim_dur./(T(2)-T(1))
 
+%% add mu_vec on top of input
+figure(1)
+subplot(5,1,1); 
+hold on; 
+plot(t(mu_start_index),5*ones(size(t(mu_start_index))),'*g')
+plot(t(mu_end_index),5*ones(size(t(mu_end_index))),'or')
+plot(t,mu_t','m')
 
 %% Add letters to plot
 fig1 = figure(1);
@@ -481,124 +420,133 @@ if num_subplots > 0
     end
 end
 
-%% Isolate data for t>0
-good_t = t>0;
+%% make steady state distributions
+% should be based on state variables? or spike rate?
+% LLE is based on state variables, not dependent variables
+% r(t) has direct access to u(t)
+% overly convergent systems will still have good codings of step function inputs
+% no "memory" is needed to encode the current DC stimulus
+% the advantage of SFA and STD is the long term memory of the sitmulus which is in the state of the system
+% such that u(t-tau) can be decoded from the state(t)
 
-% data_in = u_ex(1,good_t);
-data_out = r(:,good_t);
+samples_per_switch = 1; % number of samples to grab after each stimulus switch
 
-%% add a shift to data_in
+s_delay_vec = 1:5:201;
 
-shift_vec = 0:20:500;
+MI_delay = zeros(size(s_delay_vec));
 
-for i_shift = 1:length(shift_vec)
+for i_delay = 1:length(s_delay_vec)
 
-    samples_shifted = shift_vec(i_shift);
+    samples_from_switch = s_delay_vec(i_delay);
 
-    data_in = circshift(u_ex(1,good_t), samples_shifted,2);
-    
-    %% compute and plot P_in
-    
-    bins_in = 16;
-    min_in = min(data_in,[],'all');
-    max_in = max(data_in,[],'all');
-    bin_edges_in = linspace(min_in, max_in, bins_in+1);
-    bin_centers_in = (bin_edges_in(2:end)+bin_edges_in(1:end-1))./2;
-    
-    P_in = histcounts(data_in,bin_edges_in);
-    P_in = P_in./sum(P_in,'all'); % normalize to 1
-    
-    figure(1000+i_shift)
-    subplot(2,1,1) 
-    plot(bin_centers_in, P_in)
-    
-    levels_in = round((data_in-min_in)*(bins_in-1)/(max_in-min_in+eps)); % convert data into discrete levels for use in joint histogram
-    
-    %% compute and plot P_out
-    bins_out = 24;
-    min_out = min(data_out,[],'all');
-    max_out = max(data_out,[],'all');
-    bin_edges_out = linspace(min_out, max_out, bins_out+1);
-    bin_centers_out = (bin_edges_out(2:end)+bin_edges_out(1:end-1))./2;
-    
-    P_out_by_neuron = zeros(n, bins_out);
-    for i_neuron = 1:n
-        P_out_by_neuron(i_neuron,:) = histcounts(data_out(i_neuron,:),bin_edges_out);
+    clear ss_data data P_input P_output_given_input P_output P_joint
+
+    for i_level = 1:n_levels
+        ss_data{1,i_level} = []; % preallocate empty
     end
-    
-    P_out = sum(P_out_by_neuron,1)./sum(P_out_by_neuron,'all'); % sum histograms across neurons and normalize to 1
-    
-    figure(1000+i_shift)
-    subplot(2,1,1) 
-    hold on
-    plot(bin_centers_out,P_out)
-    hold off
-    title(['Samples shifted = ' num2str(shift_vec(i_shift))]);
-    
-    levels_out = round((data_out-min_out).*(bins_out-1)./(max_out-min_out+eps)); % convert data_out into levels_out for joint hist
-    
-    %% compute P_joint
-    
-    % method 1: histcount2
-    P_joint_by_neuron = zeros(bins_in, bins_out, n);
-    for i_neuron = 1:n
-        % P_joint_by_neuron(:,:,i_neuron) = histcounts2(data_in, data_out(i_neuron,:), bin_edges_in, bin_edges_out, 'Normalization','probability');
-        % P_joint_by_neuron(:,:,i_neuron) = histcounts2(data_in, data_out(i_neuron,:), bin_edges_in, bin_edges_out, 'Normalization','probability');
-        P_joint_by_neuron(:,:,i_neuron) = histcounts2(data_in, data_out(i_neuron,:), bin_edges_in, bin_edges_out);
-    
+
+    n_epochs = length(mu_start_index);
+
+    for i_epoch = 3:n_epochs % skip the first two because initial is 0.5
+        % mu_this_epoch = mu_t(mu_start_index(i_epoch-1)); % the stimulus level for the PREVIOUS epoch
+        mu_this_epoch = mu_t(mu_start_index(i_epoch-0)); % the stimulus level for the CURRENT epoch
+        i_level = find(mu_vec == mu_this_epoch); % the stimulus level index for this epoch
+        % samples_to_extract = (mu_end_index(i_epoch)-samples_from_end):mu_end_index(i_epoch); % index vector from the last second of the epoch
+        samples_to_extract = mu_start_index(i_epoch)+samples_from_switch-1 + (1:samples_per_switch); % index vector from the last second of the epoch
+        data = r(:,samples_to_extract); % data from the last second of the epoch
+
+        ss_data{1,i_level} = [ss_data{1,i_level}, data]; % append the data from this epoch
     end
-    
-    P_joint = sum(P_joint_by_neuron,3)./sum(P_joint_by_neuron,'all'); % sum across neurons and normalize to 1
-    
-    % figure(102)
-    % imagesc(bin_centers_out, bin_centers_in, P_joint)
-    
-    % method 2: by hand with levels
-    
-    levels_bin_edges_out = -0.5+(0:bins_out); % bin edges for integers
-    
-    P2_joint_by_neuron = zeros(bins_in, bins_out,n);
-    for i_neuron = 1:n
-        for i_level_in = 1:bins_in
-    
-            P2_joint_by_neuron(i_level_in, :, i_neuron) = histcounts(levels_out(i_neuron,levels_in == i_level_in-1),levels_bin_edges_out);
-    
+
+    ss_data{4} = [ss_data{1}, ss_data{2}, ss_data{3}]; % fourth column is a combo of the three levels
+
+    % --- P_input
+
+    P_input = zeros(1,n_levels);
+    for i = 1:n_levels
+        P_input(1,i) = size(ss_data{i},2)/size(ss_data{n_levels+1},2);
+    end
+
+    % --- P_output_given_input
+
+    % make bins
+    all_data  = ss_data{4};
+    minV = min(all_data,[],'all');
+    maxV = max(all_data,[],'all');
+    n_bins_out = 10;
+    edges = linspace(minV, maxV, n_bins_out+1);
+
+    bin_centers = (edges(2:end)+edges(1:end-1))./2;
+
+    % combine histograms
+    P_output_given_input = zeros(n_levels,n_bins_out);
+    p_neuron = zeros(n, n_bins_out);
+    for i_level = 1:n_levels
+        rate_data = ss_data{1,i_level};
+        for i_neuron = 1:n
+            p_neuron(i_neuron,:) = histcounts(rate_data(i_neuron,:)', edges, 'Normalization','probability');
+
         end
+        p_sum = sum(p_neuron,1); % sum histograms across neurons (collect each bin)
+        p_norm = p_sum./sum(p_sum); % normalize to 1
+        P_output_given_input(i_level,:) = p_norm;
     end
-    
-    P2_joint = sum(P2_joint_by_neuron,3)./sum(P2_joint_by_neuron,'all');
-    
-    figure(1000+i_shift)
-    subplot(2,1,2) 
-    imagesc(bin_centers_out, bin_centers_in, P2_joint)
-    
-    %% Compute Mutual Information
-    I_xy = 0; 
-    
-    P_J = P2_joint;
-    % P_J = P_joint;
-    
-    for i=1:bins_in
-        for j=1:bins_out
-            if P_J(i,j) > 0
-                I_xy = I_xy + P_J(i,j) * log2(P_J(i,j)/(P_in(i)*P_out(j)));
+
+    % --- plot distributions
+    figure(1000+i_delay)
+    for i_level = 1:n_levels
+        plot(bin_centers,P_output_given_input(i_level,:))
+        hold on
+    end
+    legend('mu = 1','mu = 2','mu = 3')
+
+    % --- P_joint
+
+    P_joint = zeros(n_levels, n_bins_out);
+    for i_level=1:n_levels
+        P_joint(i_level,:) = P_input(i_level) * P_output_given_input(i_level,:);
+    end
+
+    % Compute marginal output distribution P(output)
+
+    P_output = sum(P_joint,1);
+
+    % --- calculate mutual information
+
+    I_xy = 0; I_xy2 = 0;
+    for i=1:n_levels
+        for j=1:n_bins_out
+            if P_joint(i,j) > 0
+                I_xy = I_xy + P_joint(i,j) * log2(P_joint(i,j)/(P_input(i)*P_output(j)));
+                I_xy2 = I_xy2 + P_input(i) * P_output_given_input(i,j)* log2(P_output_given_input(i,j)/P_output(j));
             end
         end
     end
-    
-    MI_vs_shift(i_shift) = I_xy;
+    % Display results
+    disp('Joint Probability Distribution P(input,output):');
+    disp(P_joint);
+
+    disp('Marginal Output Probability P(output):');
+    disp(P_output);
+
+    display(['Samples from switch ' num2str(samples_from_switch)])
+    fprintf('Mutual Information (I(X;Y)): %.4f bits\n', I_xy);
+    fprintf('Mutual Information (I2(X;Y)): %.4f bits\n', I_xy2);
+
+    figure(1000+i_delay)
+    title(['Samps since switch = ' num2str(samples_from_switch) ', MI = ' num2str(I_xy,4)])
+
+    MI_delay(1,i_delay)=I_xy;
+
 end
 
-%% plot MI vs samples shifted
-figure(10)
-plot(shift_vec/fs, MI_vs_shift)
-xlabel('Delay (s)')
-ylabel('Mutual Info (bits)')
+figure(3)
+plot(s_delay_vec, MI_delay)
+ylabel('MI (bits)')
+xlabel('Samples since stim switch')
 
 %% save the figs
 warning('not saving figs')
-
-save_some_figs_to_folder_2('MI_vs_delay',['MI_vs_delay_' sfa_std_both_none],[10],{'fig'})
 
 % disp('Saving figures...');
 % save_folder = fullfile(fileparts(mfilename('fullpath')), 'v4_output_figs_sr_stacked');
