@@ -54,7 +54,7 @@ function [result] = SRNN_caller_wrapped_for_sensitivity_dual_stage_rndWalk(seed,
 
     %% Time
     dt = 1/fs;
-    T = [-20 30];
+    T = [-20 60];
     T_lya_1 = -10;
 
     nt = round((T(2)-T(1))*fs)+1;
@@ -74,11 +74,13 @@ function [result] = SRNN_caller_wrapped_for_sensitivity_dual_stage_rndWalk(seed,
     u_dc_profile(ramp_indices) = ramp_profile;
     u_ex = u_ex + u_dc_profile;
 
-    % add random walk stimulus to 3 neurons
+    % add random walk stimulus to n neurons
     [bH,aH] = butter(1,0.1/(fs/2),'high'); 
-    [bL,aL] = butter(3,10/(fs/2),'low');
-    u_ex(1:3,:) = u_ex(1:3,:)+filter(bL,aL,filter(bH,aH,cumsum(10./fs.*randn(3,nt),2),[],2),[],2);
-
+    [bL,aL] = butter(3,100/(fs/2),'low');
+    rnd_neurons = 1;
+    mu = 1;
+    sigma = 30;
+    u_ex(1:rnd_neurons,:) = u_ex(1:rnd_neurons,:)+mu+filter(bL,aL,filter(bH,aH,cumsum(sigma./fs.*randn(rnd_neurons,nt),2),[],2),[],2);
 
     %% add a bit of sparse noise
     % if strcmpi(Lya_method,'benettin')
@@ -174,7 +176,7 @@ function [result] = SRNN_caller_wrapped_for_sensitivity_dual_stage_rndWalk(seed,
     end
     lya_results_phase1.mean_rate = mean_rate_phase1;
 
-    r_threshold = 1000; % Hz
+    r_threshold = 5000; % Hz
     if isnan(max_r_phase1) || max_r_phase1 < r_threshold
         proceed_to_phase2 = true;
     else
@@ -210,6 +212,47 @@ function [result] = SRNN_caller_wrapped_for_sensitivity_dual_stage_rndWalk(seed,
         else
             lya_results = lya_results_phase1;
         end
+
+        % compute delayed mutual information
+        if phase2_LLE_is_finite
+            
+            shift_vec = 0:10:1000; % samples
+
+            MI_vs_shift = zeros(size(shift_vec));
+
+            u_ex_for_MI = u_ex(1:rnd_neurons, t > 0);
+            r_ts_for_MI = r_ts(:, t_for_lya > 0);
+
+            if size(u_ex_for_MI,2) ~= size(r_ts_for_MI,2);
+                error('time vector not the same')
+            end
+
+            bins_in = 10;
+            bins_out = 10;
+
+            output_channels_to_exclude = [1];
+
+            for i_shift = 1:length(shift_vec)
+
+                samples_shifted = shift_vec(i_shift);
+
+                data_in = circshift(u_ex_for_MI, samples_shifted,2);
+                data_out = r_ts_for_MI;
+
+                [MI] = mutual_info_MIMO(data_in, data_out, bins_in, bins_out, output_channels_to_exclude);
+                
+                MI_vs_shift(1,i_shift) = MI;
+
+                
+            end
+            lya_results.MI_vs_shift = MI_vs_shift;
+            lya_results.shift_vec = shift_vec;
+        else
+            lya_results.MI_vs_shift = NaN;
+            lya_results.shift_vec = NaN;
+        end
+
+
     else % Did not proceed to phase 2
         lya_results = lya_results_phase1;
     end
@@ -221,6 +264,12 @@ function [result] = SRNN_caller_wrapped_for_sensitivity_dual_stage_rndWalk(seed,
     end
     if isfield(lya_results, 'mean_rate')
         result.mean_rate = lya_results.mean_rate;
+    end
+    if isfield(lya_results, 'MI_vs_shift')
+        result.MI_vs_shift = lya_results.MI_vs_shift;
+    end
+    if isfield(lya_results, 'shift_vec')
+        result.shift_vec = lya_results.shift_vec;
     end
 
     sim_dur = toc;

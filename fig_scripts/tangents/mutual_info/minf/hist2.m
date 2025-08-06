@@ -31,4 +31,5 @@ x=0:L-1;
 for i=0:L-1 
     n(i+1,:) = histc(B(A==i),x,1); 
 end
+
 end

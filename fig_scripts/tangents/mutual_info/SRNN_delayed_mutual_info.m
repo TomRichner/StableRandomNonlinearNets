@@ -1,7 +1,9 @@
 %--- SRNN_caller.m
 
-% close all
-clear all % must clear all due to use of persistant variables in SRNN.m
+close all
+% clear all % must clear all due to use of persistant variables in SRNN.m
+clear
+clear SRNN % must clearn this function before starting because 
 close all
 clc
 
@@ -12,7 +14,7 @@ seed = 45;
 rng(seed,'twister');
 
 %% 
-sfa_std_both_none = 'none'; % 'sfa', 'std', 'both', or 'none'
+sfa_std_both_none = 'both'; % 'sfa', 'std', 'both', or 'none'
 
 %% plotting parameters
 sr_or_poisson = 'sr'; % sr, poisson, or sr_stacked
@@ -44,7 +46,7 @@ EI_vec = EI_vec(:); % make it a column
 %% Time
 fs = 1000; %Plotting sample frequency
 dt = 1/fs;
-T = [-30 240];
+T = [-30 120];
 
 T_lya_1 = -15; % s, time to start Lyapunov calculation warmup
 % T_lya_1 = T(1); % s, time to start Lyapunov calculation warmup
@@ -489,7 +491,9 @@ data_out = r(:,good_t);
 
 %% add a shift to data_in
 
-shift_vec = 0:20:500;
+shift_vec = 0:10:1000;
+
+MI_vs_shift = zeros(size(shift_vec));
 
 for i_shift = 1:length(shift_vec)
 
@@ -499,94 +503,15 @@ for i_shift = 1:length(shift_vec)
     
     %% compute and plot P_in
     
-    bins_in = 16;
-    min_in = min(data_in,[],'all');
-    max_in = max(data_in,[],'all');
-    bin_edges_in = linspace(min_in, max_in, bins_in+1);
-    bin_centers_in = (bin_edges_in(2:end)+bin_edges_in(1:end-1))./2;
+    bins_in = 10;
+    bins_out = 10;
+
+    output_channels_to_exclude = [];
+
+    [MI] = mutual_info_MIMO(data_in, data_out, bins_in, bins_out, output_channels_to_exclude);
     
-    P_in = histcounts(data_in,bin_edges_in);
-    P_in = P_in./sum(P_in,'all'); % normalize to 1
-    
-    figure(1000+i_shift)
-    subplot(2,1,1) 
-    plot(bin_centers_in, P_in)
-    
-    levels_in = round((data_in-min_in)*(bins_in-1)/(max_in-min_in+eps)); % convert data into discrete levels for use in joint histogram
-    
-    %% compute and plot P_out
-    bins_out = 24;
-    min_out = min(data_out,[],'all');
-    max_out = max(data_out,[],'all');
-    bin_edges_out = linspace(min_out, max_out, bins_out+1);
-    bin_centers_out = (bin_edges_out(2:end)+bin_edges_out(1:end-1))./2;
-    
-    P_out_by_neuron = zeros(n, bins_out);
-    for i_neuron = 1:n
-        P_out_by_neuron(i_neuron,:) = histcounts(data_out(i_neuron,:),bin_edges_out);
-    end
-    
-    P_out = sum(P_out_by_neuron,1)./sum(P_out_by_neuron,'all'); % sum histograms across neurons and normalize to 1
-    
-    figure(1000+i_shift)
-    subplot(2,1,1) 
-    hold on
-    plot(bin_centers_out,P_out)
-    hold off
-    title(['Samples shifted = ' num2str(shift_vec(i_shift))]);
-    
-    levels_out = round((data_out-min_out).*(bins_out-1)./(max_out-min_out+eps)); % convert data_out into levels_out for joint hist
-    
-    %% compute P_joint
-    
-    % method 1: histcount2
-    P_joint_by_neuron = zeros(bins_in, bins_out, n);
-    for i_neuron = 1:n
-        % P_joint_by_neuron(:,:,i_neuron) = histcounts2(data_in, data_out(i_neuron,:), bin_edges_in, bin_edges_out, 'Normalization','probability');
-        % P_joint_by_neuron(:,:,i_neuron) = histcounts2(data_in, data_out(i_neuron,:), bin_edges_in, bin_edges_out, 'Normalization','probability');
-        P_joint_by_neuron(:,:,i_neuron) = histcounts2(data_in, data_out(i_neuron,:), bin_edges_in, bin_edges_out);
-    
-    end
-    
-    P_joint = sum(P_joint_by_neuron,3)./sum(P_joint_by_neuron,'all'); % sum across neurons and normalize to 1
-    
-    % figure(102)
-    % imagesc(bin_centers_out, bin_centers_in, P_joint)
-    
-    % method 2: by hand with levels
-    
-    levels_bin_edges_out = -0.5+(0:bins_out); % bin edges for integers
-    
-    P2_joint_by_neuron = zeros(bins_in, bins_out,n);
-    for i_neuron = 1:n
-        for i_level_in = 1:bins_in
-    
-            P2_joint_by_neuron(i_level_in, :, i_neuron) = histcounts(levels_out(i_neuron,levels_in == i_level_in-1),levels_bin_edges_out);
-    
-        end
-    end
-    
-    P2_joint = sum(P2_joint_by_neuron,3)./sum(P2_joint_by_neuron,'all');
-    
-    figure(1000+i_shift)
-    subplot(2,1,2) 
-    imagesc(bin_centers_out, bin_centers_in, P2_joint)
-    
-    %% Compute Mutual Information
-    I_xy = 0; 
-    
-    P_J = P2_joint;
-    % P_J = P_joint;
-    
-    for i=1:bins_in
-        for j=1:bins_out
-            if P_J(i,j) > 0
-                I_xy = I_xy + P_J(i,j) * log2(P_J(i,j)/(P_in(i)*P_out(j)));
-            end
-        end
-    end
-    
-    MI_vs_shift(i_shift) = I_xy;
+    MI_vs_shift(1,i_shift) = MI;
+
 end
 
 %% plot MI vs samples shifted

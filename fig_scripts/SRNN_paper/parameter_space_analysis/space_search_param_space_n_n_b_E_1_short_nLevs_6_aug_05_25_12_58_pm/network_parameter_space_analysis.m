@@ -29,7 +29,7 @@ dt_str = lower(strrep(datestr(now, 'mmm_dd_yy_hh_MM_AM'), ':', '_'));
 
 %% Create an ABSOLUTE base directory and be sure it exists
 output_dir_base = fullfile(pwd, ...
-    ['exlude_ch1_space_search_' note '_nLevs_' num2str(n_levels) '_' dt_str]);
+    ['space_search_' note '_nLevs_' num2str(n_levels) '_' dt_str]);
 
 if ~exist(output_dir_base, 'dir')
     mkdir(output_dir_base);

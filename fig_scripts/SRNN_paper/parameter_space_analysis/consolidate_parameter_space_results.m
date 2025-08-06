@@ -47,93 +47,154 @@ catch
 end
 
 % --- Determine total number of combinations from all batch files ---
-batch_size = 500; % Must match the batch_size in the simulation script
-max_batch_num = 0;
-num_in_last_batch = 0;
-
-for i = 1:length(batch_files)
-    [~, name, ~] = fileparts(batch_files(i).name);
-    num = sscanf(name, 'batch_results_%d');
-    if num > max_batch_num
-        max_batch_num = num;
-        loaded_data = load(fullfile(temp_output_dir, batch_files(i).name));
-        % Get size from the first condition's results, assuming all are the same
-        num_in_last_batch = length(loaded_data.batch_results_by_condition.(condition_names{1}));
-    end
+prompt = {'Enter the batch size used in the original simulation:'};
+dlgtitle = 'Input Batch Size';
+dims = [1 50];
+definput = {'25'};
+answer = inputdlg(prompt, dlgtitle, dims, definput);
+if isempty(answer)
+    fprintf('User cancelled. Exiting.\n');
+    return;
 end
-
-if max_batch_num == 0
-    fprintf('Could not determine batch numbering. Cannot proceed.\n');
+batch_size = str2double(answer{1});
+if isnan(batch_size) || batch_size <= 0 || floor(batch_size) ~= batch_size
+    fprintf('Invalid batch size entered. Must be a positive integer. Exiting.\n');
     return;
 end
 
-num_combinations = (max_batch_num - 1) * batch_size + num_in_last_batch;
-fprintf('Inferred %d total combinations from %d batch files.\n', num_combinations, length(batch_files));
+batch_numbers = zeros(length(batch_files), 1);
+for i = 1:length(batch_files)
+    [~, name, ~] = fileparts(batch_files(i).name);
+    scanned_num = sscanf(name, 'batch_results_%d');
+    if ~isempty(scanned_num)
+        batch_numbers(i) = scanned_num(1);
+    end
+end
 
-%% Loop through each condition and consolidate its data
+if all(batch_numbers == 0)
+    fprintf('Could not determine batch numbering from filenames. Cannot proceed.\n');
+    return;
+end
+
+[max_batch_num, max_idx] = max(batch_numbers);
+last_batch_data = load(fullfile(batch_files(max_idx).folder, batch_files(max_idx).name));
+num_in_last_batch = length(last_batch_data.batch_results_by_condition.(condition_names{1}));
+
+num_combinations = (max_batch_num - 1) * batch_size + num_in_last_batch;
+fprintf('Inferred %d total combinations from %d batch files (using batch size of %d).\n\n', num_combinations, length(batch_files), batch_size);
+
+%% Pre-allocate results in memory for all conditions
+fprintf('======================================================\n');
+fprintf('===== Allocating Memory For In-Memory Consolidation =====\n');
+fprintf('WARNING: This will load all results into RAM. This may fail if the dataset is very large.\n');
+
+results_in_memory = struct();
+for c_idx = 1:num_conditions
+    condition_name = condition_names{c_idx};
+    results_in_memory.(condition_name) = cell(num_combinations, 1);
+    fprintf('Allocated memory for "%s" (%d entries).\n', condition_name, num_combinations);
+end
+fprintf('======================================================\n\n');
+
+
+%% Load all batch file data into memory
+fprintf('===== Loading all batch files into RAM =====\n');
+all_batches_found_and_loaded = true;
+for i = 1:length(batch_files)
+    batch_filename = fullfile(batch_files(i).folder, batch_files(i).name);
+    batch_idx = batch_numbers(i);
+
+    if batch_idx == 0
+        fprintf('Skipping file with unrecognized batch number: %s\n', batch_files(i).name);
+        continue;
+    end
+
+    fprintf('Reading batch file %d of %d (%s)...\n', i, length(batch_files), batch_files(i).name);
+
+    try
+        loaded_data = load(batch_filename, 'batch_results_by_condition');
+        start_idx = (batch_idx - 1) * batch_size + 1;
+
+        for c_idx = 1:num_conditions
+            condition_name = condition_names{c_idx};
+            if isfield(loaded_data.batch_results_by_condition, condition_name)
+                batch_slice = loaded_data.batch_results_by_condition.(condition_name);
+                end_idx = start_idx + length(batch_slice) - 1;
+                
+                if end_idx <= num_combinations
+                    results_in_memory.(condition_name)(start_idx:end_idx, 1) = batch_slice;
+                else
+                    fprintf('  Warning: Index out of bounds for condition "%s". Skipping placement.\n', condition_name);
+                end
+            end
+        end
+    catch ME
+        fprintf('  Error reading or processing file: %s. Error: %s\n', batch_files(i).name, ME.message);
+        all_batches_found_and_loaded = false;
+    end
+end
+fprintf('======================================================\n\n');
+
+
+%% Extract and Consolidate Mutual Information Statistics
+% This section is removed, as we will save the data in its original format
+% to maintain consistency with the main analysis script. The MI data
+% remains within the 'results' cell array.
+fprintf('===== Consolidating results while preserving original data structure =====\n');
+
+
+%% Write final consolidated files from memory
+fprintf('===== Writing consolidated files to disk =====\n');
 for c_idx = 1:num_conditions
     condition_name = condition_names{c_idx};
     output_dir = fullfile(base_dir, condition_name);
     if ~exist(output_dir, 'dir'), mkdir(output_dir); end
-
-    fprintf('======================================================\n');
-    fprintf('===== Consolidating Condition: %s =====\n', upper(condition_name));
-    
     final_save_filename = fullfile(output_dir, sprintf('param_space_results_%s.mat', condition_name));
+
+    choice = 'Yes';
     if exist(final_save_filename, 'file')
         choice = questdlg(sprintf('Final results file already exists for "%s". Overwrite?', condition_name), ...
             'File Exists', 'Yes', 'No', 'No');
-        if strcmp(choice, 'No')
-            fprintf('Skipping condition "%s" as per user request.\n\n', condition_name);
-            continue;
-        end
     end
 
-    % --- Consolidate results for this condition using a matfile object---
-    fprintf('Consolidating data for "%s"...\n', condition_name);
-    matObj = matfile(final_save_filename, 'Writable', true);
-    matObj.results = cell(num_combinations, 1); % pre-allocate
-    all_batches_found_for_cond = true;
+    if strcmp(choice, 'Yes')
+        fprintf('Writing final file for "%s"...\n', condition_name);
 
-    for i = 1:length(batch_files)
-        batch_filename = fullfile(batch_files(i).folder, batch_files(i).name);
-        [~, name, ~] = fileparts(batch_filename);
-        batch_idx = sscanf(name, 'batch_results_%d');
+        results = results_in_memory.(condition_name);
 
+        metadata = struct();
+        metadata.NOTE = 'This file was created by consolidate_parameter_space_results.m from an interrupted run.';
+        metadata.consolidation_date = datestr(now);
+        metadata.num_combinations = num_combinations;
+        metadata.original_run_directory = base_dir;
+
+        % Prepare variables to save. We save the 'results' cell array directly.
+        vars_to_save = {'results', 'metadata'};
+        
         try
-            loaded_data = load(batch_filename);
-            batch_slice = loaded_data.batch_results_by_condition.(condition_name);
-            
-            start_idx = (batch_idx - 1) * batch_size + 1;
-            end_idx = start_idx + length(batch_slice) - 1;
-            
-            matObj.results(start_idx:end_idx, 1) = batch_slice;
-        catch
-            fprintf('Warning: Could not read or place data for "%s" from batch file: %s\n', condition_name, batch_files(i).name);
-            all_batches_found_for_cond = false;
+            save(final_save_filename, vars_to_save{:}, '-v7.3');
+            fprintf('Successfully saved consolidated results to:\n%s\n\n', final_save_filename);
+        catch ME
+            fprintf('ERROR: Could not save the final file for "%s".\n', condition_name);
+            fprintf('The error was: %s\n', ME.message);
+            fprintf('The variable might be too large to save. You may need to use a matfile-based approach for consolidation.\n\n');
         end
+    else
+        fprintf('Skipping condition "%s" as per user request.\n\n', condition_name);
     end
-    
-    % --- Save final file with partial metadata ---
-    fprintf('Saving final file with metadata...\n');
-    metadata = struct();
-    metadata.NOTE = 'This file was created by consolidate_parameter_space_results.m from an interrupted run.';
-    metadata.consolidation_date = datestr(now);
-    metadata.num_combinations = num_combinations;
-    metadata.original_run_directory = base_dir;
-    
-    matObj.metadata = metadata;
-    fprintf('Successfully saved consolidated results to:\n%s\n\n', final_save_filename);
 end
+
 
 %% Final cleanup
 fprintf('======================================================\n');
-fprintf('===== Consolidation Complete for all conditions =====\n');
+fprintf('===== Consolidation Complete =====\n');
 
 choice = questdlg('Delete the temporary results folder?', 'Clean Up', 'Yes', 'No', 'No');
-if strcmp(choice, 'Yes')
+if strcmp(choice, 'Yes') && all_batches_found_and_loaded
     rmdir(temp_output_dir, 's');
     fprintf('Temporary results directory has been deleted.\n');
+elseif strcmp(choice, 'Yes') && ~all_batches_found_and_loaded
+    fprintf('Did not delete temp folder because some batches were missing or failed to load.\n');
 else
     fprintf('Temporary results directory was not deleted.\n');
 end
