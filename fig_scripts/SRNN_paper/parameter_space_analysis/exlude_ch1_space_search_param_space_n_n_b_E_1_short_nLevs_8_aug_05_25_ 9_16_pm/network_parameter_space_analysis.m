@@ -19,7 +19,7 @@ conditions = { ...
 % Specify which parameters to vary in the grid search.
 % The script will generate all combinations of the specified levels for these parameters.
 % Parameters not in this list will be held at their default values.
-params_for_grid = {'EE_factor', 'mean_weight', 'EI', 'IE_factor','mean_in_out_degree'};
+params_for_grid = {'EE_factor', 'mean_weight', 'EI', 'IE_factor','mean_in_out_degree','tau_a_E_2'};
 
 %% Analysis Parameters
 n_levels = 8; % 8 Number of values to test for each parameter in the grid
@@ -29,7 +29,7 @@ dt_str = lower(strrep(datestr(now, 'mmm_dd_yy_hh_MM_AM'), ':', '_'));
 
 %% Create an ABSOLUTE base directory and be sure it exists
 output_dir_base = fullfile(pwd, ...
-    ['space_search_' note '_nLevs_' num2str(n_levels) '_' dt_str]);
+    ['exlude_ch1_space_search_' note '_nLevs_' num2str(n_levels) '_' dt_str]);
 
 if ~exist(output_dir_base, 'dir')
     mkdir(output_dir_base);
@@ -50,12 +50,10 @@ for c_idx = 1:length(conditions)
     fprintf('======================================================\n\n');
     
     %% Default Simulation Parameters
-    p_default.fs = 1000;
     p_default.n = 10;
     p_default.EE_factor = 1.0;
     p_default.IE_factor = 1.0;
     p_default.EI = 0.7;
-    p_default.E_self = 0.0;
     p_default.mean_weight = 0.5;
     p_default.DC = 0.1;
     p_default.mean_in_out_degree = 5;
@@ -67,19 +65,17 @@ for c_idx = 1:length(conditions)
     p_default.n_b_E = current_condition.n_b_E_val;
     
     %% Parameter Ranges for Grid Search
-    ranges.fs = [250, 2000];
     ranges.n = [10, 200];
     ranges.EE_factor = [0.05, 2];
     ranges.IE_factor = [0.05, 2];
     ranges.EI = [1/p_default.n, 1.0];
-    ranges.E_self = [0.0, 0.5];
     ranges.mean_weight = [1/p_default.n, 2];
-    ranges.DC = [0, 4];
+    ranges.DC = [0, 0.5];
     ranges.mean_in_out_degree = [1.5, p_default.n-1];
     ranges.tau_a_E_2 = [6, 30];
     ranges.tau_b_E_2 = [2, 30];
     ranges.tau_STD = [0.2, 1];
-    ranges.c_SFA_factor = [0.0, 4.0];
+    ranges.c_SFA_factor = [0.1, 2.0];
     
     % Validate that all specified parameters for the grid exist in ranges
     all_possible_params = fieldnames(ranges);

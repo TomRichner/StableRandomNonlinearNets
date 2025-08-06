@@ -230,7 +230,7 @@ function [result] = SRNN_caller_wrapped_for_sensitivity_dual_stage_rndWalk(seed,
             bins_in = 10;
             bins_out = 10;
 
-            output_channels_to_exclude = [1];
+            output_channels_to_exclude = [];
 
             for i_shift = 1:length(shift_vec)
 
