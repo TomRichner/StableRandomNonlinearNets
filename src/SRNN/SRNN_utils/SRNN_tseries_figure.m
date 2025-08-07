@@ -460,14 +460,14 @@ if ~strcmpi(Lya_method, 'none')
             colors = lines(N_sys_eqs_lya);
             if ~isempty(local_LE_spectrum_t)
                 for i = 1:N_sys_eqs_lya
-                    plot(t_lya, local_LE_spectrum_t(:,i), '--', 'Color', colors(i,:), 'DisplayName', sprintf('Local LE(%d)', i));
+                    plot(t_lya, local_LE_spectrum_t(:,i), '-', 'Color', colors(i,:), 'DisplayName', sprintf('Local LE(%d)', i));
                 end
             end
-            if ~isempty(finite_LE_spectrum_t)
-                for i = 1:N_sys_eqs_lya
-                    plot(t_lya, finite_LE_spectrum_t(:,i), '-', 'Color', colors(i,:), 'LineWidth', 1.5, 'DisplayName', sprintf('Finite LE(%d)', i));
-                end
-            end
+            % if ~isempty(finite_LE_spectrum_t)
+            %     for i = 1:N_sys_eqs_lya
+            %         plot(t_lya, finite_LE_spectrum_t(:,i), '-', 'Color', colors(i,:), 'LineWidth', 1.5, 'DisplayName', sprintf('Finite LE(%d)', i));
+            %     end
+            % end
             for i = 1:N_sys_eqs_lya
                 plot([t_lya(1) t_lya(end)], [LE_spectrum(i) LE_spectrum(i)], ':', 'Color', colors(i,:), 'LineWidth', 2, 'DisplayName', sprintf('Global LE(%d): %.4f', i, LE_spectrum(i)));
             end

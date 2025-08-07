@@ -10,7 +10,8 @@ function [r_ts, p_ts] = compute_dependent_variables(a_E_ts, a_I_ts, b_E_ts, b_I_
     %   u_d_ts   - Dendritic potential (n x nt)
     %   params   - Struct containing parameters including:
     %              n, n_E, n_I, n_a_E, n_a_I, n_b_E, n_b_I, 
-    %              c_SFA (n x 1), F_STD (n x 1), E_indices, I_indices.
+    %              c_SFA (n x 1), F_STD (n x 1), E_indices, I_indices,
+    %              activation_function (function handle).
     %
     % Outputs:
     %   r_ts     - Firing rates (n x nt)
@@ -24,6 +25,12 @@ function [r_ts, p_ts] = compute_dependent_variables(a_E_ts, a_I_ts, b_E_ts, b_I_
 
     n = params.n;
     nt = size(u_d_ts, 2);
+
+    if isfield(params, 'activation_function') && isa(params.activation_function, 'function_handle')
+        activation_function = params.activation_function;
+    else
+        activation_function = @(x) max(0, x);
+    end
 
     u_eff_ts = u_d_ts; % n x nt, effective dendritic potential
 
@@ -50,7 +57,7 @@ function [r_ts, p_ts] = compute_dependent_variables(a_E_ts, a_I_ts, b_E_ts, b_I_
         u_eff_ts(I_idx, :) = u_eff_ts(I_idx, :) - c_SFA_full(I_idx) .* squeezed_sum_a_I;
     end
     
-    r_ts = max(0, u_eff_ts); % n x nt, relu (firing rates)
+    r_ts = activation_function(u_eff_ts); % n x nt, (firing rates)
     
     p_ts = r_ts; % n x nt, axonal output, initially same as r_ts
 
