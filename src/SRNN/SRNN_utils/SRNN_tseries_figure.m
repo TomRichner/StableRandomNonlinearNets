@@ -76,7 +76,7 @@ num_subplots = num_subplots_base + plot_offset;
 ax_handles = gobjects(0);
 sp_idx = 1;
 
-plot_indices = round(linspace(1, nt, min(nt, 2000)));
+plot_indices = round(linspace(1, nt, min(nt, 3000)));
 t_display = t(plot_indices);
 
 % Subplot 1: External input u_ex
@@ -496,9 +496,9 @@ if numel(ax_handles) > 0 && all(isgraphics(ax_handles))
 end
 
 % Add the scale bar now, after all subplots have been created
-if ~isempty(scale_bar_info)
-    add_scalebar_outside_subplot(scale_bar_info.ax, scale_bar_info.height, scale_bar_info.label);
-end
+% if ~isempty(scale_bar_info)
+%     add_scalebar_outside_subplot(scale_bar_info.ax, scale_bar_info.height, scale_bar_info.label);
+% end
 
 if n <= 50
     figure(2)

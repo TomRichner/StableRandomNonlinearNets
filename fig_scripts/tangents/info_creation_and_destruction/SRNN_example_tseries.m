@@ -1,13 +1,20 @@
 %--- SRNN_caller.m
 
 close all
-clear all % must clear all due to use of persistant variables in SRNN.m
+clear SRNN_NL % clear persistant variables in SRNN_NL
+% clear all
+clearvars -except seed
 clc
 
 tic
 
 %% 
-seed = 42;
+
+if exist('seed','var')
+    seed = seed+1
+else
+    seed = 58;
+end
 rng(seed,'twister');
 
 %% plotting parameters
@@ -15,12 +22,12 @@ sr_or_poisson = 'sr_stacked'; % sr, poisson, or sr_stacked
 include_sum_E_I_SR = false; % true or false
 
 %% Network
-n = 25; % number of neurons
+n = 10; % number of neurons
 
 Lya_method = 'benettin'; % 'benettin', 'qr', 'svd', or 'none'
 use_Jacobian = false; 
 
-mean_in_out_degree = 4; % desired mean number of connections in and out
+mean_in_out_degree = 5; % desired mean number of connections in and out
 density = mean_in_out_degree/(n-1); % each neuron can make up to n-1 connections with other neurons
 sparsity = 1-density;
 
@@ -29,7 +36,7 @@ scale = 0.5/0.79782; % overall scaling factor of weights
 w.EE = scale*1; % E to E. Change to scale*2 for bursting
 w.EI = scale*1; % E to I connections
 w.IE = scale*1; % I to E
-w.II = scale*.5; % I to I
+w.II = scale*0.5; % I to I
 w.selfE = 0;    % self connections of E neurons
 w.selfI = 0;    % self connections of I neurons
 
@@ -40,7 +47,7 @@ EI_vec = EI_vec(:); % make it a column
 %% Time
 fs = 1000; %Plotting sample frequency
 dt = 1/fs;
-T = [-30 20];
+T = [-40 30];
 
 T_lya_1 = -20; % s, time to start Lyapunov calculation warmup
 % T_lya_1 = T(1); % s, time to start Lyapunov calculation warmup
@@ -68,9 +75,9 @@ f_sin = 1.*ones(1,fs*dur);
 u_ex(1:3,-t(1)*fs+fix(fs*8)+(1:fix(fs*dur))) = 0.5*[1;2;3]*(stim_b0+amp.*sign(sin(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))')));
 u_ex(1:3,-t(1)*fs+fix(fs*3)+(1:fix(fs*dur))) = 0.5*[1;2;3]*(stim_b0+amp.*-cos(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))'));
 
-u_ex = 1.5*u_ex;
+u_ex = 1*u_ex;
 % u_ex = u_ex(:,1:nt);
-DC = 0.01;
+DC = 0.1;
 % Ramp up to DC over the first 5 seconds from t=T(1)
 ramp_duration = 10; % seconds
 ramp_end_time = T(1) + ramp_duration;
@@ -86,7 +93,7 @@ u_ex = u_ex + u_dc_profile;
 
 %% parameters
 
-tau_STD = 0.5; % scalar, time constant of synaptic depression
+tau_STD = 1; % 0.5 scalar, time constant of synaptic depression
 
 % Define number of timescales for E and I neurons separately
 n_a_E = 1; % typically 3, number of SFA timescales for E neurons
@@ -98,6 +105,9 @@ n_b_I = 0; % typically 0, number of STD timescales for I neurons (typically 0)
 % Ensure these are empty if the corresponding n_a_X or n_b_X is 0
 if n_a_E > 0
     tau_a_E = logspace(log10(0.3), log10(15), n_a_E); % s, 1 x n_a_E
+    if n_b_E == 1 % Specific condition from original code
+        tau_a_E = 1;
+    end
 else
     tau_a_E = [];
 end
@@ -110,7 +120,8 @@ end
 if n_b_E > 0
     tau_b_E = logspace(log10(0.6), log10(9), n_b_E);  % s, 1 x n_b_E
     if n_b_E == 1 % Specific condition from original code
-        tau_b_E = 4*tau_STD;
+        tau_b_E = 1*tau_STD;
+        % tau_b_E = 0.25*tau_STD; % 
     end
 else
     tau_b_E = [];
@@ -129,22 +140,33 @@ tau_d = 0.025; % s, scalar
 
 % c_SFA and F_STD remain n x 1, defining strength for *all* neurons.
 % SRNN.m will use n_a_I/n_b_I to determine if states a_I/b_I exist.
+c_SFA = zeros(n, 1);
 if n_a_E > 0
-    c_SFA = (0.5/n_a_E) * double(EI_vec == 1); % n x 1, Example: SFA only for E neurons
-else
-    c_SFA = zeros(n, 1);
+    c_SFA(E_indices) = (0.5/n_a_E); % SFA strength for E neurons
+end
+if n_a_I > 0
+    c_SFA(I_indices) = (0.5/n_a_I); % SFA strength for I neurons
 end
 
-F_STD = 1 * double(EI_vec == 1); % n x 1, Example: STD only for E neurons
+F_STD = zeros(n, 1);
+if n_b_E > 0
+    F_STD(E_indices) = 1; % STD for E neurons
+end
+if n_b_I > 0
+    F_STD(I_indices) = 1; % STD for I neurons
+end
 
 params = package_params(n_E, n_I, E_indices, I_indices, ...
                         n_a_E, n_a_I, n_b_E, n_b_I, ...
                         tau_a_E, tau_a_I, tau_b_E, tau_b_I, ...
                         tau_d, n, M, c_SFA, F_STD, tau_STD, EI_vec);
 
-params.activation_function = @(x) max(min(x+0.01.*x.^1, 2),0);   % nonlinear activation function
-% params.activation_function = @(x) max(min(x,10),0);   % nonlinear activation function
-% params.activation_function = @(x) max(x,0);   % nonlinear activation function
+% params.activation_function = @(x) max(min(x+1.*x.^3, 30),0);   % nonlinear activation function
+% params.activation_function = @(x) max(min(x,1),0);   % nonlinear activation function
+params.activation_function = @(x) max(x,0);   % nonlinear activation function
+% A smooth function that approximates the ramp from 0 to 3
+% k = 2; % Steepness parameter; larger k -> sharper corners
+% params.activation_function = @(x) 1.5 * (tanh(k * (x - 1.5)) + 1);
 
 %% Initial Conditions
 a0_E = [];
@@ -252,7 +274,7 @@ if ~strcmpi(Lya_method, 'none')
 
         case 'benettin'
             d0 = 1e-3;
-            [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X_for_lya, t_for_lya, dt, fs, d0, T, lya_dt, params, ode_options, @SRNN, t, u_ex, ode_solver);
+            [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X_for_lya, t_for_lya, dt, fs, d0, T, lya_dt, params, ode_options, @SRNN_NL, t, u_ex, ode_solver);
             if ~isfinite(LLE)
                 warning('Benettin LLE calculation resulted in a non-finite value.');
             end
@@ -306,8 +328,9 @@ end
 
 figure(1)
 % xlim([0 T(2)])
-% subplot(6,1,6)
-% ylim([-50 15])
+subplot(6,1,6)
+ylim([-3 1])
+xlim([-10 T(2)])
 
 % add subplots
 
