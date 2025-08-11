@@ -9,12 +9,12 @@ clc
 tic
 
 %% 
-
-if exist('seed','var')
-    seed = seed+1
-else
-    seed = 58;
-end
+% 
+% if exist('seed','var')
+%     seed = seed+1
+% else
+    seed = 101;
+% end
 rng(seed,'twister');
 
 %% plotting parameters
@@ -96,7 +96,7 @@ u_ex = u_ex + u_dc_profile;
 tau_STD = 1; % 0.5 scalar, time constant of synaptic depression
 
 % Define number of timescales for E and I neurons separately
-n_a_E = 1; % typically 3, number of SFA timescales for E neurons
+n_a_E = 3; % typically 3, number of SFA timescales for E neurons
 n_a_I = 0; % typically 0, number of SFA timescales for I neurons (typically 0)
 n_b_E = 1; % typically 1 or 2, number of STD timescales for E neurons
 n_b_I = 0; % typically 0, number of STD timescales for I neurons (typically 0)
@@ -105,7 +105,7 @@ n_b_I = 0; % typically 0, number of STD timescales for I neurons (typically 0)
 % Ensure these are empty if the corresponding n_a_X or n_b_X is 0
 if n_a_E > 0
     tau_a_E = logspace(log10(0.3), log10(15), n_a_E); % s, 1 x n_a_E
-    if n_b_E == 1 % Specific condition from original code
+    if n_a_E == 1 % Specific condition from original code
         tau_a_E = 1;
     end
 else
@@ -113,6 +113,9 @@ else
 end
 if n_a_I > 0
     tau_a_I = logspace(log10(0.3), log10(15), n_a_I); % s, 1 x n_a_I 
+    if n_a_I == 1 % Specific condition from original code
+        tau_a_I = 1;
+    end
 else
     tau_a_I = [];
 end
@@ -121,7 +124,6 @@ if n_b_E > 0
     tau_b_E = logspace(log10(0.6), log10(9), n_b_E);  % s, 1 x n_b_E
     if n_b_E == 1 % Specific condition from original code
         tau_b_E = 1*tau_STD;
-        % tau_b_E = 0.25*tau_STD; % 
     end
 else
     tau_b_E = [];
@@ -129,7 +131,7 @@ end
 if n_b_I > 0
     tau_b_I = logspace(log10(0.6), log10(9), n_b_I); % s, 1 x n_b_I
     if n_b_I == 1 % Retain similar logic if ever used
-        tau_b_I = 4*tau_STD;
+        tau_b_I = 1*tau_STD;
     end
 else
     tau_b_I = [];
