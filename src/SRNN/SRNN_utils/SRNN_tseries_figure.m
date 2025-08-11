@@ -68,7 +68,7 @@ if ~strcmpi(Lya_method, 'none')
 end
 
 plot_offset = 0;
-if strcmpi(sr_or_poisson, 'poisson') || strcmpi(sr_or_poisson, 'sr_stacked')
+if strcmpi(sr_or_poisson, 'poisson') || strcmpi(sr_or_poisson, 'sr_stacked') || strcmpi(sr_or_poisson, 'sr')
     plot_offset = 1;
 end
 num_subplots = num_subplots_base + plot_offset;
@@ -148,7 +148,7 @@ if include_sum_E_I_SR
 end
 
 % Subplot 3: Firing rates r_ts or Poisson raster plot
-if strcmpi(sr_or_poisson, 'poisson') || strcmpi(sr_or_poisson, 'sr_stacked')
+if strcmpi(sr_or_poisson, 'poisson') || strcmpi(sr_or_poisson, 'sr_stacked') || strcmpi(sr_or_poisson, 'sr')
     ax_handles(end+1) = subplot(num_subplots, 1, sp_idx:(sp_idx + plot_offset));
     sp_idx = sp_idx + 1 + plot_offset;
 else

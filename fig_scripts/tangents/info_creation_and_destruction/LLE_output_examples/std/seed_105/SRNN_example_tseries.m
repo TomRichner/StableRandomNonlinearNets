@@ -18,14 +18,14 @@ tic
 rng(seed,'twister');
 
 %% adaptation 
-sfa_std_both_none = 'none'; % 'none', 'both', 'sfa', 'std'
+sfa_std_both_none = 'std'; % 'none', 'both', 'sfa', 'std'
 
-tau_d = 0.025; % s, scalar
+tau_d = 1; % s, scalar
 
 %% plot saving
 save_plots = true;
 save_folder = [fullfile(fileparts(mfilename('fullpath'))) filesep 'LLE_output_examples' filesep sfa_std_both_none filesep 'seed_' num2str(seed)];
-save_name = ['EE1p02_' sfa_std_both_none '_tau_d_' strrep(num2str(tau_d),'.','p') '_seed_' num2str(seed)];
+save_name = [sfa_std_both_none '_tau_d_' strrep(num2str(tau_d),'.','p') '_seed_' num2str(seed)];
 
 %% plotting parameters
 sr_or_poisson = 'sr'; % sr, poisson, or sr_stacked
@@ -43,7 +43,7 @@ sparsity = 1-density;
 
 EI = 0.7;
 scale = 0.5/0.79782; % overall scaling factor of weights
-w.EE = scale*1.02; % E to E. Change to scale*2 for bursting
+w.EE = scale*1; % E to E. Change to scale*2 for bursting
 w.EI = scale*1; % E to I connections
 w.IE = scale*1; % I to E
 w.II = scale*0.5; % I to I
