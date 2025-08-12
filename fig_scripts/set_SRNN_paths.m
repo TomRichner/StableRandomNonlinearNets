@@ -6,4 +6,5 @@ addpath('../src/algorithms/ode_solvers');
 addpath('../src/SRNN');
 addpath('../src/SRNN/SRNN_utils');
 addpath('../src/supporting_functions/plotting_saving');
+addpath('../src/algorithms/info');
 % addpath('../fig_scripts/SRNN_paper/sensitivity_analysis');
