@@ -500,12 +500,12 @@ end
 
 
 %% save the figs
-% warning('not saving figs')
-disp('Saving figures...');
-save_folder = fullfile(fileparts(mfilename('fullpath')), 'v6_output_figs_sr_stacked_short');
-save_name = ['example_sr_stacked_v6_tseries_seed' num2str(seed)];
-save_some_figs_to_folder_2(save_folder, save_name, [], []);
-disp(['Figures saved to ' save_folder]);
+warning('not saving figs')
+% disp('Saving figures...');
+% save_folder = fullfile(fileparts(mfilename('fullpath')), 'v6_output_figs_sr_stacked_short');
+% save_name = ['example_sr_stacked_v6_tseries_seed' num2str(seed)];
+% save_some_figs_to_folder_2(save_folder, save_name, [], []);
+% disp(['Figures saved to ' save_folder]);
 
 % save_data_figs_mfiles(input_folder_path, output_folder_path, folder_name, note_string, save_mat_files, save_m_files, save_open_figs, varargin) % could also save current mfile for reproducibility
 

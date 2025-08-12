@@ -1,20 +1,30 @@
 %--- SRNN_caller.m
 
 close all
-% clear all % must clear all due to use of persistant variables in SRNN.m
-clear
-clear SRNN % must clearn this function before starting because 
-close all
+clear SRNN_NL % clear persistant variables in SRNN_NL
+clearvars -except seed
 clc
 
 tic
 
 %% 
-seed = 45;
+% if exist('seed','var')
+%     seed = seed+1
+% else
+    % seed = 105;
+    seed = 101;
+% end
 rng(seed,'twister');
 
-%% 
-sfa_std_both_none = 'both'; % 'sfa', 'std', 'both', or 'none'
+%% adaptation 
+sfa_std_both_none = 'both'; % 'none', 'both', 'sfa', 'std'
+
+tau_d = 0.1; % s, scalar
+
+%% plot saving
+save_plots = false;
+save_folder = [fullfile(fileparts(mfilename('fullpath'))) filesep 'MI_output_examples' filesep sfa_std_both_none filesep 'seed_' num2str(seed)];
+save_name = ['MI_example_' sfa_std_both_none '_tau_d_' strrep(num2str(tau_d),'.','p') '_seed_' num2str(seed)];
 
 %% plotting parameters
 sr_or_poisson = 'sr'; % sr, poisson, or sr_stacked
@@ -32,10 +42,10 @@ sparsity = 1-density;
 
 EI = 0.7;
 scale = 0.5/0.79782; % overall scaling factor of weights
-w.EE = scale*1; % E to E. Change to scale*2 for bursting
+w.EE = scale*1.00; % E to E. Change to scale*2 for bursting
 w.EI = scale*1; % E to I connections
 w.IE = scale*1; % I to E
-w.II = scale*.5; % I to I
+w.II = scale*0.5; % I to I
 w.selfE = 0;    % self connections of E neurons
 w.selfI = 0;    % self connections of I neurons
 
@@ -103,7 +113,7 @@ u_ex = u_ex + u_dc_profile;
 
 %% parameters
 
-tau_STD = 0.5; % scalar, time constant of synaptic depression
+tau_STD = 1; % 0.5 scalar, time constant of synaptic depression
 
 if strcmpi(sfa_std_both_none,'both')
     n_a_E = 3; % typically 3, number of SFA timescales for E neurons
@@ -144,7 +154,7 @@ end
 if n_b_E > 0
     tau_b_E = logspace(log10(0.6), log10(9), n_b_E);  % s, 1 x n_b_E
     if n_b_E == 1 % Specific condition from original code
-        tau_b_E = 4*tau_STD;
+        tau_b_E = 1*tau_STD;
     end
 else
     tau_b_E = [];
@@ -152,26 +162,36 @@ end
 if n_b_I > 0
     tau_b_I = logspace(log10(0.6), log10(9), n_b_I); % s, 1 x n_b_I
     if n_b_I == 1 % Retain similar logic if ever used
-        tau_b_I = 4*tau_STD;
+        tau_b_I = 1*tau_STD;
     end
 else
     tau_b_I = [];
 end
 
-tau_d = 0.025; % s, scalar
-
+% c_SFA and F_STD remain n x 1, defining strength for *all* neurons.
+% SRNN.m will use n_a_I/n_b_I to determine if states a_I/b_I exist.
+c_SFA = zeros(n, 1);
 if n_a_E > 0
-    c_SFA = (0.5/n_a_E) * double(EI_vec == 1); % n x 1, Example: SFA only for E neurons
-else
-    c_SFA = zeros(n, 1);
+    c_SFA(E_indices) = (0.5/n_a_E); % SFA strength for E neurons
+end
+if n_a_I > 0
+    c_SFA(I_indices) = (0.5/n_a_I); % SFA strength for I neurons
 end
 
-F_STD = 1 * double(EI_vec == 1); % n x 1, Example: STD only for E neurons
+F_STD = zeros(n, 1);
+if n_b_E > 0
+    F_STD(E_indices) = 1; % STD for E neurons
+end
+if n_b_I > 0
+    F_STD(I_indices) = 1; % STD for I neurons
+end
 
 params = package_params(n_E, n_I, E_indices, I_indices, ...
                         n_a_E, n_a_I, n_b_E, n_b_I, ...
                         tau_a_E, tau_a_I, tau_b_E, tau_b_I, ...
                         tau_d, n, M, c_SFA, F_STD, tau_STD, EI_vec);
+
+params.activation_function = @(x) max(x,0);   % relu
 
 %% Initial Conditions
 a0_E = [];
@@ -215,7 +235,7 @@ else
     ode_options = odeset('RelTol', 1e-7, 'AbsTol', 1e8, 'MaxStep',dt, 'InitialStep', 0.1*dt); % RelTol must be less than perturbation d0, which is 1e-3
 end
 
-SRNN_wrapper = @(tt,XX) SRNN(tt,XX,t,u_ex,params); % inline wrapper function to add t, u_ex, and params to SRNN
+SRNN_wrapper = @(tt,XX) SRNN_NL(tt,XX,t,u_ex,params); % inline wrapper function to add t, u_ex, and params to SRNN
 
 % wrap ode_RKn to limit the exposure of extra parameters for usage to match builtin integrators
 solver_method = 6; % 5 is classic RK4, 6 is improved RK4
@@ -223,160 +243,65 @@ deci = 1; % deci > 1 does not work for benettin's method.  Need to fix this
 ode_RKn_wrapper = @(odefun, tspan, y0, options) deal(tspan(:), ode_RKn_deci_bounded(odefun, tspan, y0, solver_method, false, deci, get_minMaxRange(params))); % Pass params to get_minMaxRange
 
 %% pick an ODE solver
-ode_solver = ode_RKn_wrapper; % fixed step RK 1, 2, or 4th order, with boundary enforcement
+% ode_solver = ode_RKn_wrapper; % fixed step RK 1, 2, or 4th order, with boundary enforcement
 % ode_solver = @ode45; % variable step
 % ode_solver = @ode4_wrapper; % basic RK4 for comparison
-% ode_solver = @ode15s; % stiff ode solver
+ode_solver = @ode15s; % stiff ode solver
 
 if strcmpi(Lya_method,'qr') && ~isequal(ode_solver, @ode15s)
     warning('QR method typically requires ode15s for stability. Current solver may cause issues.');
 end
 
-% Use the wrapper instead of ode15s
-% [t_ode, X] = ode_solver(SRNN_wrapper, t, X_0, ode_options);
+%% Run Simulation and LLE Computation
+fprintf('--- Running simulation from T(1)=%g to T(2)=%g ---\n', T(1), T(2));
+[t_ode, X] = ode_solver(SRNN_wrapper, t, X_0, ode_options);
+assert(all(abs(t_ode - t) < 1e-12), 'ODE solver did not return results exactly at the requested times for fiducial trajectory.');
+clear t_ode % t_ode is same as t
 
-% assert(all(abs(t_ode - t) < 1e-11), 'ODE solver did not return results exactly at the requested times for fiducial trajectory.');
-% clear t_ode % t_ode is same as t
-
-%% Analytic LLE Calculation
-% fprintf('--- Analytic LLE Calculation ---\n');
-% [r0_analytic, LLE_analytic] = LLE_analytic_SRNN_robust_extra_stable_fcn(n, n_E, n_I, M, DC, n_a_E, tau_a_E, c_SFA, n_b_E, tau_b_E, F_STD, tau_STD, tau_d);
-% if ~isnan(LLE_analytic)
-%     fprintf('Analytic  Λ_max = %+8.5f  1/s\n',LLE_analytic);
-%     fprintf('Max analytic fixed point rate = %f Hz\n', max(r0_analytic));
-% end
-% fprintf('--------------------------------\n');
-
-%% Two-phase LLE computation: pre-check for stability then full run
-
-LLE_phase1 = NaN;
-lya_results_phase1 = struct();
-proceed_to_phase2 = false;
-
-% --- Phase 1: Pre-check for stability ---
+lya_results = struct();
 if ~strcmpi(Lya_method, 'none')
-    fprintf('--- Phase 1: Pre-check for stability (t=0 to 1s) ---\n');
-
-    % Set up and run Phase 1 simulation from t=0 to t=1 with original ICs
-    T_phase1 = [0 1];
-    t_phase1 = (T_phase1(1):dt:T_phase1(2))';
-    % Use the original initial conditions X_0 for this pre-check to test for immediate divergence.
-    [t_ode_p1, X_phase1] = ode_solver(SRNN_wrapper, t_phase1, X_0, ode_options);
-    assert(all(abs(t_ode_p1 - t_phase1) < 1e-12), 'ODE solver did not return results exactly at the requested times for phase 1.');
-    clear t_ode_p1;
-    
-    % Check for runaway firing rate in Phase 1 before proceeding
-    [a_E_ts_p1, a_I_ts_p1, b_E_ts_p1, b_I_ts_p1, u_d_ts_p1] = unpack_SRNN_state(X_phase1, params);
-    [r_p1, ~] = compute_dependent_variables(a_E_ts_p1, a_I_ts_p1, b_E_ts_p1, b_I_ts_p1, u_d_ts_p1, params);
-    max_r_phase1 = max(r_p1(:));
-    r_threshold = 10000; % Hz
-
-    % Compute LLE for Phase 1 (still useful if Phase 2 calculation fails)
-    T_lya_1_phase1 = 0;
-    lya_calc_start_idx_p1 = find(t_phase1 >= T_lya_1_phase1, 1, 'first');
-    X_for_lya_p1 = X_phase1(lya_calc_start_idx_p1:end, :);
-    t_for_lya_p1 = t_phase1(lya_calc_start_idx_p1:end);
+    fprintf('--- LLE Calculation (%s method) ---\n', upper(Lya_method));
     
     if strcmpi(Lya_method,'qr')
-        lya_dt_p1 = 4*tau_d;
+        lya_dt = 4*tau_d;
     else
-        lya_dt_p1 = 0.5*tau_d;
+        lya_dt = 0.5*tau_d;
     end
-
+    
+    lya_calc_start_idx = find(t >= T_lya_1, 1, 'first');
+    if isempty(lya_calc_start_idx)
+        error('Could not find T_lya_1 in time vector t. Check T and T_lya_1 values.');
+    end
+    X_for_lya = X(lya_calc_start_idx:end, :);
+    t_for_lya = t(lya_calc_start_idx:end);
+    
     switch lower(Lya_method)
-        case 'benettin'
-            fprintf('Computing largest Lyapunov exponent using Benettin''s algorithm for Phase 1...\n');
-            d0_p1 = 1e-3; 
-            [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X_for_lya_p1, t_for_lya_p1, dt, fs, d0_p1, T_phase1, lya_dt_p1, params, ode_options, @SRNN, t, u_ex, ode_solver);
-            LLE_phase1 = LLE;
-            lya_results_phase1.LLE = LLE; lya_results_phase1.local_lya = local_lya; lya_results_phase1.finite_lya = finite_lya; lya_results_phase1.t_lya = t_lya;
-
         case {'qr', 'svd'}
-            fprintf('Computing full Lyapunov spectrum using %s method for Phase 1...\n', upper(Lya_method));
             if strcmpi(Lya_method, 'qr')
-                [LE_spectrum, local_LE_spectrum_t, finite_LE_spectrum_t, t_lya] = lyapunov_spectrum_qr(X_for_lya_p1, t_for_lya_p1, lya_dt_p1, params, ode_solver, ode_options, @SRNN_Jacobian, T_phase1, N_sys_eqs, fs);
-            else % svd
-                [LE_spectrum, local_LE_spectrum_t, finite_LE_spectrum_t, t_lya] = lyapunov_spectrum_svd(X_for_lya_p1, t_for_lya_p1, lya_dt_p1, params, ode_solver, ode_options, @SRNN_Jacobian, T_phase1, N_sys_eqs, fs);
-            end
-            if any(isfinite(LE_spectrum))
-                LLE_phase1 = max(LE_spectrum(isfinite(LE_spectrum)));
-            else
-                LLE_phase1 = Inf;
-            end
-            lya_results_phase1.LE_spectrum = LE_spectrum; lya_results_phase1.local_LE_spectrum_t = local_LE_spectrum_t; lya_results_phase1.finite_LE_spectrum_t = finite_LE_spectrum_t; lya_results_phase1.t_lya = t_lya; lya_results_phase1.N_sys_eqs = N_sys_eqs;
-    end
-    
-    if max_r_phase1 < r_threshold
-        fprintf('Phase 1 max firing rate = %.2f Hz (< %.0f Hz). Proceeding to full simulation.\n', max_r_phase1, r_threshold);
-        proceed_to_phase2 = true;
-    else
-        fprintf('Phase 1 max firing rate = %.2f Hz (>= %.0f Hz). Aborting full simulation.\n', max_r_phase1, r_threshold);
-        proceed_to_phase2 = false;
-    end
-else
-    proceed_to_phase2 = true; % No LLE check, proceed directly
-end
-
-% always proceed
-% proceed_to_phase2 = true;
-% warning('always proceeding to phase 2')
-
-if proceed_to_phase2
-    % --- Phase 2: Full simulation ---
-    fprintf('--- Phase 2: Full simulation from T(1)=%g to T(2)=%g ---\n', T(1), T(2));
-    [t_ode, X] = ode_solver(SRNN_wrapper, t, X_0, ode_options);
-    assert(all(abs(t_ode - t) < 1e-11), 'ODE solver did not return results exactly at the requested times for fiducial trajectory.');
-    clear t_ode % t_ode is same as t
-    
-    % This block computes LLEs for Phase 2, and decides whether to keep them or revert to Phase 1 results
-    lya_results = struct();
-    phase2_LLE_is_finite = false;
-    if ~strcmpi(Lya_method, 'none')
-        if strcmpi(Lya_method,'qr')
-            lya_dt = 4*tau_d;
-        else
-            lya_dt = 0.5*tau_d;
-        end
-        lya_calc_start_idx = find(t >= T_lya_1, 1, 'first');
-        if isempty(lya_calc_start_idx)
-            error('Could not find T_lya_1 in time vector t. Check T and T_lya_1 values.');
-        end
-        X_for_lya = X(lya_calc_start_idx:end, :);
-        t_for_lya = t(lya_calc_start_idx:end);
-        
-        switch lower(Lya_method)
-            case 'svd'
-                fprintf('Computing full Lyapunov spectrum using SVD method...\n');
-                [LE_spectrum, local_LE_spectrum_t, finite_LE_spectrum_t, t_lya] = lyapunov_spectrum_svd(X_for_lya, t_for_lya, lya_dt, params, ode_solver, ode_options, @SRNN_Jacobian, T, N_sys_eqs, fs);
-                if any(isfinite(LE_spectrum)), phase2_LLE_is_finite = true; end
-            case 'qr'
-                fprintf('Computing full Lyapunov spectrum using QR decomposition method...\n');
                 [LE_spectrum, local_LE_spectrum_t, finite_LE_spectrum_t, t_lya] = lyapunov_spectrum_qr(X_for_lya, t_for_lya, lya_dt, params, ode_solver, ode_options, @SRNN_Jacobian, T, N_sys_eqs, fs);
-                if any(isfinite(LE_spectrum)), phase2_LLE_is_finite = true; end
-            case 'benettin'
-                fprintf('Computing largest Lyapunov exponent using Benettin''s algorithm...\n');
-                d0 = 1e-3;
-                [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X_for_lya, t_for_lya, dt, fs, d0, T, lya_dt, params, ode_options, @SRNN, t, u_ex, ode_solver);
-                if isfinite(LLE), phase2_LLE_is_finite = true; end
-        end
+            else % svd
+                [LE_spectrum, local_LE_spectrum_t, finite_LE_spectrum_t, t_lya] = lyapunov_spectrum_svd(X_for_lya, t_for_lya, lya_dt, params, ode_solver, ode_options, @SRNN_Jacobian, T, N_sys_eqs, fs);
+            end
+            if ~any(isfinite(LE_spectrum))
+                warning('LLE calculation resulted in non-finite values.');
+            end
+            lya_results.LE_spectrum = LE_spectrum; 
+            lya_results.local_LE_spectrum_t = local_LE_spectrum_t; 
+            lya_results.finite_LE_spectrum_t = finite_LE_spectrum_t; 
+            lya_results.t_lya = t_lya; 
+            lya_results.N_sys_eqs = N_sys_eqs;
 
-        if phase2_LLE_is_finite
-             if strcmpi(Lya_method, 'benettin')
-                lya_results.LLE = LLE; lya_results.local_lya = local_lya; lya_results.finite_lya = finite_lya; lya_results.t_lya = t_lya;
-             else % qr or svd
-                lya_results.LE_spectrum = LE_spectrum; lya_results.local_LE_spectrum_t = local_LE_spectrum_t; lya_results.finite_LE_spectrum_t = finite_LE_spectrum_t; lya_results.t_lya = t_lya; lya_results.N_sys_eqs = N_sys_eqs;
-             end
-        else
-            fprintf('Phase 2 LLE calculation was non-finite. Reverting to Phase 1 results.\n');
-            lya_results = lya_results_phase1;
-        end
+        case 'benettin'
+            d0 = 1e-3;
+            [LLE, local_lya, finite_lya, t_lya] = benettin_algorithm(X_for_lya, t_for_lya, dt, fs, d0, T, lya_dt, params, ode_options, @SRNN_NL, t, u_ex, ode_solver);
+            if ~isfinite(LLE)
+                warning('Benettin LLE calculation resulted in a non-finite value.');
+            end
+            lya_results.LLE = LLE; 
+            lya_results.local_lya = local_lya; 
+            lya_results.finite_lya = finite_lya; 
+            lya_results.t_lya = t_lya;
     end
-else % Did not proceed to phase 2
-    fprintf('Using Phase 1 results for final output.\n');
-    X = X_phase1;
-    t = t_phase1;
-    T = T_phase1;
-    lya_results = lya_results_phase1;
 end
 
 
@@ -386,71 +311,26 @@ end
 % This function will need to be updated or defined to handle the new state structure
 [r, p] = compute_dependent_variables(a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params);
 
-% %% print the LLE analytic and compare to numerical LLE
-% if ~strcmpi(Lya_method, 'none') && ~isempty(fieldnames(lya_results))
-%     fprintf('----------------------------------------------------\n');
-%     if strcmpi(Lya_method, 'benettin')
-%         fprintf('Estimated Largest Lyapunov Exponent (LLE): %f\n', lya_results.LLE);
-%     else % qr or svd
-%         LE_sorted = sort(lya_results.LE_spectrum,'descend');
-%         fprintf('Estimated Lyapunov Spectrum (Global):\n');
-%         for i = 1:lya_results.N_sys_eqs
-%             fprintf('  LE(%d): %f\n', i, LE_sorted(i));
-%         end
-%         fprintf('Sum of exponents: %f (should be < 0 for dissipative systems)\n', sum(lya_results.LE_spectrum));
-%         fprintf('Kaplan-Yorke Dimension: %f\n', kaplan_yorke_dim(LE_sorted));
-%     end
-%     fprintf('----------------------------------------------------\n');
-% 
-%     % --- Comparison of Analytic and Numerical Results ---
-%     if exist('LLE_analytic', 'var') && ~isnan(LLE_analytic)
-%         fprintf('--- Comparison of Results ---\n');
-%         % Compare LLE
-%         numerical_LLE = NaN;
-%         if strcmpi(Lya_method, 'benettin')
-%             numerical_LLE = lya_results.LLE;
-%         else % qr or svd
-%             if isfield(lya_results, 'LE_spectrum') && ~isempty(lya_results.LE_spectrum)
-%                 numerical_LLE = max(lya_results.LE_spectrum(isfinite(lya_results.LE_spectrum)));
-%             end
-%         end
-%         if ~isnan(numerical_LLE)
-%             fprintf('LLE Analytic: %f  |  Numerical: %f\n', LLE_analytic, numerical_LLE);
-%         else
-%             fprintf('LLE Analytic: %f  |  Numerical: (not available)\n', LLE_analytic);
-%         end
-% 
-%         % Compare Fixed Point
-%         % Find a steady-state portion of the simulation to get numerical r0
-%         % Let's use the last 10% of the simulation, if t>0
-%         t_positive_idx = find(t>0);
-%         if ~isempty(t_positive_idx)
-%             start_idx_fp = t_positive_idx(1) + round(0.9 * numel(t_positive_idx));
-%             r0_numerical = mean(r(:, start_idx_fp:end), 2);
-% 
-%             fprintf('Max Fixed Point Rate (r0):\n');
-%             fprintf('  Analytic: %f Hz | Numerical: %f Hz\n', max(r0_analytic), max(r0_numerical));
-% 
-%             % Print norm of difference
-%             fp_diff_norm = norm(r0_analytic - r0_numerical);
-%             fprintf('Norm of difference between analytic and numerical fixed points: %f\n', fp_diff_norm);
-%         else
-%             fprintf('Could not determine numerical fixed point (no simulation time > 0).\n');
-%         end
-%         fprintf('-----------------------------\n');
-%     end
-% else
-%      fprintf('Skipping Lyapunov calculation - trajectory only.\n');
-% end
+%% print the LLE
+if ~strcmpi(Lya_method, 'none') && ~isempty(fieldnames(lya_results))
+    fprintf('----------------------------------------------------\n');
+    if strcmpi(Lya_method, 'benettin')
+        fprintf('Estimated Largest Lyapunov Exponent (LLE): %f\n', lya_results.LLE);
+    else % qr or svd
+        LE_sorted = sort(lya_results.LE_spectrum,'descend');
+        fprintf('Estimated Lyapunov Spectrum (Global):\n');
+        for i = 1:lya_results.N_sys_eqs
+            fprintf('  LE(%d): %f\n', i, LE_sorted(i));
+        end
+        fprintf('Sum of exponents: %f (should be < 0 for dissipative systems)\n', sum(lya_results.LE_spectrum));
+        fprintf('Kaplan-Yorke Dimension: %f\n', kaplan_yorke_dim(LE_sorted));
+    end
+    fprintf('----------------------------------------------------\n');
+else
+     fprintf('Skipping Lyapunov calculation - trajectory only.\n');
+end
 
 %% Make plots using the plotting function
-
-% Call the plotting function
-% if ~strcmpi(Lya_method, 'none') && ~isempty(fieldnames(lya_results))
-%     SRNN_tseries_plot(t, u_ex, r, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T, Lya_method, lya_results);
-% else
-%     SRNN_tseries_plot(t, u_ex, r, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T, Lya_method);
-% end
 
 if ~strcmpi(Lya_method, 'none') && ~isempty(fieldnames(lya_results))
     SRNN_tseries_figure(t, u_ex, r, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T, Lya_method, sr_or_poisson, include_sum_E_I_SR, lya_results);
@@ -521,15 +401,13 @@ xlabel('Delay (s)')
 ylabel('Mutual Info (bits)')
 
 %% save the figs
-warning('not saving figs')
-
-save_some_figs_to_folder_2('MI_vs_delay',['MI_vs_delay_' sfa_std_both_none],[10],{'fig'})
-
-% disp('Saving figures...');
-% save_folder = fullfile(fileparts(mfilename('fullpath')), 'v4_output_figs_sr_stacked');
-% save_name = ['example_sr_stacked_tseries_seed' num2str(seed)];
-% save_some_figs_to_folder_2(save_folder, save_name, [], []);
-% disp(['Figures saved to ' save_folder]);
+if save_plots
+    save_some_figs_to_folder_2(save_folder, save_name, [], {'fig','png'});
+    copyCurrentMFile(save_folder)
+    disp(['Figures saved to ' save_folder]);
+else
+    disp('Not saving plots')
+end
 
 % save_data_figs_mfiles(input_folder_path, output_folder_path, folder_name, note_string, save_mat_files, save_m_files, save_open_figs, varargin) % could also save current mfile for reproducibility
 

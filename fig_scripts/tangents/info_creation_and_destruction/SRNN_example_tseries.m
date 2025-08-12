@@ -2,7 +2,6 @@
 
 close all
 clear SRNN_NL % clear persistant variables in SRNN_NL
-% clear all
 clearvars -except seed
 clc
 
@@ -13,17 +12,18 @@ tic
 % if exist('seed','var')
 %     seed = seed+1
 % else
-    seed = 105;
+    % seed = 105;
+    seed = 101;
 % end
 rng(seed,'twister');
 
 %% adaptation 
-sfa_std_both_none = 'none'; % 'none', 'both', 'sfa', 'std'
+sfa_std_both_none = 'both'; % 'none', 'both', 'sfa', 'std'
 
-tau_d = 0.025; % s, scalar
+tau_d = 0.1; % s, scalar
 
 %% plot saving
-save_plots = true;
+save_plots = false;
 save_folder = [fullfile(fileparts(mfilename('fullpath'))) filesep 'LLE_output_examples' filesep sfa_std_both_none filesep 'seed_' num2str(seed)];
 save_name = ['EE1p02_' sfa_std_both_none '_tau_d_' strrep(num2str(tau_d),'.','p') '_seed_' num2str(seed)];
 
@@ -43,7 +43,7 @@ sparsity = 1-density;
 
 EI = 0.7;
 scale = 0.5/0.79782; % overall scaling factor of weights
-w.EE = scale*1.02; % E to E. Change to scale*2 for bursting
+w.EE = scale*1.00; % E to E. Change to scale*2 for bursting
 w.EI = scale*1; % E to I connections
 w.IE = scale*1; % I to E
 w.II = scale*0.5; % I to I
@@ -57,7 +57,7 @@ EI_vec = EI_vec(:); % make it a column
 %% Time
 fs = 1000; %Plotting sample frequency
 dt = 1/fs;
-T = [-40 30];
+T = [-40 45];
 
 T_lya_1 = -20; % s, time to start Lyapunov calculation warmup
 % T_lya_1 = T(1); % s, time to start Lyapunov calculation warmup
@@ -82,8 +82,12 @@ dur = 3*1; % duration of sine
 f_sin = 1.*ones(1,fs*dur);
 % u_ex(1:3,-t(1)*fs+fix(fs*30)+(1:fix(fs*dur))) = 1*[1;2;3]*(stim_b0+amp.*sign(sin(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))')));
 % u_ex(1:3,-t(1)*fs+fix(fs*5)+(1:fix(fs*dur))) = 1*[1;2;3]*(stim_b0+amp.*-cos(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))'));
-u_ex(1:3,-t(1)*fs+fix(fs*8)+(1:fix(fs*dur))) = 0.5*[1;2;3]*(stim_b0+amp.*sign(sin(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))')));
-u_ex(1:3,-t(1)*fs+fix(fs*3)+(1:fix(fs*dur))) = 0.5*[1;2;3]*(stim_b0+amp.*-cos(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))'));
+% u_ex(1:3,-t(1)*fs+fix(fs*8)+(1:fix(fs*dur))) = 0.5*[1;2;3]*(stim_b0+amp.*sign(sin(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))')));
+% u_ex(1:3,-t(1)*fs+fix(fs*3)+(1:fix(fs*dur))) = 0.5*[1;2;3]*(stim_b0+amp.*-cos(2*pi*f_sin(1:fix(fs*dur)).*t(1:fix(fs*dur))'));
+
+
+u_ex(1,-t(1)*fs+fix(fs*1)+(1:fix(fs*5))) = 10;
+u_ex(1,:) = u_ex(1,:)+5;
 
 u_ex = 1*u_ex;
 % u_ex = u_ex(:,1:nt);
@@ -243,10 +247,10 @@ deci = 1; % deci > 1 does not work for benettin's method.  Need to fix this
 ode_RKn_wrapper = @(odefun, tspan, y0, options) deal(tspan(:), ode_RKn_deci_bounded(odefun, tspan, y0, solver_method, false, deci, get_minMaxRange(params))); % Pass params to get_minMaxRange
 
 %% pick an ODE solver
-ode_solver = ode_RKn_wrapper; % fixed step RK 1, 2, or 4th order, with boundary enforcement
+% ode_solver = ode_RKn_wrapper; % fixed step RK 1, 2, or 4th order, with boundary enforcement
 % ode_solver = @ode45; % variable step
 % ode_solver = @ode4_wrapper; % basic RK4 for comparison
-% ode_solver = @ode15s; % stiff ode solver
+ode_solver = @ode15s; % stiff ode solver
 
 if strcmpi(Lya_method,'qr') && ~isequal(ode_solver, @ode15s)
     warning('QR method typically requires ode15s for stability. Current solver may cause issues.');
@@ -350,8 +354,8 @@ figure(1)
 subplot(6,1,6)
 
 ylim([-1 1])
-xlim([0 15])
-
+% xlim([0 15])
+ 
 %% Add letters to plot
 fig1 = figure(1);
 % Get axes, excluding legends/colorbars, to determine how many letters.
