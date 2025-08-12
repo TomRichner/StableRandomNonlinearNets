@@ -76,7 +76,7 @@ num_subplots = num_subplots_base + plot_offset;
 ax_handles = gobjects(0);
 sp_idx = 1;
 
-plot_indices = round(linspace(1, nt, min(nt, 3000)));
+plot_indices = round(linspace(1, nt, min(nt, 4000)));
 t_display = t(plot_indices);
 
 % Subplot 1: External input u_ex
