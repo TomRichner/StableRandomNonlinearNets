@@ -40,7 +40,7 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI(seed, n, EE_factor, 
 
     %% Time
     dt = 1/fs;
-    T = [-20 60]; % 600
+    T = [-20 300]; % 600
     T_lya_1 = -10;
 
     nt = round((T(2)-T(1))*fs)+1;
@@ -73,7 +73,7 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI(seed, n, EE_factor, 
     nPairs = length(pair_start_times);
 
     % Random first-pulse amplitudes
-    Amp1Levels = 5;
+    Amp1Levels = 8;
     if nPairs > 0
         pAmp1 = 0.5*randi([1, Amp1Levels], 1, nPairs);
     else
@@ -175,6 +175,8 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI(seed, n, EE_factor, 
         else
             mean_rate_phase2 = NaN;
         end
+
+        r_ts = r_ts + (2/fs).*randn(size(r_ts)); % some measurement noise
 
         lya_results = struct();
         if isfinite(LLE)

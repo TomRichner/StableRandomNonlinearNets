@@ -10,16 +10,16 @@ clc;
 %% Analysis Conditions to Compare
 conditions = { ...
     struct('name', 'no_adaptation', 'n_a_E_val', 0, 'n_b_E_val', 0), ...
-    struct('name', 'sfa_only',      'n_a_E_val', 1, 'n_b_E_val', 0), ...
+    struct('name', 'sfa_only',      'n_a_E_val', 3, 'n_b_E_val', 0), ...
     struct('name', 'std_only',      'n_a_E_val', 0, 'n_b_E_val', 1), ...
-    struct('name', 'sfa_and_std',   'n_a_E_val', 1, 'n_b_E_val', 1) ...
+    struct('name', 'sfa_and_std',   'n_a_E_val', 3, 'n_b_E_val', 1) ...
 };
 
 %% Parameters for Grid Search
-params_for_grid = {'EE_factor', 'mean_weight', 'tau_a_E_2', 'tau_b_E_2'};
+params_for_grid = {'EE_factor', 'mean_weight'};
 
 %% Analysis Parameters
-n_levels = 4; % Number of values to test for each parameter in the grid
+n_levels = 6; % Number of values to test for each parameter in the grid
 note = 'ppMI_param_space';
 % Timestamp for folder name
 dt_str = lower(strrep(datestr(now, 'mmm_dd_yy_hh_MM_AM'), ':', '_'));
@@ -64,15 +64,15 @@ for c_idx = 1:length(conditions)
     %% Parameter Ranges for Grid Search
     ranges.fs = [250, 2000];
     ranges.n = [10, 200];
-    ranges.EE_factor = [0.5 1.5];
+    ranges.EE_factor = [0.05, 2];
     ranges.IE_factor = [0.05, 2];
     ranges.EI = [1/p_default.n, 1.0];
     ranges.E_self = [0.0, 0.5];
-    ranges.mean_weight = [0.25 0.75];
+    ranges.mean_weight = [1/p_default.n, 2];
     ranges.DC = [0, 4];
     ranges.mean_in_out_degree = [1.5, p_default.n-1];
-    ranges.tau_a_E_2 = [1, 15];
-    ranges.tau_b_E_2 = [1, 15];
+    ranges.tau_a_E_2 = [6, 30];
+    ranges.tau_b_E_2 = [2, 30];
     ranges.tau_STD = [0.2, 1];
     ranges.c_SFA_factor = [0.0, 4.0];
 

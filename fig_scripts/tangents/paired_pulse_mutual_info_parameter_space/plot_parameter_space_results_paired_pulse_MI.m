@@ -25,7 +25,7 @@ rate_bins = [linspace(rate_range(1), rate_range(2), n_bins_rate + 1), inf];
 
 % MI parameters
 mi_delay_for_histogram_samples = 200; % delay in samples for histogram column
-mi_range = [0, 0.3];
+mi_range = [0, 2.5];
 n_bins_mi = 25;
 mi_bins = [linspace(mi_range(1), mi_range(2), n_bins_mi + 1), inf];
 
