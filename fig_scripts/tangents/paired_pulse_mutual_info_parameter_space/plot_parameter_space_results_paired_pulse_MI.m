@@ -18,21 +18,25 @@ lle_range = [-1.5, 1.5];
 n_bins_lle = 25;
 lle_bins = [-inf, linspace(lle_range(1), lle_range(2), n_bins_lle), inf];
 
+% LLE imagesc parameters
+imagesc_lle_range = [-35 5]; % LLE range for the imagesc plot
+n_bins_imagesc_lle_range = 41;
+
 % Mean rate histogram parameters
-rate_range = [0, 10];
+rate_range = [0, 5];
 n_bins_rate = 25;
 rate_bins = [linspace(rate_range(1), rate_range(2), n_bins_rate + 1), inf];
 
 % MI parameters
 mi_delay_for_histogram_samples = 200; % delay in samples for histogram column
-mi_range = [0, 2.5];
+mi_range = [0, 3.5];
 n_bins_mi = 25;
 mi_bins = [linspace(mi_range(1), mi_range(2), n_bins_mi + 1), inf];
 
 % Figure bin styling
 outer_bin_width_multiplier = 1;
 middle_ticks_lle = [0];
-middle_ticks_rate = [0, 5];
+middle_ticks_rate = [0];
 middle_ticks_mi = [0];
 
 % Readable titles for conditions
@@ -269,12 +273,12 @@ for i = 1:num_conditions
     end
 end
 
-fig_img = figure('Name', 'MI vs Delay by LLE (Collapsed Across Conditions)', 'Position', [150, 150, 900, 500]);
+fig_img = figure('Name', 'MI vs Delay by LLE (Collapsed Across Conditions)', 'Position', [643   321   730   580]);
 if isempty(pooled_mi) || isempty(template_delay_vec)
     axes; axis off; text(0.5,0.5,'No MI data available for imagesc','HorizontalAlignment','center');
 else
     % Bin LLE into edges and compute median MI in each LLE bin per delay
-    lle_edges = linspace(lle_range(1), lle_range(2), 15);
+    lle_edges = linspace(imagesc_lle_range(1), imagesc_lle_range(2), n_bins_imagesc_lle_range);
     n_lle_bins = length(lle_edges)-1;
     n_delays = length(template_delay_vec);
     mi_img = NaN(n_lle_bins, n_delays);
@@ -282,8 +286,10 @@ else
     for b = 1:n_lle_bins
         in_bin = pooled_lle >= lle_edges(b) & pooled_lle < lle_edges(b+1);
         if any(in_bin)
-            mi_in_bin = pooled_mi(in_bin, :);
-            mi_img(b, :) = median(mi_in_bin, 1, 'omitnan');
+            mi_in_bin = squeeze(pooled_mi(in_bin, :));
+            mi_img(b, :) = mean(mi_in_bin, 1, 'omitnan');
+        else
+            mi_img(b, :) = nan(1, size(pooled_mi, 2));
         end
     end
 
@@ -291,7 +297,7 @@ else
     axis xy; colormap(hot);
     xlabel('Delay (s)','FontSize',22);
     ylabel('LLE (binned center)','FontSize',22);
-    title('Median MI vs Delay across LLE bins','FontSize',18);
+    title('Mean paired-pulse MI vs delay and LLE')
     colorbar; ylabel(colorbar, 'MI (bits)');
 end
 
@@ -302,18 +308,10 @@ if ~exist(output_dir_for_figs, 'dir')
 end
 
 fprintf('\nSaving figures to: %s\n', output_dir_for_figs);
-if exist('save_some_figs_to_folder_2','file')
-    save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_LLE_rate_MI_distributions_v1', fig_main.Number, {'fig', 'svg', 'png'});
-    save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_MI_vs_delay_LLE_imagesc_v1', fig_img.Number, {'fig', 'svg', 'png'});
-else
-    % Fallback
-    savefig(fig_main, fullfile(output_dir_for_figs, 'PPMI_LLE_rate_MI_distributions_v1.fig'));
-    saveas(fig_main, fullfile(output_dir_for_figs, 'PPMI_LLE_rate_MI_distributions_v1.png'));
-    savefig(fig_img, fullfile(output_dir_for_figs, 'PPMI_MI_vs_delay_LLE_imagesc_v1.fig'));
-    saveas(fig_img, fullfile(output_dir_for_figs, 'PPMI_MI_vs_delay_LLE_imagesc_v1.png'));
-end
+save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_LLE_rate_MI_distributions_v1', fig_main.Number, {'fig', 'svg', 'png'});
+save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_MI_vs_delay_LLE_imagesc_v1', fig_img.Number, {'fig', 'svg', 'png'});
+
 
 fprintf('Plotting complete.\n');
-beep; pause(0.5); beep;
 
 
