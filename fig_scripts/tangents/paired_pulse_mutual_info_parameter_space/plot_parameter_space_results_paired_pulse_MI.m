@@ -356,59 +356,129 @@ if ~isempty(all_ax_swarm)
 end
 
 
-%% Create Violin Plot figure for MI at different delays
+%% Create Violin Plot figure for MI at different delays (using violinPlots2)
 fig_violin = figure('Name', 'MI Violin Plot by Condition and Delay', 'Position', [200, 200, 1200, 600]);
 tiledlayout(1, num_conditions, 'TileSpacing', 'compact');
 all_ax_violin = [];
+
+% Add the violinplot path if it's not already there
+violinplot_path = fullfile(fileparts(mfilename('fullpath')), '..', '..', '..', 'src', 'supporting_functions', 'external', 'violinPlots2');
+if ~exist('Violin.m', 'file')
+    fprintf('Adding violinplot path to MATLAB path: %s\n', violinplot_path);
+    addpath(violinplot_path);
+end
+
 for i = 1:num_conditions
     condition_name = conditions_to_plot{i};
     mi_data = extracted_values.(condition_name).mi_for_swarm;
 
+    ax_violin = nexttile;
+    all_ax_violin = [all_ax_violin, ax_violin]; %#ok<AGROW>
+
     if isempty(mi_data)
-        nexttile;
         axis off;
         title(condition_titles(condition_name));
         text(0.5, 0.5, 'No Data', 'HorizontalAlignment', 'center');
         continue;
     end
-
-    ax_violin = nexttile;
-    all_ax_violin = [all_ax_violin, ax_violin]; %#ok<AGROW>
-
-    % Prepare data for violinplot, similar to swarmchart
-    num_points = size(mi_data, 1);
-    num_delays = size(mi_data, 2);
-    mi_flat = mi_data(:);
-    delay_labels_categorical = categorical(repmat(delays_for_swarm_samples', num_points, 1));
     
-    violinplot(delay_labels_categorical, mi_flat);
+    % Use the custom violinplot, turn off its default median marker and use a shadow for the IQR
+    delay_labels = string(delays_for_swarm_samples);
+    violins = violinplot(mi_data, delay_labels, 'Parent', ax_violin, ...
+        'ShowMedian', false, ...
+        'QuartileStyle', 'shadow', ...
+        'ShowBox', false, ...
+        'ShowWhiskers', false);
+    
     hold(ax_violin, 'on');
 
-    % Calculate and plot medians
+    % Calculate medians for each delay category
     medians = median(mi_data, 1, 'omitnan');
     
-    % Overlay median lines
-    % Get the categories to position the lines correctly
-    cats = categories(delay_labels_categorical);
-    for k = 1:length(cats)
-        % The x-position for each violin is simply its index
-        x_pos = k;
+    % Loop through each violin object to draw a median line spanning its width
+    for k = 1:length(violins)
+        v = violins(k);
         y_median = medians(k);
         
-        % Define the width of the median line (e.g., 50% of the violin's allotted space)
-        line_width = 0.4; 
+        if isempty(v.ViolinPlot) || ~isvalid(v.ViolinPlot)
+            continue;
+        end
         
-        % Plot a black line for the median
-        plot(ax_violin, [x_pos - line_width/2, x_pos + line_width/2], [y_median, y_median], 'k-', 'LineWidth', 2);
+        violin_patch = v.ViolinPlot;
+        x_data = violin_patch.XData;
+        y_data = violin_patch.YData;
+        
+        % The YData of a patch goes from min to max, then max to min.
+        % We can find the width by interpolating on each side.
+        [y_max, max_idx] = max(y_data);
+        
+        if y_median >= min(y_data) && y_median <= y_max
+            % Split data into the 'up' and 'down' side of the violin's contour
+            y_up = y_data(1:max_idx);
+            x_up = x_data(1:max_idx);
+            y_down = y_data(max_idx:end);
+            x_down = x_data(max_idx:end);
+
+            % To use interp1, y vectors must be monotonic. Remove duplicates.
+            [y_up_unique, ia_up] = unique(y_up);
+            x_up_unique = x_up(ia_up);
+
+            [y_down_unique, ia_down] = unique(y_down);
+            x_down_unique = x_down(ia_down);
+            
+            % Interpolate to find the x-coordinates at the median y-value
+            x1 = interp1(y_up_unique, x_up_unique, y_median, 'linear');
+            x2 = interp1(y_down_unique, x_down_unique, y_median, 'linear');
+    
+            if isfinite(x1) && isfinite(x2)
+                plot(ax_violin, [x1, x2], [y_median, y_median], 'k-', 'LineWidth', 2);
+            end
+        end
+        
+        % Manually add jitter to points at y=0, as the library code collapses them.
+        if v.ShowData
+            zero_data_indices = (mi_data(:, k) == 0);
+            num_zero_points = sum(zero_data_indices);
+        
+            if num_zero_points > 0 && (0 >= min(y_data) && 0 <= y_max)
+                % Re-use the unique-d x/y data from the median calculation above
+                x1_at_zero = interp1(y_up_unique, x_up_unique, 0, 'linear', NaN);
+                x2_at_zero = interp1(y_down_unique, x_down_unique, 0, 'linear', NaN);
+        
+                if isfinite(x1_at_zero) && isfinite(x2_at_zero)
+                    width_at_zero = abs(x2_at_zero - x1_at_zero);
+                    
+                    % Generate jittered x-positions centered at the violin's position (k)
+                    % jitter = (rand(num_zero_points, 1) - 0.5) * width_at_zero;
+                    jitter = 2*(rand(num_zero_points, 1) - 0.5) * width_at_zero;
+                    x_zeros = k + jitter;
+                    
+                    % Plot the points using properties from the original scatter plot
+                    % to ensure they match in style.
+                    if ~isempty(v.ScatterPlot) && isvalid(v.ScatterPlot)
+                        scatter(ax_violin, x_zeros, zeros(num_zero_points, 1), ...
+                                v.ScatterPlot.SizeData, v.ScatterPlot.CData, 'filled', ...
+                                'MarkerFaceAlpha', v.ScatterPlot.MarkerFaceAlpha);
+                    end
+                end
+            end
+        end
     end
     hold(ax_violin, 'off');
     
-    title(condition_titles(condition_name));
-    xlabel('Delay (samples)');
+    box(ax_violin, 'off'); % Turn off the box for all subplots
+    
+    % Use condition names as xlabels instead of titles, and remove x-ticks
+    xlabel(ax_violin, condition_titles(condition_name));
+    set(ax_violin, 'XTick', []);
+    
     if i == 1
         ylabel('Mutual Information (bits)');
+        yticks(ax_violin, [0 1 2 3]);
     else
-        yticklabels({}); % Hide y-axis labels for other subplots
+        % Make y-axis invisible for subplots 2, 3, and 4
+        set(ax_violin, 'YTick', [], 'YColor', 'none');
+        ylabel('');
     end
 end
 if ~isempty(all_ax_violin)
@@ -424,10 +494,10 @@ if ~exist(output_dir_for_figs, 'dir')
 end
 
 % fprintf('\nSaving figures to: %s\n', output_dir_for_figs);
-% save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_LLE_rate_MI_distributions_v1', fig_main.Number, {'fig', 'svg', 'png'});
-% save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_MI_vs_delay_LLE_imagesc_v1', fig_img.Number, {'fig', 'svg', 'png'});
-% save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_MI_swarm_by_condition_v1', fig_swarm.Number, {'fig', 'svg', 'png'});
-% save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_MI_violin_by_condition_v1', fig_violin.Number, {'fig', 'svg', 'png'});
+save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_LLE_rate_MI_distributions_v1', fig_main.Number, {'fig', 'svg', 'png'});
+save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_MI_vs_delay_LLE_imagesc_v1', fig_img.Number, {'fig', 'svg', 'png'});
+save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_MI_swarm_by_condition_v1', fig_swarm.Number, {'fig', 'svg', 'png'});
+save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_MI_violin_by_condition_v1', fig_violin.Number, {'fig', 'svg', 'png'});
 
 
 fprintf('Plotting complete.\n');
