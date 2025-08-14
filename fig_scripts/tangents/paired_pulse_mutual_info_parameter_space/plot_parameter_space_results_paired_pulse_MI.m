@@ -19,8 +19,8 @@ n_bins_lle = 25;
 lle_bins = [-inf, linspace(lle_range(1), lle_range(2), n_bins_lle), inf];
 
 % LLE imagesc parameters
-imagesc_lle_range = [-35 5]; % LLE range for the imagesc plot
-n_bins_imagesc_lle_range = 41;
+imagesc_lle_range = [-20 2]; % LLE range for the imagesc plot
+n_bins_imagesc_lle_range = 15;
 
 % Mean rate histogram parameters
 rate_range = [0, 5];
@@ -29,6 +29,7 @@ rate_bins = [linspace(rate_range(1), rate_range(2), n_bins_rate + 1), inf];
 
 % MI parameters
 mi_delay_for_histogram_samples = 200; % delay in samples for histogram column
+delays_for_swarm_samples = [500]; % delays in samples for swarm plot
 mi_range = [0, 3.5];
 n_bins_mi = 25;
 mi_bins = [linspace(mi_range(1), mi_range(2), n_bins_mi + 1), inf];
@@ -54,7 +55,7 @@ end
 fprintf('Selected directory: %s\n', base_dir);
 
 %% Load data files
-conditions_to_plot = {'no_adaptation', 'sfa_only', 'std_only', 'sfa_and_std'};
+conditions_to_plot = {'no_adaptation', 'std_only', 'sfa_only', 'sfa_and_std'};
 num_conditions = length(conditions_to_plot);
 all_data = struct();
 found_all = true;
@@ -83,6 +84,7 @@ for i = 1:num_conditions
     lles = [];
     mean_rates = [];
     mi_for_hist = [];
+    mi_for_swarm = [];
     all_mi_vectors = {};
     delay_vec_stored = [];
     fs_stored = [];
@@ -117,6 +119,15 @@ for i = 1:num_conditions
                 if ~isempty(delay_idx)
                     mi_for_hist(end+1) = mi_vec(delay_idx); %#ok<AGROW>
                 end
+
+                % Extract MI for swarm plot
+                mi_at_delays = zeros(1, length(delays_for_swarm_samples));
+                for k_delay = 1:length(delays_for_swarm_samples)
+                    [~, idx] = min(abs(delay_vec - delays_for_swarm_samples(k_delay)));
+                    mi_at_delays(k_delay) = mi_vec(idx);
+                end
+                mi_for_swarm(end+1, :) = mi_at_delays; %#ok<AGROW>
+
                 if isempty(delay_vec_stored)
                     delay_vec_stored = delay_vec;
                 end
@@ -124,6 +135,7 @@ for i = 1:num_conditions
                 if ~isempty(delay_vec_stored)
                     all_mi_vectors{end+1} = zeros(size(delay_vec_stored)); %#ok<AGROW>
                     mi_for_hist(end+1) = 0; %#ok<AGROW>
+                    mi_for_swarm(end+1, :) = zeros(1, length(delays_for_swarm_samples)); %#ok<AGROW>
                 end
             end
         end
@@ -131,6 +143,7 @@ for i = 1:num_conditions
     extracted_values.(condition_name).lles = lles;
     extracted_values.(condition_name).mean_rates = mean_rates;
     extracted_values.(condition_name).mi_for_hist = mi_for_hist;
+    extracted_values.(condition_name).mi_for_swarm = mi_for_swarm;
     extracted_values.(condition_name).all_mi_vectors = all_mi_vectors;
     extracted_values.(condition_name).delay_vec = delay_vec_stored;
     extracted_values.(condition_name).fs = fs_stored;
@@ -301,15 +314,120 @@ else
     colorbar; ylabel(colorbar, 'MI (bits)');
 end
 
+%% Create Swarm Plot figure for MI at different delays
+fig_swarm = figure('Name', 'MI Swarm Plot by Condition and Delay', 'Position', [200, 200, 1200, 600]);
+tiledlayout(1, num_conditions, 'TileSpacing', 'compact');
+all_ax_swarm = [];
+for i = 1:num_conditions
+    condition_name = conditions_to_plot{i};
+    mi_data = extracted_values.(condition_name).mi_for_swarm;
+
+    if isempty(mi_data)
+        nexttile;
+        axis off;
+        title(condition_titles(condition_name));
+        text(0.5, 0.5, 'No Data', 'HorizontalAlignment', 'center');
+        continue;
+    end
+
+    ax_swarm = nexttile;
+    all_ax_swarm = [all_ax_swarm, ax_swarm]; %#ok<AGROW>
+
+    % Prepare data for swarmchart
+    num_points = size(mi_data, 1);
+    num_delays = length(delays_for_swarm_samples);
+    
+    mi_flat = mi_data(:);
+    delay_labels_categorical = categorical(repmat(delays_for_swarm_samples', num_points, 1));
+    
+    swarmchart(ax_swarm, delay_labels_categorical, mi_flat, 'filled');
+    
+    title(condition_titles(condition_name));
+    xlabel('Delay (samples)');
+    if i == 1
+        ylabel('Mutual Information (bits)');
+    else
+        yticklabels({}); % Hide y-axis labels for other subplots
+    end
+
+end
+if ~isempty(all_ax_swarm)
+    linkaxes(all_ax_swarm, 'y');
+end
+
+
+%% Create Violin Plot figure for MI at different delays
+fig_violin = figure('Name', 'MI Violin Plot by Condition and Delay', 'Position', [200, 200, 1200, 600]);
+tiledlayout(1, num_conditions, 'TileSpacing', 'compact');
+all_ax_violin = [];
+for i = 1:num_conditions
+    condition_name = conditions_to_plot{i};
+    mi_data = extracted_values.(condition_name).mi_for_swarm;
+
+    if isempty(mi_data)
+        nexttile;
+        axis off;
+        title(condition_titles(condition_name));
+        text(0.5, 0.5, 'No Data', 'HorizontalAlignment', 'center');
+        continue;
+    end
+
+    ax_violin = nexttile;
+    all_ax_violin = [all_ax_violin, ax_violin]; %#ok<AGROW>
+
+    % Prepare data for violinplot, similar to swarmchart
+    num_points = size(mi_data, 1);
+    num_delays = size(mi_data, 2);
+    mi_flat = mi_data(:);
+    delay_labels_categorical = categorical(repmat(delays_for_swarm_samples', num_points, 1));
+    
+    violinplot(delay_labels_categorical, mi_flat);
+    hold(ax_violin, 'on');
+
+    % Calculate and plot medians
+    medians = median(mi_data, 1, 'omitnan');
+    
+    % Overlay median lines
+    % Get the categories to position the lines correctly
+    cats = categories(delay_labels_categorical);
+    for k = 1:length(cats)
+        % The x-position for each violin is simply its index
+        x_pos = k;
+        y_median = medians(k);
+        
+        % Define the width of the median line (e.g., 50% of the violin's allotted space)
+        line_width = 0.4; 
+        
+        % Plot a black line for the median
+        plot(ax_violin, [x_pos - line_width/2, x_pos + line_width/2], [y_median, y_median], 'k-', 'LineWidth', 2);
+    end
+    hold(ax_violin, 'off');
+    
+    title(condition_titles(condition_name));
+    xlabel('Delay (samples)');
+    if i == 1
+        ylabel('Mutual Information (bits)');
+    else
+        yticklabels({}); % Hide y-axis labels for other subplots
+    end
+end
+if ~isempty(all_ax_violin)
+    linkaxes(all_ax_violin, 'y');
+    ylim(all_ax_violin, [0 3.5]); % Set matching y-limits for all plots
+end
+
+
 %% Save figures
 output_dir_for_figs = fullfile(base_dir, 'analysis_plots');
 if ~exist(output_dir_for_figs, 'dir')
     mkdir(output_dir_for_figs);
 end
 
-fprintf('\nSaving figures to: %s\n', output_dir_for_figs);
-save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_LLE_rate_MI_distributions_v1', fig_main.Number, {'fig', 'svg', 'png'});
-save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_MI_vs_delay_LLE_imagesc_v1', fig_img.Number, {'fig', 'svg', 'png'});
+% fprintf('\nSaving figures to: %s\n', output_dir_for_figs);
+% save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_LLE_rate_MI_distributions_v1', fig_main.Number, {'fig', 'svg', 'png'});
+% save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_MI_vs_delay_LLE_imagesc_v1', fig_img.Number, {'fig', 'svg', 'png'});
+% save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_MI_swarm_by_condition_v1', fig_swarm.Number, {'fig', 'svg', 'png'});
+% save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_MI_violin_by_condition_v1', fig_violin.Number, {'fig', 'svg', 'png'});
 
 
 fprintf('Plotting complete.\n');
