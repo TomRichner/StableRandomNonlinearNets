@@ -34,6 +34,9 @@ mi_range = [0, 3.5];
 n_bins_mi = 25;
 mi_bins = [linspace(mi_range(1), mi_range(2), n_bins_mi + 1), inf];
 
+% LLE vs MI slice plot parameters
+mi_delay_window_for_slice_samples = [100 150]; % delay window in samples
+
 % Figure bin styling
 outer_bin_width_multiplier = 1;
 middle_ticks_lle = [0];
@@ -314,6 +317,54 @@ else
     colorbar; ylabel(colorbar, 'MI (bits)');
 end
 
+%% LLE vs MI slice figure
+fig_lle_mi_slice = figure('Name', 'LLE vs MI Slice', 'Position', [700, 400, 560, 420]);
+if isempty(pooled_mi) || isempty(template_delay_vec)
+    axes; axis off; text(0.5,0.5,'No MI data available for LLE vs MI slice plot','HorizontalAlignment','center');
+else
+    % Find delay indices for the averaging window
+    delay_indices = find(template_delay_vec >= mi_delay_window_for_slice_samples(1) & ...
+                         template_delay_vec <= mi_delay_window_for_slice_samples(2));
+
+    if isempty(delay_indices)
+        axes; axis off; text(0.5,0.5,'Specified delay window is empty or out of bounds','HorizontalAlignment','center');
+    else
+        % Average MI over the specified delay window
+        mi_averaged = mean(pooled_mi(:, delay_indices), 2, 'omitnan');
+        
+        % Remove runs where LLE or averaged MI is NaN
+        valid_indices = ~isnan(pooled_lle) & ~isnan(mi_averaged);
+        lle_valid = pooled_lle(valid_indices);
+        mi_valid = mi_averaged(valid_indices);
+
+        % Use the same LLE bins as the imagesc plot for consistency
+        lle_edges_slice = linspace(imagesc_lle_range(1), imagesc_lle_range(2), n_bins_imagesc_lle_range);
+        n_lle_bins_slice = length(lle_edges_slice) - 1;
+        
+        lle_bin_centers = (lle_edges_slice(1:end-1) + lle_edges_slice(2:end)) / 2;
+        mi_mean_in_bin = NaN(1, n_lle_bins_slice);
+        mi_std_in_bin = NaN(1, n_lle_bins_slice);
+        
+        for b = 1:n_lle_bins_slice
+            in_bin_indices = find(lle_valid >= lle_edges_slice(b) & lle_valid < lle_edges_slice(b+1));
+            if ~isempty(in_bin_indices)
+                mi_in_bin = mi_valid(in_bin_indices);
+                mi_mean_in_bin(b) = mean(mi_in_bin, 'omitnan');
+                mi_std_in_bin(b) = std(mi_in_bin, 'omitnan');
+            end
+        end
+        
+        % Plotting
+        errorbar(lle_bin_centers, mi_mean_in_bin, mi_std_in_bin, 'o-', 'LineWidth', 1.5, 'CapSize', 4);
+        xlabel('LLE (\lambda_1)', 'FontSize', 22);
+        ylabel('Mutual Information (bits)', 'FontSize', 22);
+        title(sprintf('MI averaged over delays [%d, %d] samples', mi_delay_window_for_slice_samples(1), mi_delay_window_for_slice_samples(2)));
+        grid on;
+        box off;
+        set(gca, 'FontSize', 14);
+    end
+end
+
 %% Create Swarm Plot figure for MI at different delays
 fig_swarm = figure('Name', 'MI Swarm Plot by Condition and Delay', 'Position', [200, 200, 1200, 600]);
 tiledlayout(1, num_conditions, 'TileSpacing', 'compact');
@@ -496,6 +547,7 @@ end
 % fprintf('\nSaving figures to: %s\n', output_dir_for_figs);
 save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_LLE_rate_MI_distributions_v1', fig_main.Number, {'fig', 'svg', 'png'});
 save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_MI_vs_delay_LLE_imagesc_v1', fig_img.Number, {'fig', 'svg', 'png'});
+save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_LLE_vs_MI_slice_v1', fig_lle_mi_slice.Number, {'fig', 'svg', 'png'});
 save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_MI_swarm_by_condition_v1', fig_swarm.Number, {'fig', 'svg', 'png'});
 save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_MI_violin_by_condition_v1', fig_violin.Number, {'fig', 'svg', 'png'});
 
