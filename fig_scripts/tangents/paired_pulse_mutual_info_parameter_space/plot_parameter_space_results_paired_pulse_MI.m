@@ -19,8 +19,8 @@ n_bins_lle = 25;
 lle_bins = [-inf, linspace(lle_range(1), lle_range(2), n_bins_lle), inf];
 
 % LLE imagesc parameters
-imagesc_lle_range = [-15 1]; % LLE range for the imagesc plot
-n_bins_imagesc_lle_range = 16;
+imagesc_lle_range = [-15 2]; % LLE range for the imagesc plot
+n_bins_imagesc_lle_range = diff(imagesc_lle_range)+0;
 
 % Mean rate histogram parameters
 rate_range = [0, 5];
@@ -35,7 +35,7 @@ n_bins_mi = 25;
 mi_bins = [linspace(mi_range(1), mi_range(2), n_bins_mi + 1), inf];
 
 % LLE vs MI slice plot parameters
-mi_delay_window_for_slice_samples = [25 50]; % delay window in samples
+mi_delay_window_for_slice_samples = [25 100]; % delay window in samples
 
 % Figure bin styling
 outer_bin_width_multiplier = 1;
@@ -326,10 +326,9 @@ else
         
         % Plotting
         errorbar(lle_bin_centers, mi_mean_in_bin, mi_std_in_bin, 'o-', 'LineWidth', 1.5, 'CapSize', 4);
-        xlabel('LLE (\lambda_1)', 'FontSize', 22);
-        ylabel('Mutual Information (bits)', 'FontSize', 22);
-        title(sprintf('MI averaged over delays [%d, %d] samples', mi_delay_window_for_slice_samples(1), mi_delay_window_for_slice_samples(2)));
-        grid on;
+        xlabel('LLE (\lambda_1)');
+        ylabel('Mutual Information (bits)');
+        % title(sprintf('MI averaged over delays [%d, %d] samples', mi_delay_window_for_slice_samples(1), mi_delay_window_for_slice_samples(2)));
         box off;
         set(gca, 'FontSize', 14);
     end

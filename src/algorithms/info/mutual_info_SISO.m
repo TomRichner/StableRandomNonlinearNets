@@ -1,11 +1,14 @@
 function [MI] = mutual_info_SISO(data_in, data_out, n_bins_in, n_bins_out)
-% computes mutual information. Deals with multiple inputs and multiple outputs by pooling their histograms
-   % data_in and data_out shoudl be channels x time
+% computes mutual information with Miller-Madow bias correction. 
+% This correction helps to prevent overestimation of MI when the number of
+% data samples is small relative to the number of bins.
+%
+% data_in and data_out shoudl be channels x time
 
-    [n_ch_in, n_t_in]   = size(data_in);
+    [n_ch_in, n_t]   = size(data_in);
     [n_ch_out, n_t_out] = size(data_out);
     
-    assert(n_t_in == n_t_out, 'data_in and data_out must have same number of time samples');
+    assert(n_t == n_t_out, 'data_in and data_out must have same number of time samples');
     assert(n_ch_in == 1, 'data_in must have a single channel for SISO');
     assert(n_ch_out == 1, 'data_out must have a single channel for SISO');
 
@@ -27,6 +30,15 @@ function [MI] = mutual_info_SISO(data_in, data_out, n_bins_in, n_bins_out)
     P_joint = histcounts2(data_in, data_out, edges_in, edges_out);
     P_joint = P_joint ./ sum(P_joint, 'all');
 
-    MI = sum(P_joint .* log2(P_joint ./ (P_in' * P_out)), 'all', 'omitnan');
+    MI_plugin = sum(P_joint .* log2(P_joint ./ (P_in' * P_out)), 'all', 'omitnan');
+
+    % Miller-Madow bias correction
+    % This corrects for the positive bias of the plug-in MI estimator
+    bias_correction = ((n_bins_in - 1) * (n_bins_out - 1)) / (2 * n_t * log(2));
+    
+    MI = MI_plugin - bias_correction;
+    
+    % MI cannot be negative, so floor at 0.
+    MI = max(0, MI);
 
 end

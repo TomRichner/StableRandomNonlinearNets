@@ -19,7 +19,7 @@ conditions = { ...
 params_for_grid = {'EE_factor', 'mean_weight', 'tau_a_E_2', 'tau_b_E_2'};
 
 %% Analysis Parameters
-n_levels = 5; % 5, Number of values to test for each parameter in the grid
+n_levels = 3; % 5, Number of values to test for each parameter in the grid
 note = 'ppMI_param_space';
 % Timestamp for folder name
 dt_str = lower(strrep(datestr(now, 'mmm_dd_yy_hh_MM_AM'), ':', '_'));
