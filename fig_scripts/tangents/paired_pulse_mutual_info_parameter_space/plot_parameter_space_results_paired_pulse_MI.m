@@ -19,8 +19,8 @@ n_bins_lle = 25;
 lle_bins = [-inf, linspace(lle_range(1), lle_range(2), n_bins_lle), inf];
 
 % LLE imagesc parameters
-imagesc_lle_range = [-20 2]; % LLE range for the imagesc plot
-n_bins_imagesc_lle_range = 15;
+imagesc_lle_range = [-15 1]; % LLE range for the imagesc plot
+n_bins_imagesc_lle_range = 16;
 
 % Mean rate histogram parameters
 rate_range = [0, 5];
@@ -35,7 +35,7 @@ n_bins_mi = 25;
 mi_bins = [linspace(mi_range(1), mi_range(2), n_bins_mi + 1), inf];
 
 % LLE vs MI slice plot parameters
-mi_delay_window_for_slice_samples = [100 150]; % delay window in samples
+mi_delay_window_for_slice_samples = [25 50]; % delay window in samples
 
 % Figure bin styling
 outer_bin_width_multiplier = 1;
@@ -154,14 +154,14 @@ for i = 1:num_conditions
         condition_name, length(lles), length(mean_rates), length(mi_for_hist), length(all_mi_vectors));
 end
 
-%% Create main distributions figure (LLE, rate, MI)
-fig_main = figure('Name', 'LLE, Rate, and MI Distributions (Paired-Pulse)', 'Position', [100, 100, 900, 1020]);
+%% Create main distributions figure (LLE and rate)
+fig_main = figure('Name', 'LLE and Rate Distributions (Paired-Pulse)', 'Position', [100, 100, 650, 1020]);
 
 % Column 1: LLE
 ax_lle = gobjects(num_conditions, 1);
 for i = 1:num_conditions
     condition_name = conditions_to_plot{i};
-    ax_lle(i) = subplot(num_conditions, 3, 3*i-2);
+    ax_lle(i) = subplot(num_conditions, 2, 2*i-1);
     [counts, ~] = histcounts(extracted_values.(condition_name).lles, lle_bins);
     % Finite bins for LLE (two-sided outer bins)
     std_width_lle = (lle_range(2) - lle_range(1)) / (n_bins_lle - 1);
@@ -193,7 +193,7 @@ end
 ax_rate = gobjects(num_conditions, 1);
 for i = 1:num_conditions
     condition_name = conditions_to_plot{i};
-    ax_rate(i) = subplot(num_conditions, 3, 3*i-1);
+    ax_rate(i) = subplot(num_conditions, 2, 2*i);
     [counts, ~] = histcounts(extracted_values.(condition_name).mean_rates, rate_bins);
     % Finite bins for Rate (lower bound at zero)
     std_width_rate = (rate_range(2) - rate_range(1)) / n_bins_rate;
@@ -217,38 +217,8 @@ for i = 1:num_conditions
     xticks(ax, final_ticks); xticklabels(ax, new_labels); ax.XTickLabelRotation = 45;
 end
 
-% Column 3: MI at chosen delay
-ax_mi = gobjects(num_conditions, 1);
-for i = 1:num_conditions
-    condition_name = conditions_to_plot{i};
-    ax_mi(i) = subplot(num_conditions, 3, 3*i);
-    [counts, ~] = histcounts(extracted_values.(condition_name).mi_for_hist, mi_bins);
-    % Finite bins for MI (lower bound at zero)
-    std_width_mi = (mi_range(2) - mi_range(1)) / n_bins_mi;
-    middle_edges_mi = linspace(mi_range(1), mi_range(2), n_bins_mi + 1);
-    first_edge = middle_edges_mi(1);
-    last_edge = middle_edges_mi(end) + outer_bin_width_multiplier * std_width_mi;
-    mi_bins_finite = [first_edge, middle_edges_mi(2:end), last_edge];
-    if strcmpi(counts_or_pdf, 'pdf')
-        plot_values = counts ./ (sum(counts) + eps);
-    else
-        plot_values = counts;
-    end
-    histogram('BinEdges', mi_bins_finite, 'BinCounts', plot_values, 'EdgeColor', 'none', 'FaceColor', [0.5 0.5 0.5]);
-    if i == num_conditions
-        xlabel(sprintf('MI (bits)'),'FontSize',22);
-    end
-    if invisible_y_axis, set(gca, 'YTick', [], 'YTickLabel', [], 'YColor', 'none'); end
-    box off;
-    ax = gca; xlim([mi_bins_finite(1), mi_bins_finite(end)]);
-    center_last_bin = (mi_bins_finite(end-1) + mi_bins_finite(end)) / 2;
-    final_ticks = [middle_ticks_mi, center_last_bin];
-    new_labels = [arrayfun(@(x) sprintf('%.1f', x), middle_ticks_mi, 'UniformOutput', false), {sprintf('>= %.1f', mi_range(2))}];
-    xticks(ax, final_ticks); xticklabels(ax, new_labels); ax.XTickLabelRotation = 45;
-end
-
 % Link y axes
-linkaxes([ax_lle; ax_rate; ax_mi], 'y');
+linkaxes([ax_lle; ax_rate], 'y');
 
 %% Imagesc figure: Collapse across conditions - LLE vs delay with MI
 % Build a pooled matrix with rows binned by LLE and columns by delay index; values aggregate median MI
@@ -534,7 +504,7 @@ for i = 1:num_conditions
 end
 if ~isempty(all_ax_violin)
     linkaxes(all_ax_violin, 'y');
-    ylim(all_ax_violin, [0 3.5]); % Set matching y-limits for all plots
+    ylim(all_ax_violin, [0 3.2]); % Set matching y-limits for all plots
 end
 
 
