@@ -19,7 +19,7 @@ n_bins_lle = 25;
 lle_bins = [-inf, linspace(lle_range(1), lle_range(2), n_bins_lle), inf];
 
 % LLE imagesc parameters
-imagesc_lle_range = [-15 2]; % LLE range for the imagesc plot
+imagesc_lle_range = [-10 2]; % LLE range for the imagesc plot
 n_bins_imagesc_lle_range = diff(imagesc_lle_range)+0;
 
 % Mean rate histogram parameters
@@ -505,7 +505,7 @@ for i = 1:num_conditions
 end
 if ~isempty(all_ax_violin)
     linkaxes(all_ax_violin, 'y');
-    ylim(all_ax_violin, [0 3.2]); % Set matching y-limits for all plots
+    ylim(all_ax_violin, [0 2.1]); % Set matching y-limits for all plots
 end
 
 
