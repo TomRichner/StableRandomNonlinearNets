@@ -288,7 +288,7 @@ else
 end
 
 %% LLE vs MI slice figure
-fig_lle_mi_slice = figure('Name', 'LLE vs MI Slice', 'Position', [700, 400, 560, 420]);
+fig_lle_mi_slice = figure('Name', 'LLE vs MI Slice', 'Position', [700, 400, 380 300]);
 if isempty(pooled_mi) || isempty(template_delay_vec)
     axes; axis off; text(0.5,0.5,'No MI data available for LLE vs MI slice plot','HorizontalAlignment','center');
 else
@@ -325,12 +325,12 @@ else
         end
         
         % Plotting
-        errorbar(lle_bin_centers, mi_mean_in_bin, mi_std_in_bin, 'o-', 'LineWidth', 1.5, 'CapSize', 4);
+        errorbar(lle_bin_centers, mi_mean_in_bin, mi_std_in_bin, 'ko-', 'LineWidth', 1.5, 'CapSize', 4);
         xlabel('LLE (\lambda_1)');
         ylabel('Mutual Information (bits)');
         % title(sprintf('MI averaged over delays [%d, %d] samples', mi_delay_window_for_slice_samples(1), mi_delay_window_for_slice_samples(2)));
         box off;
-        set(gca, 'FontSize', 14);
+        set(gca, 'YTick', [0 1 2 3], 'XTick', -15:5:0);
     end
 end
 
@@ -377,9 +377,10 @@ end
 
 
 %% Create Violin Plot figure for MI at different delays (using violinPlots2)
-fig_violin = figure('Name', 'MI Violin Plot by Condition and Delay', 'Position', [200, 200, 1200, 600]);
+fig_violin = figure('Name', 'MI Violin Plot by Condition and Delay', 'Position', [200   354   610   450]);
 tiledlayout(1, num_conditions, 'TileSpacing', 'compact');
 all_ax_violin = [];
+
 
 % Add the violinplot path if it's not already there
 violinplot_path = fullfile(fileparts(mfilename('fullpath')), '..', '..', '..', 'src', 'supporting_functions', 'external', 'violinPlots2');
@@ -408,7 +409,8 @@ for i = 1:num_conditions
         'ShowMedian', false, ...
         'QuartileStyle', 'shadow', ...
         'ShowBox', false, ...
-        'ShowWhiskers', false);
+        'ShowWhiskers', false, ...
+        'MarkerSize', 12);
     
     hold(ax_violin, 'on');
 
@@ -477,7 +479,7 @@ for i = 1:num_conditions
                     % to ensure they match in style.
                     if ~isempty(v.ScatterPlot) && isvalid(v.ScatterPlot)
                         scatter(ax_violin, x_zeros, zeros(num_zero_points, 1), ...
-                                v.ScatterPlot.SizeData, v.ScatterPlot.CData, 'filled', ...
+                                v.ScatterPlot.SizeData, [0.4 0.4 0.4], 'filled', ...
                                 'MarkerFaceAlpha', v.ScatterPlot.MarkerFaceAlpha);
                     end
                 end
