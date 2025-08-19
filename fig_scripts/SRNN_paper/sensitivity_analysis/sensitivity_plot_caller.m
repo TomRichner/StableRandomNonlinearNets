@@ -89,6 +89,34 @@ else
     error('No conditions found in summary file. The data format may be old or corrupted.');
 end
 
+% Reorder the conditions to the desired plotting order
+desired_order = {'no_adaptation', 'std_only', 'sfa_only', 'sfa_and_std'};
+
+% Get current order of condition names
+current_order_names = cellfun(@(c) c.name, conditions, 'UniformOutput', false);
+
+% Find indices to reorder 'conditions' array
+[lia, sort_indices] = ismember(desired_order, current_order_names);
+
+% Check for missing or extra conditions to ensure a perfect match
+if ~all(lia) || length(current_order_names) ~= length(desired_order)
+    missing = setdiff(desired_order, current_order_names);
+    extra = setdiff(current_order_names, desired_order);
+    error_msg = 'Mismatch between expected conditions and loaded conditions.\n';
+    if ~isempty(missing)
+        error_msg = [error_msg, 'Missing: ', strjoin(missing, ', '), '\n'];
+    end
+    if ~isempty(extra)
+        error_msg = [error_msg, 'Unexpected: ', strjoin(extra, ', '), '\n'];
+    end
+    error(error_msg);
+end
+
+% Reorder conditions
+conditions = conditions(sort_indices);
+
+fprintf('Reordered conditions for plotting: %s\n', strjoin(cellfun(@(c) c.name, conditions, 'UniformOutput', false), ' -> '));
+
 % Collect all unique parameter names from all conditions
 all_param_names = {};
 for c_idx = 1:length(conditions)
