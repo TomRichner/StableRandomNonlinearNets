@@ -63,7 +63,7 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI(seed, n, EE_factor, 
     pWidth2 = 1;       % s
     pAmp2   = 2.5;     % amplitude of pulse 2
     ppISI   = pWidth1*2.5; % *1.5 s, time from pulse1 start to pulse2 start
-    repeatISI = 15;    % s, time between pair starts
+    repeatISI = 20;    % s, time between pair starts
     ch_in = 1;
 
     % Determine pair start times within [0, T(2)]

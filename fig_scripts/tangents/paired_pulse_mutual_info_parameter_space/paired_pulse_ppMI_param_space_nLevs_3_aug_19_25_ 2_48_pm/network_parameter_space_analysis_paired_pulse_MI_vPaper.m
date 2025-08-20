@@ -19,7 +19,7 @@ conditions = { ...
 params_for_grid = {'EE_factor', 'mean_weight', 'tau_a_E_2', 'tau_b_E_2'};
 
 %% Analysis Parameters
-n_levels = 5; % 5, Number of values to test for each parameter in the grid
+n_levels = 3; % 5, Number of values to test for each parameter in the grid
 note = 'ppMI_param_space';
 % Timestamp for folder name
 dt_str = lower(strrep(datestr(now, 'mmm_dd_yy_hh_MM_AM'), ':', '_'));
@@ -68,8 +68,8 @@ ranges.E_self = [0.0, 0.5];
 ranges.mean_weight = [0.25 0.75];
 ranges.DC = [0, 4];
 ranges.mean_in_out_degree = [1.5, p_default.n-1];
-ranges.tau_a_E_2 = [2, 15];
-ranges.tau_b_E_2 = [2, 15];
+ranges.tau_a_E_2 = [0.5, 15];
+ranges.tau_b_E_2 = [0.5, 15];
 ranges.tau_STD = [0.2, 1];
 ranges.c_SFA_factor = [0.0, 4.0];
 

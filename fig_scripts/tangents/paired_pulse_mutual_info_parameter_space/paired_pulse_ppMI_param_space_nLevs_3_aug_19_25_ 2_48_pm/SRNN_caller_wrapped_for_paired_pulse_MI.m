@@ -40,7 +40,7 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI(seed, n, EE_factor, 
 
     %% Time
     dt = 1/fs;
-    T = [-30 900]; % 600
+    T = [-30 1200]; % 600
     T_lya_1 = -15;
 
     nt = round((T(2)-T(1))*fs)+1;
@@ -63,7 +63,7 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI(seed, n, EE_factor, 
     pWidth2 = 1;       % s
     pAmp2   = 2.5;     % amplitude of pulse 2
     ppISI   = pWidth1*2.5; % *1.5 s, time from pulse1 start to pulse2 start
-    repeatISI = 15;    % s, time between pair starts
+    repeatISI = 20;    % s, time between pair starts
     ch_in = 1;
 
     % Determine pair start times within [0, T(2)]
@@ -118,7 +118,7 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI(seed, n, EE_factor, 
     params = package_params(n_E, n_I, E_indices, I_indices, n_a_E, n_a_I, n_b_E, n_b_I, ...
                             tau_a_E, tau_a_I, tau_b_E, tau_b_I, tau_d, n, M, c_SFA, F_STD, tau_STD, EI_vec);
 
-    params.activation_function = @(x) min(200, max(0, x)); % relu, satu
+    params.activation_function = @(x) min(100, max(0, x)); % relu, satu
 
     %% Initial conditions
     a0_E = []; if params.n_E > 0 && params.n_a_E > 0, a0_E = zeros(params.n_E * params.n_a_E, 1); end
@@ -154,13 +154,10 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI(seed, n, EE_factor, 
 
     [a_E_p1, a_I_p1, b_E_p1, b_I_p1, u_d_p1] = unpack_SRNN_state(X_for_lya_p1, params);
     [r_p1, ~] = compute_dependent_variables(a_E_p1, a_I_p1, b_E_p1, b_I_p1, u_d_p1, params);
-    max_r_p1 = 0; 
-    if ~isempty(r_p1)
-        max_r_p1 = max(r_p1(:)); 
-    end
+    max_r_p1 = 0; if ~isempty(r_p1), max_r_p1 = max(r_p1(:)); end
     lya_results_phase1.mean_rate = mean(r_p1(:), 'omitnan');
 
-    r_threshold = 195; % Hz, screen runaway
+    r_threshold = 5000; % Hz, screen runaway
     proceed_to_phase2 = ~(isnan(max_r_p1) || max_r_p1 >= r_threshold);
 
     %% Phase 2: full run and MI if stable
@@ -181,7 +178,7 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI(seed, n, EE_factor, 
             mean_rate_phase2 = NaN;
         end
 
-        r_ts = r_ts + (4/fs).*randn(size(r_ts)); % some measurement noise
+        r_ts = r_ts + (3/fs).*randn(size(r_ts)); % some measurement noise
 
         lya_results = struct();
         if isfinite(LLE)

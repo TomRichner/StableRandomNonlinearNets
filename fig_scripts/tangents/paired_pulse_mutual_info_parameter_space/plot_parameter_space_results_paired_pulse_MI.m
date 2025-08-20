@@ -505,7 +505,7 @@ for i = 1:num_conditions
 end
 if ~isempty(all_ax_violin)
     linkaxes(all_ax_violin, 'y');
-    ylim(all_ax_violin, [0 2.1]); % Set matching y-limits for all plots
+    ylim(all_ax_violin, [0 2.5]); % Set matching y-limits for all plots
 end
 
 

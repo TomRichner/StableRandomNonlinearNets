@@ -18,8 +18,8 @@ params_to_analyze = {'EE_factor','mean_weight','n'}; % Only analyze these parame
 % params_to_analyze = {}; % Empty means analyze all parameters
 
 %% Analysis Parameters
-n_levels = 21; % 21 % Number of values to test for each parameter
-n_reps = 50; %  % Number of repetitions with different random seeds for each level
+n_levels = 5; % 21 % Number of values to test for each parameter
+n_reps = 8; %  % Number of repetitions with different random seeds for each level
 
 note = 'LLE_and_SR_EE_W_n_randWalk_n_b_E_1'
 
@@ -66,37 +66,21 @@ for c_idx = 1:length(conditions)
     p_default.n_b_E = current_condition.n_b_E_val;
     
     %% Parameter Ranges for Sensitivity Analysis
-    % ranges.fs = [250, 2000];
-    % ranges.n = [10, 200];
-    % ranges.EE_factor = [0.1, 4];
-    % ranges.IE_factor = [0.1, 4];
-    % ranges.EI = [1/p_default.n, 1.0];  % Changed from [0, 1.0] to avoid EI=0 issues
-    % ranges.E_self = [0.0, 0.5];
-    % ranges.mean_weight = [1/p_default.n, 2];
-    % ranges.DC = [0, 4];
-    % ranges.mean_in_out_degree = [1, p_default.n-1];
-    % ranges.tau_a_E_2 = [1, 30];
-    % ranges.tau_b_E_2 = [2, 30];
-    % ranges.tau_STD = [0.2, 1];
-    % ranges.c_SFA_factor = [0.05, 4.0];
-    % ranges.n_a_E = [0, 10];
-    % ranges.n_b_E = [0, 5];
-
-    % ranges.fs = [250, 2000];
+    ranges.fs = [250, 2000];
     ranges.n = [10, 200];
     ranges.EE_factor = [0.1, 4];
-    % ranges.IE_factor = [0.1, 4];
-    % ranges.EI = [1/p_default.n, 1.0];  % Changed from [0, 1.0] to avoid EI=0 issues
-    % ranges.E_self = [0.0, 0.5];
+    ranges.IE_factor = [0.1, 4];
+    ranges.EI = [1/p_default.n, 1.0];  % Changed from [0, 1.0] to avoid EI=0 issues
+    ranges.E_self = [0.0, 0.5];
     ranges.mean_weight = [1/p_default.n, 2];
-    % ranges.DC = [0, 4];
-    % ranges.mean_in_out_degree = [1, p_default.n-1];
-    % ranges.tau_a_E_2 = [1, 30];
-    % ranges.tau_b_E_2 = [2, 30];
-    % ranges.tau_STD = [0.2, 1];
-    % ranges.c_SFA_factor = [0.05, 4.0];
-    % ranges.n_a_E = [0, 10];
-    % ranges.n_b_E = [0, 5];
+    ranges.DC = [0, 4];
+    ranges.mean_in_out_degree = [1, p_default.n-1];
+    ranges.tau_a_E_2 = [1, 30];
+    ranges.tau_b_E_2 = [2, 30];
+    ranges.tau_STD = [0.2, 1];
+    ranges.c_SFA_factor = [0.05, 4.0];
+    ranges.n_a_E = [0, 10];
+    ranges.n_b_E = [0, 5];
     
     param_names = fieldnames(ranges);
     
