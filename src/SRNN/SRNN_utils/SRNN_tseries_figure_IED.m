@@ -264,7 +264,8 @@ if strcmpi(sr_or_poisson, 'poisson')
     ylabel('Spike Raster');
     ylim([0 n+0.5]);
     yticks([])
-    set(gca, 'XColor', 'none');
+    % set(gca, 'XColor', 'none');
+    xlabel('Time (s)');
     
 elseif strcmpi(sr_or_poisson, 'sr_stacked')
     % New stacked continuous spike rate plot
