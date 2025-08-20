@@ -11,7 +11,7 @@ Thumbs.db
 *.asv
 *.m~
 *.mex*
-*.mat
+# *.mat
 *.slx.autosave
 *.slxc
 slprj/
