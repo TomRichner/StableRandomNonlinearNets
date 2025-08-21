@@ -263,6 +263,23 @@ save_some_figs_to_folder_2([output_dir_base filesep 'rate_fig_v3'], 'sensitivity
 % close(main_fig_lle); % Don't close figure after saving to allow inspection
 % close(main_fig_rate);
 
+%% Create and save a separate figure for the colorbar
+cbar_fig = figure('Name', 'Colorbar', 'Position', [200, 200, 150, 400], 'Visible', 'on');
+ax = axes('Position', [0.1, 0.1, 0.2, 0.8], 'Visible', 'off');
+colormap(ax, hot);
+caxis(ax, [0 1]);
+cb = colorbar(ax, 'Position', [0.5, 0.1, 0.15, 0.8]);
+cb.Label.String = 'Probability';
+cb.Ticks = 0:0.2:1;
+cb.TickLabels = arrayfun(@(x) sprintf('%d%%', round(x*100)), cb.Ticks, 'UniformOutput', false);
+set(ax, 'CLim', [0, 1]); % Ensure color limits are set
+
+% Save the colorbar figure
+colorbar_output_dir = [output_dir_base filesep 'colorbar_fig'];
+save_some_figs_to_folder_2(colorbar_output_dir, 'sensitivity_colorbar', cbar_fig.Number, {'png', 'svg', 'fig'});
+fprintf('Colorbar figure saved to: %s\n', colorbar_output_dir);
+
+
 fprintf('\n=== Sensitivity plotting complete ===\n');
 fprintf('Plots saved to: %s\n', output_dir_base); 
 
