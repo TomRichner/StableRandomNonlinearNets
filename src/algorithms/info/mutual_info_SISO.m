@@ -35,8 +35,8 @@ function [MI] = mutual_info_SISO(data_in, data_out, n_bins_in, n_bins_out)
     % Miller-Madow bias correction
     % This corrects for the positive bias of the plug-in MI estimator
     bias_correction = ((n_bins_in - 1) * (n_bins_out - 1)) / (2 * n_t * log(2));
-    
-    MI = MI_plugin - bias_correction;
+    % MI_bias_corrected = MI_plugin - bias_correction;
+    MI = MI_plugin;
     
     % MI cannot be negative, so floor at 0.
     MI = max(0, MI);

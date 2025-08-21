@@ -25,7 +25,7 @@ params_for_grid = {'EE_factor', 'mean_weight'};
 
 %% Analysis Parameters
 n_levels = 5; % Number of values to test for each parameter in the grid (if using parameter space)
-n_repetitions = 400; % Number of repetitions (different seeds) per parameter combination
+n_repetitions = 100; % Number of repetitions (different seeds) per parameter combination
 note = 'ppMI_param_space';
 
 % Update note based on mode

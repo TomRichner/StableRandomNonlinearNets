@@ -35,7 +35,7 @@ n_bins_mi = 25;
 mi_bins = [linspace(mi_range(1), mi_range(2), n_bins_mi + 1), inf];
 
 % LLE vs MI slice plot parameters
-mi_delay_window_for_slice_samples = [25 100]; % delay window in samples
+mi_delay_window_for_slice_samples = [1 50]; % delay window in samples
 
 % Figure bin styling
 outer_bin_width_multiplier = 1;

@@ -25,7 +25,7 @@ params_for_grid = {'EE_factor', 'mean_weight'};
 
 %% Analysis Parameters
 n_levels = 5; % Number of values to test for each parameter in the grid (if using parameter space)
-n_repetitions = 400; % Number of repetitions (different seeds) per parameter combination
+n_repetitions = 5; % Number of repetitions (different seeds) per parameter combination
 note = 'ppMI_param_space';
 
 % Update note based on mode
@@ -76,7 +76,7 @@ p_default.DC = 0.1;
 p_default.mean_in_out_degree = 5;
 p_default.tau_a_E_2 = 15;
 p_default.tau_b_E_2 = 2;
-p_default.tau_STD = 1;
+p_default.tau_STD = 0.5;
 p_default.c_SFA_factor = 0.5;
 
 %% Parameter Ranges for Grid Search
