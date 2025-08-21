@@ -25,7 +25,7 @@ note = 'ppMI_param_space';
 dt_str = lower(strrep(datestr(now, 'mmm_dd_yy_hh_MM_AM'), ':', '_'));
 
 %% Create an ABSOLUTE base directory and be sure it exists
-output_dir_base = fullfile(pwd, ['paired_pulse_' note '_nLevs_' num2str(n_levels) '_' dt_str]);
+output_dir_base = fullfile(pwd, ['PP_MI_fig5b' note '_nLevs_' num2str(n_levels) '_' dt_str]);
 if ~exist(output_dir_base, 'dir')
     mkdir(output_dir_base);
 end
