@@ -16,10 +16,10 @@ conditions = { ...
 };
 
 %% Parameters for Grid Search
-params_for_grid = {'tau_a_E_2', 'tau_b_E_2', 'tau_STD', 'c_SFA_factor'};
+params_for_grid = {'tau_a_E_2', 'tau_b_E_2'};
 
 %% Analysis Parameters
-n_levels = 6; % 5, Number of values to test for each parameter in the grid
+n_levels = 20; % 5, Number of values to test for each parameter in the grid
 note = 'ppMI_param_space';
 % Timestamp for folder name
 dt_str = lower(strrep(datestr(now, 'mmm_dd_yy_hh_MM_AM'), ':', '_'));
@@ -71,7 +71,7 @@ ranges.mean_in_out_degree = [1.5, p_default.n-1];
 ranges.tau_a_E_2 = [1, 15];
 ranges.tau_b_E_2 = [1, 15];
 ranges.tau_STD = [0.2, 1];
-ranges.c_SFA_factor = [0.0, 2];
+ranges.c_SFA_factor = [0.0, 4.0];
 
 % Validate that all specified parameters for the grid exist in ranges
 all_possible_params = fieldnames(ranges);

@@ -29,13 +29,13 @@ rate_bins = [linspace(rate_range(1), rate_range(2), n_bins_rate + 1), inf];
 
 % MI parameters
 mi_delay_for_histogram_samples = 200; % delay in samples for histogram column
-delays_for_swarm_samples = [500]; % delays in samples for swarm plot
+delays_for_swarm_samples = [200]; % delays in samples for swarm plot
 mi_range = [0, 3.5];
 n_bins_mi = 25;
 mi_bins = [linspace(mi_range(1), mi_range(2), n_bins_mi + 1), inf];
 
 % LLE vs MI slice plot parameters
-mi_delay_window_for_slice_samples = [1 50]; % delay window in samples
+mi_delay_window_for_slice_samples = [10 30]; % delay window in samples
 
 % Figure bin styling
 outer_bin_width_multiplier = 1;
@@ -505,7 +505,7 @@ for i = 1:num_conditions
 end
 if ~isempty(all_ax_violin)
     linkaxes(all_ax_violin, 'y');
-    ylim(all_ax_violin, [0 2.5]); % Set matching y-limits for all plots
+    ylim(all_ax_violin, [0 3.5]); % Set matching y-limits for all plots
 end
 
 
