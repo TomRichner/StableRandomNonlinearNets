@@ -6,12 +6,13 @@
 % with MI magnitude.
 
 close all;
-clear all;
+clear;
 clc;
 
 %% --- Script Configuration ---
 counts_or_pdf = 'pdf'; % 'counts' or 'pdf'
 invisible_y_axis = true;
+use_bias_corrected_MI = true; % true for bias-corrected MI, false for uncorrected MI
 
 % LLE histogram parameters
 lle_range = [-1.5, 1.5];
@@ -56,6 +57,11 @@ if isequal(base_dir, 0)
     return;
 end
 fprintf('Selected directory: %s\n', base_dir);
+if use_bias_corrected_MI
+    fprintf('Using bias-corrected mutual information (Miller-Madow correction)\n');
+else
+    fprintf('Using uncorrected mutual information (raw plug-in estimator)\n');
+end
 
 %% Load data files
 conditions_to_plot = {'no_adaptation', 'std_only', 'sfa_only', 'sfa_and_std'};
@@ -105,12 +111,35 @@ for i = 1:num_conditions
             if isfield(res.simulation_output, 'mean_rate')
                 mean_rates(end+1) = res.simulation_output.mean_rate; %#ok<AGROW>
             end
-            % MI fields
-            has_mi_fields = isfield(res.simulation_output, 'MI_vs_delay') && isfield(res.simulation_output, 'delay_vec');
-            is_valid_mi = false;
-            if has_mi_fields
+            % MI fields - choose between corrected and uncorrected
+            if use_bias_corrected_MI
+                mi_field_name = 'MI_vs_delay_corrected';
+            else
+                mi_field_name = 'MI_vs_delay_uncorrected';
+            end
+            
+            % Check for both new format and legacy format
+            has_mi_fields = false;
+            delay_vec = [];
+            mi_vec = [];
+            
+            if isfield(res.simulation_output, mi_field_name) && isfield(res.simulation_output, 'delay_vec')
+                % New format with separate corrected/uncorrected fields
+                delay_vec = res.simulation_output.delay_vec;
+                mi_vec = res.simulation_output.(mi_field_name);
+                has_mi_fields = true;
+            elseif isfield(res.simulation_output, 'MI_vs_delay') && isfield(res.simulation_output, 'delay_vec')
+                % Legacy format - treat as uncorrected MI
                 delay_vec = res.simulation_output.delay_vec;
                 mi_vec = res.simulation_output.MI_vs_delay;
+                has_mi_fields = true;
+                if use_bias_corrected_MI
+                    fprintf('Warning: Using legacy MI_vs_delay field as uncorrected MI since %s not found\n', mi_field_name);
+                end
+            end
+            
+            is_valid_mi = false;
+            if has_mi_fields
                 if isvector(mi_vec) && ~any(isnan(mi_vec)) && isvector(delay_vec) && ~any(isnan(delay_vec)) && (length(mi_vec) == length(delay_vec))
                     is_valid_mi = true;
                 end
@@ -155,7 +184,12 @@ for i = 1:num_conditions
 end
 
 %% Create main distributions figure (LLE and rate)
-fig_main = figure('Name', 'LLE and Rate Distributions (Paired-Pulse)', 'Position', [100, 100, 650, 1020]);
+if use_bias_corrected_MI
+    mi_type_str = ' (Bias-Corrected MI)';
+else
+    mi_type_str = ' (Uncorrected MI)';
+end
+fig_main = figure('Name', ['LLE and Rate Distributions (Paired-Pulse)' mi_type_str], 'Position', [100, 100, 650, 1020]);
 
 % Column 1: LLE
 ax_lle = gobjects(num_conditions, 1);
@@ -259,7 +293,7 @@ for i = 1:num_conditions
     end
 end
 
-fig_img = figure('Name', 'MI vs Delay by LLE (Collapsed Across Conditions)', 'Position', [643   321   730   580]);
+fig_img = figure('Name', ['MI vs Delay by LLE (Collapsed Across Conditions)' mi_type_str], 'Position', [643   321   730   580]);
 if isempty(pooled_mi) || isempty(template_delay_vec)
     axes; axis off; text(0.5,0.5,'No MI data available for imagesc','HorizontalAlignment','center');
 else
@@ -288,7 +322,7 @@ else
 end
 
 %% LLE vs MI slice figure
-fig_lle_mi_slice = figure('Name', 'LLE vs MI Slice', 'Position', [700, 400, 380 300]);
+fig_lle_mi_slice = figure('Name', ['LLE vs MI Slice' mi_type_str], 'Position', [700, 400, 380 300]);
 if isempty(pooled_mi) || isempty(template_delay_vec)
     axes; axis off; text(0.5,0.5,'No MI data available for LLE vs MI slice plot','HorizontalAlignment','center');
 else
@@ -335,7 +369,7 @@ else
 end
 
 %% Create Swarm Plot figure for MI at different delays
-fig_swarm = figure('Name', 'MI Swarm Plot by Condition and Delay', 'Position', [200, 200, 1200, 600]);
+fig_swarm = figure('Name', ['MI Swarm Plot by Condition and Delay' mi_type_str], 'Position', [200, 200, 1200, 600]);
 tiledlayout(1, num_conditions, 'TileSpacing', 'compact');
 all_ax_swarm = [];
 for i = 1:num_conditions
@@ -377,7 +411,7 @@ end
 
 
 %% Create Violin Plot figure for MI at different delays (using violinPlots2)
-fig_violin = figure('Name', 'MI Violin Plot by Condition and Delay', 'Position', [200   354   610   450]);
+fig_violin = figure('Name', ['MI Violin Plot by Condition and Delay' mi_type_str], 'Position', [200   354   610   450]);
 tiledlayout(1, num_conditions, 'TileSpacing', 'compact');
 all_ax_violin = [];
 
@@ -516,11 +550,17 @@ if ~exist(output_dir_for_figs, 'dir')
 end
 
 % fprintf('\nSaving figures to: %s\n', output_dir_for_figs);
-save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_LLE_rate_MI_distributions_v1', fig_main.Number, {'fig', 'svg', 'png'});
-save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_MI_vs_delay_LLE_imagesc_v1', fig_img.Number, {'fig', 'svg', 'png'});
-save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_LLE_vs_MI_slice_v1', fig_lle_mi_slice.Number, {'fig', 'svg', 'png'});
-save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_MI_swarm_by_condition_v1', fig_swarm.Number, {'fig', 'svg', 'png'});
-save_some_figs_to_folder_2(output_dir_for_figs, 'PPMI_MI_violin_by_condition_v1', fig_violin.Number, {'fig', 'svg', 'png'});
+if use_bias_corrected_MI
+    mi_suffix = '_bias_corrected';
+else
+    mi_suffix = '_uncorrected';
+end
+
+save_some_figs_to_folder_2(output_dir_for_figs, ['PPMI_LLE_rate_MI_distributions_v1' mi_suffix], fig_main.Number, {'fig', 'svg', 'png'});
+save_some_figs_to_folder_2(output_dir_for_figs, ['PPMI_MI_vs_delay_LLE_imagesc_v1' mi_suffix], fig_img.Number, {'fig', 'svg', 'png'});
+save_some_figs_to_folder_2(output_dir_for_figs, ['PPMI_LLE_vs_MI_slice_v1' mi_suffix], fig_lle_mi_slice.Number, {'fig', 'svg', 'png'});
+save_some_figs_to_folder_2(output_dir_for_figs, ['PPMI_MI_swarm_by_condition_v1' mi_suffix], fig_swarm.Number, {'fig', 'svg', 'png'});
+save_some_figs_to_folder_2(output_dir_for_figs, ['PPMI_MI_violin_by_condition_v1' mi_suffix], fig_violin.Number, {'fig', 'svg', 'png'});
 
 
 fprintf('Plotting complete.\n');

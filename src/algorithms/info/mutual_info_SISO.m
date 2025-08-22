@@ -1,7 +1,11 @@
-function [MI] = mutual_info_SISO(data_in, data_out, n_bins_in, n_bins_out)
-% computes mutual information with Miller-Madow bias correction. 
+function [MI_corrected, MI_uncorrected] = mutual_info_SISO(data_in, data_out, n_bins_in, n_bins_out)
+% computes mutual information with and without Miller-Madow bias correction. 
 % This correction helps to prevent overestimation of MI when the number of
 % data samples is small relative to the number of bins.
+%
+% OUTPUTS:
+%   MI_corrected   - Mutual information with Miller-Madow bias correction
+%   MI_uncorrected - Raw mutual information without bias correction
 %
 % data_in and data_out shoudl be channels x time
 
@@ -35,10 +39,10 @@ function [MI] = mutual_info_SISO(data_in, data_out, n_bins_in, n_bins_out)
     % Miller-Madow bias correction
     % This corrects for the positive bias of the plug-in MI estimator
     bias_correction = ((n_bins_in - 1) * (n_bins_out - 1)) / (2 * n_t * log(2));
-    % MI_bias_corrected = MI_plugin - bias_correction;
-    MI = MI_plugin;
+    MI_bias_corrected = MI_plugin - bias_correction;
     
     % MI cannot be negative, so floor at 0.
-    MI = max(0, MI);
+    MI_uncorrected = max(0, MI_plugin);
+    MI_corrected = max(0, MI_bias_corrected);
 
 end

@@ -196,10 +196,11 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI(seed, n, EE_factor, 
             n_bins_in = Amp1Levels;
             n_bins_out = Amp1Levels;
             if isempty(pulse2_start_inds)
-                MI_vs_delay = NaN; delay_vec = NaN;
+                MI_vs_delay_corrected = NaN; MI_vs_delay_uncorrected = NaN; delay_vec = NaN;
             else
                 delay_vec = 1:10:fix(fs*pWidth2); % samples
-                MI_vs_delay = zeros(size(delay_vec));
+                MI_vs_delay_corrected = zeros(size(delay_vec));
+                MI_vs_delay_uncorrected = zeros(size(delay_vec));
 
                 for iDelay = 1:length(delay_vec)
                     delay_samples = delay_vec(iDelay);
@@ -208,17 +209,21 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI(seed, n, EE_factor, 
                     if sum(valid_pairs) > 1
                         data_in_delayed = pAmp1(valid_pairs);
                         data_out_delayed = r_ts(ch_in, readout_inds(valid_pairs));
-                        MI_delayed = mutual_info_SISO(data_in_delayed, data_out_delayed, n_bins_in, n_bins_out);
-                        MI_vs_delay(iDelay) = MI_delayed;
+                        [MI_corrected, MI_uncorrected] = mutual_info_SISO(data_in_delayed, data_out_delayed, n_bins_in, n_bins_out);
+                        MI_vs_delay_corrected(iDelay) = MI_corrected;
+                        MI_vs_delay_uncorrected(iDelay) = MI_uncorrected;
                     else
-                        MI_vs_delay(iDelay) = NaN;
+                        MI_vs_delay_corrected(iDelay) = NaN;
+                        MI_vs_delay_uncorrected(iDelay) = NaN;
                     end
                 end
             end
-            lya_results.MI_vs_delay = MI_vs_delay;
+            lya_results.MI_vs_delay_corrected = MI_vs_delay_corrected;
+            lya_results.MI_vs_delay_uncorrected = MI_vs_delay_uncorrected;
             lya_results.delay_vec = delay_vec;
         else
-            lya_results.MI_vs_delay = NaN;
+            lya_results.MI_vs_delay_corrected = NaN;
+            lya_results.MI_vs_delay_uncorrected = NaN;
             lya_results.delay_vec = NaN;
         end
     else
@@ -233,8 +238,11 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI(seed, n, EE_factor, 
     if exist('lya_results','var') && isfield(lya_results, 'mean_rate')
         result.mean_rate = lya_results.mean_rate;
     end
-    if exist('lya_results','var') && isfield(lya_results, 'MI_vs_delay')
-        result.MI_vs_delay = lya_results.MI_vs_delay;
+    if exist('lya_results','var') && isfield(lya_results, 'MI_vs_delay_corrected')
+        result.MI_vs_delay_corrected = lya_results.MI_vs_delay_corrected;
+    end
+    if exist('lya_results','var') && isfield(lya_results, 'MI_vs_delay_uncorrected')
+        result.MI_vs_delay_uncorrected = lya_results.MI_vs_delay_uncorrected;
     end
     if exist('lya_results','var') && isfield(lya_results, 'delay_vec')
         result.delay_vec = lya_results.delay_vec;
