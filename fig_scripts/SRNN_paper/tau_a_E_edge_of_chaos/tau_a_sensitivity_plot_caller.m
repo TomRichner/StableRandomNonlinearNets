@@ -112,9 +112,49 @@ fprintf('Found %d unique parameters to plot: %s\n', length(unique_param_names), 
 n_params = length(unique_param_names);
 n_conditions = length(conditions);
 
+%% Extract n_reps from the data
+% Try to get n_reps from summary data first
+n_reps = [];
+if isfield(summary_data, 'n_reps')
+    n_reps = summary_data.n_reps;
+    fprintf('Found n_reps in summary data: %d\n', n_reps);
+elseif isfield(summary_data, 'analysis_parameters') && isfield(summary_data.analysis_parameters, 'n_reps')
+    n_reps = summary_data.analysis_parameters.n_reps;
+    fprintf('Found n_reps in analysis parameters: %d\n', n_reps);
+end
+
+% If n_reps not found in summary, load it from the first available parameter file
+if isempty(n_reps)
+    fprintf('n_reps not found in summary data, loading from parameter file...\n');
+    for c_idx = 1:n_conditions
+        condition_name = conditions{c_idx}.name;
+        condition_results_dir = fullfile(sensitivity_results_dir, condition_name);
+        for p_idx = 1:n_params
+            param_name = strtrim(unique_param_names{p_idx});
+            param_file = fullfile(condition_results_dir, sprintf('sensitivity_%s.mat', param_name));
+            if exist(param_file, 'file')
+                fprintf('Loading n_reps from: %s\n', param_file);
+                temp_data = load(param_file);
+                if isfield(temp_data, 'metadata') && isfield(temp_data.metadata, 'n_reps')
+                    n_reps = temp_data.metadata.n_reps;
+                    fprintf('Found n_reps: %d\n', n_reps);
+                    break;
+                end
+            end
+        end
+        if ~isempty(n_reps), break; end
+    end
+end
+
+% Default fallback if still not found
+if isempty(n_reps)
+    n_reps = 25; % Default value
+    fprintf('Warning: Could not find n_reps in data, using default value: %d\n', n_reps);
+end
+
 % Create a separate large figure for each metric
-main_fig_lle = figure('Name', 'LLE Sensitivity', 'Position', [100, 100, 400 * n_conditions, 400 * n_params], 'Visible', 'on');
-main_fig_rate = figure('Name', 'Mean Rate Sensitivity', 'Position', [150, 150, 400 * n_conditions, 400 * n_params], 'Visible', 'on');
+main_fig_lle = figure('Name', 'LLE Sensitivity', 'Position', [100, 100, 400 * n_params, 400 * n_conditions], 'Visible', 'on');
+main_fig_rate = figure('Name', 'Mean Rate Sensitivity', 'Position', [150, 150, 400 * n_params, 400 * n_conditions], 'Visible', 'on');
 
 %% Process each parameter across all conditions
 for i = 1:n_params
@@ -180,35 +220,68 @@ for i = 1:n_params
 
         % --- LLE Plot ---
         figure(main_fig_lle);
-        subplot_idx = (i - 1) * n_conditions + c_idx;
-        sp_ax_lle = subplot(n_params, n_conditions, subplot_idx);
+        subplot_idx = (c_idx - 1) * n_params + i;
+        sp_ax_lle = subplot(n_conditions, n_params, subplot_idx);
         plot_single_metric(sp_ax_lle, param_file, lle_bins, 'LLE', '$\lambda_1$', ...
                            param_name, condition_name, condition_title, ...
                            x_label_str, scale_factor, i, c_idx, y_ticks_lle, x_ticks_vec);
         
         % --- Mean Rate Plot ---
         figure(main_fig_rate);
-        sp_ax_rate = subplot(n_params, n_conditions, subplot_idx);
+        sp_ax_rate = subplot(n_conditions, n_params, subplot_idx);
         plot_single_metric(sp_ax_rate, param_file, rate_bins, 'mean_rate', 'Mean Rate (Hz)', ...
                            param_name, condition_name, condition_title, ...
                            x_label_str, scale_factor, i, c_idx, y_ticks_rate, x_ticks_vec);
     end
 end
+
+%% Create separate colorbar figures
+% Create colorbar figure for LLE
+colorbar_fig_lle = figure('Name', 'LLE Colorbar', 'Position', [200, 200, 150, 400], 'Visible', 'on');
+ax_cb_lle = axes('Position', [0.2, 0.1, 0.6, 0.8]);
+cb_lle = colorbar(ax_cb_lle, 'Location', 'west');
+colormap(ax_cb_lle, hot);
+caxis(ax_cb_lle, [0, n_reps]);
+% Set custom ticks and labels to show percentages
+cb_lle.Ticks = linspace(0, n_reps, 6);  % 6 tick marks from 0 to n_reps
+cb_lle.TickLabels = arrayfun(@(x) sprintf('%.0f%%', (x/n_reps)*100), cb_lle.Ticks, 'UniformOutput', false);
+cb_lle.Label.String = 'Percentage (%)';
+cb_lle.Label.FontSize = 20;
+axis(ax_cb_lle, 'off');
+
+% Create colorbar figure for Mean Rate  
+colorbar_fig_rate = figure('Name', 'Mean Rate Colorbar', 'Position', [250, 250, 150, 400], 'Visible', 'on');
+ax_cb_rate = axes('Position', [0.2, 0.1, 0.6, 0.8]);
+cb_rate = colorbar(ax_cb_rate, 'Location', 'west');
+colormap(ax_cb_rate, hot);
+caxis(ax_cb_rate, [0, n_reps]);
+% Set custom ticks and labels to show percentages
+cb_rate.Ticks = linspace(0, n_reps, 6);  % 6 tick marks from 0 to n_reps
+cb_rate.TickLabels = arrayfun(@(x) sprintf('%.0f%%', (x/n_reps)*100), cb_rate.Ticks, 'UniformOutput', false);
+cb_rate.Label.String = 'Percentage (%)';
+cb_rate.Label.FontSize = 20;
+axis(ax_cb_rate, 'off');
+
 %% add letter to each figure
 num_subplots = n_params * n_conditions;
 if num_subplots > 0
-    % Generate letters (a), (b), ... up to (z)
+    % Generate letters (A), (B), ... up to (Z)
     if num_subplots <= 26
-        letters = arrayfun(@(x) sprintf('(%c)', x), 'a':char('a'+num_subplots-1), 'UniformOutput', false);
-        AddLetters2Plots(main_fig_lle, letters, 'FontSize', 18, 'FontWeight', 'Normal', 'HShift', -0.043, 'VShift', -0.051, 'Location', 'NorthWest');
-        AddLetters2Plots(main_fig_rate, letters, 'FontSize', 18, 'FontWeight', 'Normal', 'HShift', -0.035, 'VShift', -0.042, 'Location', 'NorthWest');
+        letters = arrayfun(@(x) sprintf('(%c)', x), 'A':char('A'+num_subplots-1), 'UniformOutput', false);
+        AddLetters2Plots(main_fig_lle, letters, 'FontSize', 22, 'FontWeight', 'Normal', 'HShift', -0.05, 'VShift', -0.05, 'Location', 'NorthWest');
+        AddLetters2Plots(main_fig_rate, letters, 'FontSize', 22, 'FontWeight', 'Normal', 'HShift', -0.05, 'VShift', -0.05, 'Location', 'NorthWest');
     else
         error('more than 26 subplots, out of letters')
     end
 end
+
 % Save the combined figures
 save_some_figs_to_folder_2([output_dir_base filesep 'figs'], 'sensitivity_LLE_comparison_all_params', main_fig_lle.Number, {'png', 'svg', 'fig'});
 save_some_figs_to_folder_2([output_dir_base filesep 'figs'], 'sensitivity_rate_comparison_all_params', main_fig_rate.Number, {'png', 'svg', 'fig'});
+
+% Save the colorbar figures
+save_some_figs_to_folder_2([output_dir_base filesep 'figs'], 'sensitivity_LLE_colorbar', colorbar_fig_lle.Number, {'png', 'svg', 'fig'});
+save_some_figs_to_folder_2([output_dir_base filesep 'figs'], 'sensitivity_rate_colorbar', colorbar_fig_rate.Number, {'png', 'svg', 'fig'});
 
 % close(main_fig_lle); % Don't close figure after saving to allow inspection
 % close(main_fig_rate);
@@ -233,68 +306,50 @@ function plot_single_metric(sp_ax, param_file, hist_bins, metric_name, y_label_m
         return;
     end
     
-    % try
-        % Call the plotting function which returns a handle to an invisible figure
-        temp_fig_handle = tau_a_sensitivity_plot(param_file, hist_bins, metric_name, y_label_metric, custom_y_ticks, custom_x_ticks);
-        
-        % Get axes from the temporary figure
-        temp_ax = findobj(temp_fig_handle, 'type', 'axes');
-        
-        % Copy the contents of the old axes to the new subplot axes
-        copyobj(allchild(temp_ax), sp_ax);
-        
-        % Copy essential properties
-        set(sp_ax, 'XLim', get(temp_ax, 'XLim'), 'YLim', get(temp_ax, 'YLim'), ...
-            'YDir', get(temp_ax, 'YDir'), 'Colormap', get(temp_ax, 'Colormap'), ...
-            'CLim', get(temp_ax, 'CLim'));
+    % Call the plotting function which returns a handle to an invisible figure
+    temp_fig_handle = tau_a_sensitivity_plot(param_file, hist_bins, metric_name, y_label_metric, custom_y_ticks, custom_x_ticks);
+    
+    % Get axes from the temporary figure
+    temp_ax = findobj(temp_fig_handle, 'type', 'axes');
+    
+    % Copy the contents of the old axes to the new subplot axes
+    copyobj(allchild(temp_ax), sp_ax);
+    
+    % Copy essential properties
+    set(sp_ax, 'XLim', get(temp_ax, 'XLim'), 'YLim', get(temp_ax, 'YLim'), ...
+        'YDir', get(temp_ax, 'YDir'), 'Colormap', get(temp_ax, 'Colormap'), ...
+        'CLim', get(temp_ax, 'CLim'));
 
-        % Copy y-tick labels from the temporary figure
-        set(sp_ax, 'YTick', get(temp_ax, 'YTick'), 'YTickLabel', get(temp_ax, 'YTickLabel'));
+    % Copy y-tick labels from the temporary figure
+    set(sp_ax, 'YTick', get(temp_ax, 'YTick'), 'YTickLabel', get(temp_ax, 'YTickLabel'));
 
-        % Copy x-tick labels from the temporary figure to ensure they are preserved
-        set(sp_ax, 'XTick', get(temp_ax, 'XTick'), 'XTickLabel', get(temp_ax, 'XTickLabel'));
+    % Copy x-tick labels from the temporary figure to ensure they are preserved
+    set(sp_ax, 'XTick', get(temp_ax, 'XTick'), 'XTickLabel', get(temp_ax, 'XTickLabel'));
 
-        % Manually copy colorbar
-        temp_cb = findobj(temp_fig_handle, 'type', 'colorbar');
-        if ~isempty(temp_cb)
-            cb_new = colorbar(sp_ax);
-            set(cb_new, 'Limits', get(temp_cb, 'Limits'));
-        end
-        
-        % Set titles and labels for the grid
-        % if i == 1           % top-row → write condition title
-        %     title(sp_ax, condition_title, ...
-        %           'Interpreter','none', ...   % plain text
-        %           'FontWeight','normal');     % not bold
-        % end
-        
-        % Set y-label for the first column only
-        if c_idx == 1 
-            ylabel(sp_ax, y_label_metric, 'Interpreter', 'latex', 'FontSize', 22);
-        end
-
-        % Set custom x-label for the row, assuming LaTeX interpreter
-        xlabel(sp_ax, x_label_str, 'Interpreter', 'latex', 'FontWeight','normal');
-        
-        % Rescale x-ticks if a factor is specified
-        if scale_factor ~= 1.0
-            drawnow; % Ensure ticks are updated before getting them
-            current_ticks = xticks(sp_ax);
-            new_tick_labels = arrayfun(@(x) sprintf('%.2g', x * scale_factor), current_ticks, 'UniformOutput', false);
-            xticklabels(sp_ax, new_tick_labels);
-        end
-        
-        % Close the invisible temporary figure
-        close(temp_fig_handle);
-        fprintf('Successfully plotted %s for condition %s\n', param_name, condition_name);
-
-    % catch ME
-    %     fprintf('Error plotting %s for condition %s: %s\n', param_name, condition_name, ME.message);
-    %     if ~isempty(ME.stack)
-    %         fprintf('  Location: %s (line %d)\n', ME.stack(1).name, ME.stack(1).line);
-    %     end
-    %     % Also set labels for error plots for grid consistency
-    %     if i == 1, title(sp_ax, strrep(condition_name, '_', ' ')); end
-    %     if c_idx == 1, ylabel(sp_ax, strrep(param_name, '_', '\_')); end
+    % REMOVED: Colorbar creation code
+    % temp_cb = findobj(temp_fig_handle, 'type', 'colorbar');
+    % if ~isempty(temp_cb)
+    %     cb_new = colorbar(sp_ax);
+    %     set(cb_new, 'Limits', get(temp_cb, 'Limits'));
     % end
+    
+    % Set y-label for the first column only
+    if c_idx == 1 
+        ylabel(sp_ax, y_label_metric, 'Interpreter', 'latex', 'FontSize', 22);
+    end
+
+    % Set custom x-label for the row, assuming LaTeX interpreter
+    xlabel(sp_ax, x_label_str, 'Interpreter', 'latex', 'FontWeight','normal');
+    
+    % Rescale x-ticks if a factor is specified
+    if scale_factor ~= 1.0
+        drawnow; % Ensure ticks are updated before getting them
+        current_ticks = xticks(sp_ax);
+        new_tick_labels = arrayfun(@(x) sprintf('%.2g', x * scale_factor), current_ticks, 'UniformOutput', false);
+        xticklabels(sp_ax, new_tick_labels);
+    end
+    
+    % Close the invisible temporary figure
+    close(temp_fig_handle);
+    fprintf('Successfully plotted %s for condition %s\n', param_name, condition_name);
 end 
