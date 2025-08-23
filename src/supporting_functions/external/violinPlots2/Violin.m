@@ -210,12 +210,12 @@ classdef Violin < handle
             
 
             %% Calculate kernel density estimation for the violin
-            [density, value, width] = obj.calcKernelDensity(data, args.Bandwidth, args.Width);
+            [density, value, width] = obj.calcKernelDensity(data, args.Bandwidth, args.Width, args.KSDensityOptions);
             
             % also calculate the kernel density of the comparison data if
             % provided
             if ~isempty(data2)
-                [densityC, valueC, widthC] = obj.calcKernelDensity(data2, args.Bandwidth, args.Width);
+                [densityC, valueC, widthC] = obj.calcKernelDensity(data2, args.Bandwidth, args.Width, args.KSDensityOptions);
             end
             
             %% Plot the data points within the violin area
@@ -701,9 +701,10 @@ classdef Violin < handle
             p.addParameter('DataStyle', 'scatter', checkStyle);
             p.addParameter('Orientation', 'vertical', @(x) ismember(x, {'vertical', 'horizontal'}));
             p.addParameter('Parent', gca, @(x) isa(x,'matlab.graphics.axis.Axes'));
-
-            p.parse(data, pos, varargin{:});
-            results = p.Results;
+            p.addParameter('KSDensityOptions', {}, @iscell);
+ 
+             p.parse(data, pos, varargin{:});
+             results = p.Results;
         end
 
         function [x, y] = swapOrientationMaybe(obj, x, y)
@@ -719,11 +720,11 @@ classdef Violin < handle
     end
         
     methods (Static)
-        function [density, value, width] = calcKernelDensity(data, bandwidth, width)
+        function [density, value, width] = calcKernelDensity(data, bandwidth, width, ksdensityargs)
             if isempty(data)
                 error('Empty input data');
             end
-            [density, value] = ksdensity(data, 'bandwidth', bandwidth);
+            [density, value] = ksdensity(data, 'bandwidth', bandwidth, ksdensityargs{:});
             density = density(value >= min(data) & value <= max(data));
             value = value(value >= min(data) & value <= max(data));
             value(1) = min(data);

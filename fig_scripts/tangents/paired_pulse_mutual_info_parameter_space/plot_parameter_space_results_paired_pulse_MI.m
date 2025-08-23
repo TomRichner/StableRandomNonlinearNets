@@ -21,7 +21,7 @@ lle_bins = [-inf, linspace(lle_range(1), lle_range(2), n_bins_lle), inf];
 
 % LLE imagesc parameters
 imagesc_lle_range = [-10 3]; % LLE range for the imagesc plot
-n_bins_imagesc_lle_range = diff(imagesc_lle_range)+0;
+n_bins_imagesc_lle_range = diff(imagesc_lle_range)+4;
 
 % Mean rate histogram parameters
 rate_range = [0, 5];
@@ -30,13 +30,17 @@ rate_bins = [linspace(rate_range(1), rate_range(2), n_bins_rate + 1), inf];
 
 % MI parameters
 mi_delay_for_histogram_samples = 200; % delay in samples for histogram column
-delays_for_swarm_samples = [200]; % delays in samples for swarm plot
+delays_for_swarm_samples = [50]; % delays in samples for swarm plot
 mi_range = [0, 3.5];
 n_bins_mi = 25;
 mi_bins = [linspace(mi_range(1), mi_range(2), n_bins_mi + 1), inf];
 
 % LLE vs MI slice plot parameters
-mi_delay_window_for_slice_samples = [10 30]; % delay window in samples
+mi_delay_window_for_slice_samples = [150 250]; % delay window in samples
+
+% Bootstrap parameters for confidence intervals
+n_bootstrap_samples = 100;
+min_samples_for_ci = 5; % Minimum number of data points in a bin to compute CI
 
 % Figure bin styling
 outer_bin_width_multiplier = 1;
@@ -347,20 +351,32 @@ else
         
         lle_bin_centers = (lle_edges_slice(1:end-1) + lle_edges_slice(2:end)) / 2;
         mi_mean_in_bin = NaN(1, n_lle_bins_slice);
-        mi_std_in_bin = NaN(1, n_lle_bins_slice);
+        mi_ci_lower = NaN(1, n_lle_bins_slice);
+        mi_ci_upper = NaN(1, n_lle_bins_slice);
         
         for b = 1:n_lle_bins_slice
             in_bin_indices = find(lle_valid >= lle_edges_slice(b) & lle_valid < lle_edges_slice(b+1));
             if ~isempty(in_bin_indices)
                 mi_in_bin = mi_valid(in_bin_indices);
                 mi_mean_in_bin(b) = mean(mi_in_bin, 'omitnan');
-                mi_std_in_bin(b) = std(mi_in_bin, 'omitnan');
+                
+                % Compute bootstrap 95% CI if enough samples exist
+                if length(mi_in_bin) >= min_samples_for_ci
+                    ci = bootci(n_bootstrap_samples, @mean, mi_in_bin);
+                    mi_ci_lower(b) = ci(1);
+                    mi_ci_upper(b) = ci(2);
+                end
             end
         end
         
-        % Plotting
-        errorbar(lle_bin_centers, mi_mean_in_bin, mi_std_in_bin, 'ko-', 'LineWidth', 1.5, 'CapSize', 4);
-        xlabel('LLE (\lambda_1)');
+        % Plotting with asymmetric confidence intervals
+        y_neg = mi_mean_in_bin - mi_ci_lower;
+        y_pos = mi_ci_upper - mi_mean_in_bin;
+        
+        errorbar(lle_bin_centers, mi_mean_in_bin, y_neg, y_pos, 'ko-', 'LineWidth', 1.5, 'CapSize', 4);
+        
+        % Plot aesthetics
+        xlabel('LLE');
         ylabel('Mutual Information (bits)');
         % title(sprintf('MI averaged over delays [%d, %d] samples', mi_delay_window_for_slice_samples(1), mi_delay_window_for_slice_samples(2)));
         box off;
@@ -437,9 +453,18 @@ for i = 1:num_conditions
         continue;
     end
     
+    % --- Calculate bandwidth for this condition ---
+    % A smaller bandwidth makes the plot more "flexible" or detailed.
+    % A good starting point is 10-40% of the data's range.
+    % Let's start with 15%.
+    data_range = range(mi_data(:));
+    bandwidth = 0.2 * data_range;
+    
     % Use the custom violinplot, turn off its default median marker and use a shadow for the IQR
     delay_labels = string(delays_for_swarm_samples);
     violins = violinplot(mi_data, delay_labels, 'Parent', ax_violin, ...
+        'Bandwidth', bandwidth, ...
+        'KSDensityOptions', {'support', [-eps, 5]}, ...
         'ShowMedian', false, ...
         'QuartileStyle', 'shadow', ...
         'ShowBox', false, ...
@@ -512,8 +537,12 @@ for i = 1:num_conditions
                     % Plot the points using properties from the original scatter plot
                     % to ensure they match in style.
                     if ~isempty(v.ScatterPlot) && isvalid(v.ScatterPlot)
+                        % Get default MATLAB blue color (same as violinplot default)
+                        default_colors = lines(7); % or use colororder for MATLAB 2019b+
+                        blue_color = default_colors(1,:); % First color is blue
+                        
                         scatter(ax_violin, x_zeros, zeros(num_zero_points, 1), ...
-                                v.ScatterPlot.SizeData, [0.4 0.4 0.4], 'filled', ...
+                                v.ScatterPlot.SizeData, blue_color, 'filled', ...
                                 'MarkerFaceAlpha', v.ScatterPlot.MarkerFaceAlpha);
                     end
                 end
@@ -539,7 +568,7 @@ for i = 1:num_conditions
 end
 if ~isempty(all_ax_violin)
     linkaxes(all_ax_violin, 'y');
-    ylim(all_ax_violin, [0 3.5]); % Set matching y-limits for all plots
+    ylim(all_ax_violin, [0 2.55]); % Set matching y-limits for all plots
 end
 
 

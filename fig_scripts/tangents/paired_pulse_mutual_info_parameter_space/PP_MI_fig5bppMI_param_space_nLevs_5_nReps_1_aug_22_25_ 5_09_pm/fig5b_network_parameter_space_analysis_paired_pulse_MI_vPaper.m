@@ -20,7 +20,7 @@ params_for_grid = {'tau_a_E_2', 'tau_b_E_2', 'tau_STD', 'c_SFA_factor'};
 
 %% Analysis Parameters
 n_levels = 5; % 5, Number of values to test for each parameter in the grid
-n_repetitions = 4; % Number of repetitions (different seeds) per parameter combination
+n_repetitions = 1; % Number of repetitions (different seeds) per parameter combination
 note = 'ppMI_param_space';
 % Timestamp for folder name
 dt_str = lower(strrep(datestr(now, 'mmm_dd_yy_hh_MM_AM'), ':', '_'));
@@ -45,7 +45,7 @@ fprintf('===== Running Paired-Pulse MI Analysis for All Conditions =====\n');
 fprintf('======================================================\n\n');
 
 %% Default Simulation Parameters
-p_default.fs = 500;
+p_default.fs = 250;
 p_default.n = 10;
 p_default.EE_factor = 1.0;
 p_default.IE_factor = 1.0;
@@ -69,8 +69,8 @@ ranges.E_self = [0.0, 0.5];
 ranges.mean_weight = [0.25 0.75];
 ranges.DC = [0, 4];
 ranges.mean_in_out_degree = [1.5, p_default.n-1];
-ranges.tau_a_E_2 = [1, 10];
-ranges.tau_b_E_2 = [1, 10];
+ranges.tau_a_E_2 = [1, 15];
+ranges.tau_b_E_2 = [1, 15];
 ranges.tau_STD = [0.2, 1];
 ranges.c_SFA_factor = [0.0, 2];
 

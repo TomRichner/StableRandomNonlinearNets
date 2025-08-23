@@ -40,7 +40,7 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI(seed, n, EE_factor, 
 
     %% Time
     dt = 1/fs;
-    T = [-20 1200]; % 600
+    T = [-20 300]; % 600
     T_lya_1 = -10;
 
     nt = round((T(2)-T(1))*fs)+1;
@@ -73,7 +73,7 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI(seed, n, EE_factor, 
     nPairs = length(pair_start_times);
 
     % Random first-pulse amplitudes
-    Amp1Levels = 8;
+    Amp1Levels = 5;
     if nPairs > 0
         pAmp1 = 0.5*randi([1, Amp1Levels], 1, nPairs);
     else
@@ -160,7 +160,7 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI(seed, n, EE_factor, 
     end
     lya_results_phase1.mean_rate = mean(r_p1(:), 'omitnan');
 
-    r_threshold = 300; % Hz, screen runaway
+    r_threshold = 195; % Hz, screen runaway
     proceed_to_phase2 = ~(isnan(max_r_p1) || max_r_p1 >= r_threshold);
 
     %% Phase 2: full run and MI if stable
