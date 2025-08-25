@@ -7,11 +7,11 @@ clc
 tic
 
 %% 
-seed = 14; % 10, 14 is good
+seed = 19; % 10, 14 is good
 rng(seed,'twister');
 
 %%
-DC = 0.1;
+DC = 0.25;
 
 %% plotting parameters
 sr_or_poisson = 'sr_stacked'; % sr, poisson, or sr_stacked
@@ -43,7 +43,7 @@ EI_vec = EI_vec(:); % make it a column
 %% Time
 fs = 1000; %Plotting sample frequency
 dt = 1/fs;
-T = [-30 150];
+T = [-30 50];
 
 T_lya_1 = -15; % s, time to start Lyapunov calculation warmup
 % T_lya_1 = T(1); % s, time to start Lyapunov calculation warmup
@@ -164,7 +164,7 @@ F_STD = 1 * double(EI_vec == 1); % n x 1, Example: STD only for E neurons
 % F_STD(I_indices) = 0; % Explicitly set to 0 for I if desired, or rely on n_b_I = 0
 
 %% scale M to achieve target LLE
-target = 0.1; % 1/s
+target = 0.3; % 1/s
 [scale, LLE_hit, ~] = scale_M_to_target_LLE(M, target, DC, n, n_E, n_I, n_a_E, tau_a_E, c_SFA, n_b_E, tau_b_E, F_STD, tau_STD, tau_d);
 M = scale * M;
 
