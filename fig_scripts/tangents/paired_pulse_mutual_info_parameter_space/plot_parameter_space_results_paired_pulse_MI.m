@@ -22,6 +22,9 @@ lle_bins = [-inf, linspace(lle_range(1), lle_range(2), n_bins_lle), inf];
 % LLE imagesc parameters
 imagesc_lle_range = [-10 3]; % LLE range for the imagesc plot
 n_bins_imagesc_lle_range = diff(imagesc_lle_range)+4;
+% imagesc_lle_range = [-10 3]; % LLE range for the imagesc plot
+% n_bins_imagesc_lle_range = diff(imagesc_lle_range)-1;
+
 
 % Mean rate histogram parameters
 rate_range = [0, 5];
@@ -39,7 +42,7 @@ mi_bins = [linspace(mi_range(1), mi_range(2), n_bins_mi + 1), inf];
 mi_delay_window_for_slice_samples = [150 250]; % delay window in samples
 
 % Bootstrap parameters for confidence intervals
-n_bootstrap_samples = 100;
+n_bootstrap_samples = 1000;
 min_samples_for_ci = 5; % Minimum number of data points in a bin to compute CI
 
 % Figure bin styling
@@ -297,7 +300,7 @@ for i = 1:num_conditions
     end
 end
 
-fig_img = figure('Name', ['MI vs Delay by LLE (Collapsed Across Conditions)' mi_type_str], 'Position', [643   321   730   580]);
+fig_img = figure('Name', ['MI vs Delay by LLE (Collapsed Across Conditions)' mi_type_str], 'Position', [643  500  404   364]);
 if isempty(pooled_mi) || isempty(template_delay_vec)
     axes; axis off; text(0.5,0.5,'No MI data available for imagesc','HorizontalAlignment','center');
 else
@@ -427,7 +430,7 @@ end
 
 
 %% Create Violin Plot figure for MI at different delays (using violinPlots2)
-fig_violin = figure('Name', ['MI Violin Plot by Condition and Delay' mi_type_str], 'Position', [200   354   610   450]);
+fig_violin = figure('Name', ['MI Violin Plot by Condition and Delay' mi_type_str], 'Position', [200   354   610  364]);
 tiledlayout(1, num_conditions, 'TileSpacing', 'compact');
 all_ax_violin = [];
 
@@ -469,7 +472,7 @@ for i = 1:num_conditions
         'QuartileStyle', 'shadow', ...
         'ShowBox', false, ...
         'ShowWhiskers', false, ...
-        'MarkerSize', 12);
+        'MarkerSize', 9);
     
     hold(ax_violin, 'on');
 
