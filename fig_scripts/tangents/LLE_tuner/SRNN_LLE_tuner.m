@@ -164,9 +164,8 @@ F_STD = 1 * double(EI_vec == 1); % n x 1, Example: STD only for E neurons
 
 %% scale M to achieve target LLE
 target = 0.25; % 1/s
-[scale, LLE_hit] = scale_M_to_target_LLE_noSTD(M, target, DC, n_a_E, tau_a_E, c_SFA, tau_d);
+[scale, LLE_hit, ~] = scale_M_to_target_LLE_noSTD(M, target, DC, n, n_E, n_I, n_a_E, tau_a_E, c_SFA, n_b_E, tau_b_E, F_STD, tau_STD, tau_d);
 M = scale * M;
-[~, LLE_analytic] = LLE_analytic_SRNN_no_STD(n, M, DC, n_a_E, tau_a_E, c_SFA, tau_d);
 
 [r0_analytic, LLE_analytic] = LLE_analytic_SRNN_robust_extra_stable_fcn(n, n_E, n_I, M, DC, n_a_E, tau_a_E, c_SFA, n_b_E, tau_b_E, F_STD, tau_STD, tau_d);
 
