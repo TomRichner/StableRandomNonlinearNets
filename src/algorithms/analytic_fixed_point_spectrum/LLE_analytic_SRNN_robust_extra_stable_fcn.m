@@ -1,4 +1,4 @@
-function [r0_analytic, LLE_analytic] = LLE_analytic_SRNN_robust_extra_stable_fcn( ...
+function [r0_analytic, LLE_analytic, a0, b0, u_d0] = LLE_analytic_SRNN_robust_extra_stable_fcn( ...
     n, nE, nI, M, u_ex_dc, ...
     n_a,  tau_a,  c_SFA, ...
     n_b,  tau_b,  F_STD, tau_STD, ...
@@ -81,7 +81,27 @@ pEq = polyadd(LHS_poly, -mu*hS*RHS_base);
 LLE = max(LLE, max(real(roots(pEq))));
 end
 
-%% 5 - outputs
+%% 5 - Construct fixed-point state components consistent with SRNN_NL
+% a0: only for neurons with SFA (typically E); size n x n_a, zeros elsewhere
+if n_a > 0
+    a0 = zeros(n, n_a);
+    idx_SFA = (c_SFA > 0);
+    if any(idx_SFA)
+        a0(idx_SFA, :) = repmat(r0(idx_SFA), 1, n_a);
+    end
+else
+    a0 = zeros(n, 0);
+end
+
+% b0: per-neuron STD states from fixed point solver (n x n_b). For neurons
+% with STD disabled (F_STD==0), rows are ones by construction.
+b0 = b_mat;  % n x n_b (empty if n_b==0)
+
+% u_d0: dendritic state at fixed point using axonal output p = r0 .* h
+p0 = r0 .* h0;            % h0 is prod of b0 row-wise
+u_d0 = u_ex_vec + M * p0; % n x 1
+
+%% 6 - outputs
 r0_analytic = r0;
 LLE_analytic = LLE;
 end  % ================= END MAIN FUNCTION ==============================
@@ -198,20 +218,30 @@ end
 %% ---------- p,h,b,dpdr  ----------------------------------------------
 function [p,h,b_mat,dpdr,indA] = phb_from_r(r,gamma_mat)
 [n,n_b]=size(gamma_mat);
+% Special-case: no STD -> p = r, empty b_mat, h = 1
+if n_b==0
+    p = r;
+    h = ones(n,1);
+    b_mat = ones(n,0);
+    dpdr = ones(n,1);
+    indA = r>0;
+    return
+end
+
 p=zeros(n,1); h=ones(n,1); b_mat=ones(n,n_b); dpdr=ones(n,1);
 for i=1:n
-ri=r(i); gam=gamma_mat(i,:)';
-if ri==0 || all(gam==0), continue, end
-pi = ri/(1+ri*sum(gam));                 % init
-for k=1:30
-denom = 1+gam*pi;  hi=prod(1./denom);
-f = pi - ri*hi;   if abs(f)<1e-13, break, end
-dfdp = 1 - ri*hi*(-sum(gam./denom));
-pi = max(pi - f/dfdp, 0);
-end
-p(i)=pi; b_mat(i,:)=1./(1+gam*pi)'; h(i)=prod(b_mat(i,:));
-hprime = -h(i)*sum(gam./(1+gam*pi));
-dpdr(i)= h(i)/(1 - ri*hprime);
+    ri=r(i); gam=gamma_mat(i,:)';
+    if ri==0 || all(gam==0), continue, end
+    pi = ri/(1+ri*sum(gam));                 % init
+    for k=1:30
+        denom = 1+gam*pi;  hi=prod(1./denom);
+        f = pi - ri*hi;   if abs(f)<1e-13, break, end
+        dfdp = 1 - ri*hi*(-sum(gam./denom));
+        pi = max(pi - f/dfdp, 0);
+    end
+    p(i)=pi; b_mat(i,:)=1./(1+gam*pi)'; h(i)=prod(b_mat(i,:));
+    hprime = -h(i)*sum(gam./(1+gam*pi));
+    dpdr(i)= h(i)/(1 - ri*hprime);
 end
 indA = r>0;
 end

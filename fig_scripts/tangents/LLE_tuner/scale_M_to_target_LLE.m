@@ -1,4 +1,4 @@
-function [scale, LLE_hit, r0] = scale_M_to_target_LLE_noSTD(M, target_LLE, DC, n, n_E, n_I, n_a_E, tau_a_E, c_SFA, n_b_E, tau_b_E, F_STD, tau_STD, tau_d, varargin)
+function [scale, LLE_hit, r0] = scale_M_to_target_LLE(M, target_LLE, DC, n, n_E, n_I, n_a_E, tau_a_E, c_SFA, n_b_E, tau_b_E, F_STD, tau_STD, tau_d, varargin)
 % General scaling to hit a target LLE using the robust analytic solver.
 % Supports SFA, STD, both or none (as set by n_a_E, n_b_E, c_SFA, F_STD).
 %
@@ -27,31 +27,19 @@ function [scale, LLE_hit, r0] = scale_M_to_target_LLE_noSTD(M, target_LLE, DC, n
     p.parse(varargin{:});
     Tol = p.Results.Tol; MaxIter = p.Results.MaxIter;
 
-    % Handle pure linear no-adaptation/no-STD case analytically
+    % Detect adaptation use
     no_SFA = (n_a_E==0) || all(c_SFA==0);
     no_STD = (n_b_E==0) || all(F_STD==0);
 
+    % Define Λ_max(s) evaluator
     if no_SFA && no_STD
-        mu_max = max(real(eig(M)));
-        % Λ_max(s) = (s*Re(μ_max) - 1)/τ_d
-        if mu_max <= 0
-            scale = 0;
-            r0 = zeros(n,1);
-            LLE_hit = -1/tau_d;
-            return;
-        end
-        scale = (tau_d*target_LLE + 1) / mu_max;
-        % Ensure non-negative scale
-        scale = max(0, scale);
-        % Report achieved LLE
-        LLE_hit = (scale*mu_max - 1)/tau_d;
-        % Rough fixed point for ReLU(+DC): solved by robust analytic for consistency
-        [r0, ~] = LLE_analytic_SRNN_robust_extra_stable_fcn(n, n_E, n_I, scale*M, DC, n_a_E, tau_a_E, c_SFA, n_b_E, tau_b_E, F_STD, tau_STD, tau_d);
-        return;
+        % Piecewise-linear ReLU network: use fixed-point active set H(s)
+        % and Jacobian J(s) = (-I + s*M*diag(H))/tau_d
+        lle = @(s) LLE_relu_masked(s);
+    else
+        % Use robust analytic (SFA/STD) dispersion relation
+        lle = @(s) LLE_of_scale(s);
     end
-
-    % Otherwise use robust analytic LLE to define Λ_max(s)
-    lle = @(s) LLE_of_scale(s);
 
     % Initial bracket
     s_low = 0; s_high = 1;
@@ -98,5 +86,15 @@ function [scale, LLE_hit, r0] = scale_M_to_target_LLE_noSTD(M, target_LLE, DC, n
 
     function L = LLE_of_scale(s)
         [~, L] = LLE_analytic_SRNN_robust_extra_stable_fcn(n, n_E, n_I, s*M, DC, n_a_E, tau_a_E, c_SFA, n_b_E, tau_b_E, F_STD, tau_STD, tau_d);
+    end
+
+    function L = LLE_relu_masked(s)
+        % Compute fixed point at this scale
+        [r0s, ~] = LLE_analytic_SRNN_robust_extra_stable_fcn(n, n_E, n_I, s*M, DC, 0, [], zeros(n,1), 0, [], zeros(n,1), tau_STD, tau_d);
+        % Active set from rates (equivalently u_d>0)
+        H = double(r0s > 0);
+        % Masked Jacobian at the fixed point
+        J = (-eye(n) + (s*M) * diag(H)) / tau_d;
+        L = max(real(eig(J)));
     end
 end

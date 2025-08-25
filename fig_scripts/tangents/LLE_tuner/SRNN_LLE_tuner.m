@@ -7,7 +7,7 @@ clc
 tic
 
 %% 
-seed = 1;
+seed = 14; % 10, 14 is good
 rng(seed,'twister');
 
 %%
@@ -43,7 +43,7 @@ EI_vec = EI_vec(:); % make it a column
 %% Time
 fs = 1000; %Plotting sample frequency
 dt = 1/fs;
-T = [-30 20];
+T = [-30 150];
 
 T_lya_1 = -15; % s, time to start Lyapunov calculation warmup
 % T_lya_1 = T(1); % s, time to start Lyapunov calculation warmup
@@ -73,6 +73,7 @@ f_sin = 1.*ones(1,fs*dur);
 u_ex = 1.5*u_ex;
 % u_ex = u_ex(:,1:nt);
 % Ramp up to DC over the first 5 seconds from t=T(1)
+
 ramp_duration = 10; % seconds
 ramp_end_time = T(1) + ramp_duration;
 ramp_indices = t <= ramp_end_time;
@@ -149,12 +150,12 @@ else
 end
 
 
-tau_d = 0.025; % s, scalar
+tau_d = 1; % s, scalar
 
 % c_SFA and F_STD remain n x 1, defining strength for *all* neurons.
 % SRNN.m will use n_a_I/n_b_I to determine if states a_I/b_I exist.
 if n_a_E > 0
-    c_SFA = (0.5/n_a_E) * double(EI_vec == 1); % n x 1, Example: SFA only for E neurons
+    c_SFA = (0.15/n_a_E) * double(EI_vec == 1); % n x 1, Example: SFA only for E neurons
 else
     c_SFA = zeros(n, 1);
 end
@@ -163,11 +164,9 @@ F_STD = 1 * double(EI_vec == 1); % n x 1, Example: STD only for E neurons
 % F_STD(I_indices) = 0; % Explicitly set to 0 for I if desired, or rely on n_b_I = 0
 
 %% scale M to achieve target LLE
-target = 0.25; % 1/s
-[scale, LLE_hit, ~] = scale_M_to_target_LLE_noSTD(M, target, DC, n, n_E, n_I, n_a_E, tau_a_E, c_SFA, n_b_E, tau_b_E, F_STD, tau_STD, tau_d);
+target = 0.1; % 1/s
+[scale, LLE_hit, ~] = scale_M_to_target_LLE(M, target, DC, n, n_E, n_I, n_a_E, tau_a_E, c_SFA, n_b_E, tau_b_E, F_STD, tau_STD, tau_d);
 M = scale * M;
-
-[r0_analytic, LLE_analytic] = LLE_analytic_SRNN_robust_extra_stable_fcn(n, n_E, n_I, M, DC, n_a_E, tau_a_E, c_SFA, n_b_E, tau_b_E, F_STD, tau_STD, tau_d);
 
 fprintf('Target LLE=%.3f, achieved LLE=%.3f with scale=%.4g\n', target, LLE_hit, scale);
 
@@ -177,30 +176,12 @@ params = package_params(n_E, n_I, E_indices, I_indices, ...
                         tau_a_E, tau_a_I, tau_b_E, tau_b_I, ...
                         tau_d, n, M, c_SFA, F_STD, tau_STD, EI_vec);
 
-%% Initial Conditions
-a0_E = [];
-if params.n_E > 0 && params.n_a_E > 0
-    a0_E = zeros(params.n_E * params.n_a_E, 1);
-end
-
-a0_I = [];
-if params.n_I > 0 && params.n_a_I > 0
-    a0_I = zeros(params.n_I * params.n_a_I, 1);
-end
-
-b0_E = [];
-if params.n_E > 0 && params.n_b_E > 0
-    b0_E = ones(params.n_E * params.n_b_E, 1);
-end
-
-b0_I = [];
-if params.n_I > 0 && params.n_b_I > 0
-    b0_I = ones(params.n_I * params.n_b_I, 1);
-end
-
-u_d0 = zeros(n, 1);
-
-X_0 = [a0_E; a0_I; b0_E; b0_I; u_d0];
+%% Initial Conditions: simple zeros (no analytic initialization)
+num_a_E = params.n_E * params.n_a_E;
+num_a_I = params.n_I * params.n_a_I;
+num_b_E = params.n_E * params.n_b_E;
+num_b_I = params.n_I * params.n_b_I;
+X_0 = zeros(num_a_E + num_a_I + num_b_E + num_b_I + params.n, 1);
 
 N_sys_eqs = size(X_0,1); % Number of system equations / states
 
@@ -235,9 +216,9 @@ ode_RKn_wrapper = @(odefun, tspan, y0, options) deal(tspan(:), ode_RKn_deci_boun
 
 %% pick an ODE solver
 % ode_solver = ode_RKn_wrapper; % fixed step RK 1, 2, or 4th order, with boundary enforcement
-ode_solver = @ode45; % variable step
+% ode_solver = @ode45; % variable step
 % ode_solver = @ode4_wrapper; % basic RK4 for comparison
-% ode_solver = @ode15s; % stiff ode solver
+ode_solver = @ode15s; % stiff ode solver
 
 if strcmpi(Lya_method,'qr') && ~isequal(ode_solver, @ode15s)
     warning('QR method typically requires ode15s for stability. Current solver may cause issues.');
@@ -469,8 +450,8 @@ else
     SRNN_tseries_figure(t, u_ex, r, a_E_ts, a_I_ts, b_E_ts, b_I_ts, u_d_ts, params, T, Lya_method, sr_or_poisson, include_sum_E_I_SR);
 end
 
-figure(1)
-xlim([0 10])
+% figure(1)
+% xlim([0 10])
 
 % add subplots
 

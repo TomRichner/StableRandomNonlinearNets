@@ -503,7 +503,7 @@ end
 if n <= 50
     figure(2)
     clf
-    set(gcf,'Position',[100   1009 500 500])
+    set(gcf,'Position',[994   485   500   500])
     % EI_vec is already in params, so params.EI_vec
     [h_digraph, dgA] = plot_network_graph_widthRange_color_R(M,1,params.EI_vec);
     box off
