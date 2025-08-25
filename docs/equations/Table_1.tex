@@ -1,0 +1,38 @@
+```latex
+% In your preamble:
+% \usepackage{booktabs,tabularx,siunitx,threeparttable}
+% \sisetup{detect-all}
+
+\begin{table}[htbp]
+\centering
+\begin{threeparttable}
+\caption{State variables and parameters of the RNN with spike-frequency adaptation (SFA) and short-term depression (STD).}
+\label{tab:rnn-sfa-std}
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\linewidth}{@{} l l l l X @{}}
+\toprule
+\textbf{Symbol} & \textbf{Description} & \textbf{Value} & \textbf{Dims.} & \textbf{Notes} \\
+\midrule
+$n_E$ & \# excitatory neurons & $7$ & $1$ & $70\%$ excitatory neurons (of $n_E+n_I=10$). \\
+$n_I$ & \# inhibitory neurons & $3$ & $1$ & $30\%$ inhibitory neurons. \\
+$r$ & spike rate & dependent var. & $10\times1$ & Rectified rates, $r\ge 0$; \si{\hertz}. \\
+$u_d$ & dendrite & state var. & $10\times1$ & \si{\hertz}. \\
+$\tau_d$ & dendritic time const. & $25$ & $1$ & \si{\milli\second}. \\
+$a_k$ & SFA & state var. & $10\times3$ & Three SFA variables per neuron; \si{\hertz}. \\
+$c_{\mathrm{SFA}}$ & SFA strength & $0$ or $1/6$ & $10\times1$ & $0$ for inhibitory, $1/6$ for excitatory; unitless. With three SFA vars per excitatory neuron, total SFA strength is $1/2$. \\
+$\tau_{a_k}$ & SFA time constants & $[0.3,\,2.12,\,15]$ & $3\times1$ per neuron & Log-spaced; \si{\second}. \\
+$u_{\mathrm{ex}}$ & external input & user defined & $10\times1$ & \si{\hertz}. \\
+$b$ & STD & state var. & $10\times1$ & One STD variable applied to each excitatory neuron's output; unitless. For excitatory neurons $0\le b\le 1$; for inhibitory neurons $b=1$. \\
+$\tau_{\mathrm{STD}}$ & STD onset time const. & $1/2$ & $1$ & \si{\second}. \\
+$\tau_b$ & STD recovery time const. & $2$ & $1$ & \si{\second}. \\
+$M$ & connection matrix & parameterized & $10\times10$ & Sparse with Gaussian random weights; no self-connections; unitless. \\
+$\mathbb{E}[w_{EE}]$ & mean E$\to$E weight & $0.5$ & \textemdash & $0\le w_{EE}$; unitless. \\
+$\mathbb{E}[w_{EI}]$ & mean E$\to$I weight & $0.5$ & \textemdash & $0\le w_{EI}$. \\
+$\mathbb{E}[w_{IE}]$ & mean I$\to$E weight & $0.5$ & \textemdash & $w_{IE}\le 0$. \\
+$\mathbb{E}[w_{II}]$ & mean I$\to$I weight & $0.25$ & \textemdash & $w_{II}\le 0$. \\
+\bottomrule
+\end{tabularx}
+\end{threeparttable}
+\end{table}
+```
