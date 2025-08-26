@@ -41,7 +41,7 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI_LLE_tuned(seed, targ
 
     %% Time
     dt = 1/fs;
-    T = [-20 400];
+    T = [-20 800];
     T_lya_1 = -10;
 
     nt = round((T(2)-T(1))*fs)+1;
@@ -104,7 +104,7 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI_LLE_tuned(seed, targ
     if n_b_E > 0, tau_b_E = logspace(log10(0.6), log10(tau_b_E_2), n_b_E); else, tau_b_E = []; end
     if n_b_I > 0, tau_b_I = logspace(log10(0.6), log10(9),         n_b_I); else, tau_b_I = []; end
 
-    tau_d = 0.025;
+    tau_d = 1; % 0.025 usually
 
     % SFA strength for E/I groups
     c_SFA = zeros(n, 1);

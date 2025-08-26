@@ -70,24 +70,24 @@ else
     fprintf('Using uncorrected mutual information (raw plug-in estimator)\n');
 end
 
-%% Load data files
-conditions_to_plot = {'no_adaptation', 'std_only', 'sfa_only', 'sfa_and_std'};
-num_conditions = length(conditions_to_plot);
+%% Load data files (robust to missing conditions)
+conditions_requested = {'no_adaptation', 'std_only', 'sfa_only', 'sfa_and_std'};
 all_data = struct();
-found_all = true;
-for i = 1:num_conditions
-    condition_name = conditions_to_plot{i};
+conditions_to_plot = {};
+for i = 1:length(conditions_requested)
+    condition_name = conditions_requested{i};
     data_file = fullfile(base_dir, condition_name, sprintf('param_space_results_%s.mat', condition_name));
     if exist(data_file, 'file')
         fprintf('Loading: %s\n', data_file);
         all_data.(condition_name) = load(data_file);
+        conditions_to_plot{end+1} = condition_name; %#ok<AGROW>
     else
-        fprintf('Error: Data file not found for condition "%s". Expected at: %s\n', condition_name, data_file);
-        found_all = false;
+        fprintf('Warning: Data file not found for condition "%s". Expected at: %s. Skipping.\n', condition_name, data_file);
     end
 end
-if ~found_all
-    fprintf('Could not find all required data files. Exiting.\n');
+num_conditions = length(conditions_to_plot);
+if num_conditions == 0
+    fprintf('No valid condition result files found in %s. Exiting.\n', base_dir);
     return;
 end
 
@@ -346,6 +346,16 @@ else
         % Remove runs where LLE or averaged MI is NaN
         valid_indices = ~isnan(pooled_lle) & ~isnan(mi_averaged);
         lle_valid = pooled_lle(valid_indices);
+        
+        % Create histogram of valid LLE values (open new figure, then restore)
+        fig_lle_hist = figure('Name', 'LLE Distribution', 'Position', [800, 300, 400, 300]); %#ok<NASGU>
+        histogram(lle_valid, 100);
+        xlabel('LLE');
+        ylabel('Count');
+        title('Distribution of Valid LLE Values');
+        box off;
+        % Restore the LLE vs MI slice figure as current for subsequent plotting
+        figure(fig_lle_mi_slice);
         mi_valid = mi_averaged(valid_indices);
 
         % Use the same LLE bins as the imagesc plot for consistency
