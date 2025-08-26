@@ -1,8 +1,7 @@
-function [result] = SRNN_caller_wrapped_for_paired_pulse_MI_LLE_tuned(seed, target_LLE, n, EE_factor, IE_factor, EI, E_self, mean_weight, DC, mean_in_out_degree, tau_a_E_2, tau_b_E_2, tau_STD, c_SFA_factor, n_a_E, n_b_E, fs)
-    % SRNN_caller_wrapped_for_paired_pulse_MI_LLE_tuned
+function [result] = SRNN_caller_wrapped_for_paired_pulse_MI(seed, n, EE_factor, IE_factor, EI, E_self, mean_weight, DC, mean_in_out_degree, tau_a_E_2, tau_b_E_2, tau_STD, c_SFA_factor, n_a_E, n_b_E, fs)
+    % SRNN_caller_wrapped_for_paired_pulse_MI
     % Dual-stage SRNN simulation with paired-pulse stimulus and MI vs delay.
-    % Incorporates analytic LLE tuner to scale M to a target Λ_max.
-    % Only proceeds to Phase 2 if Phase 1 numerical LLE is within [0.05, 1].
+    % Matches the calling signature used by parameter space exploration.
 
     % Reset SRNN persistent state so stimulus changes are respected
     clear SRNN_NL
@@ -21,7 +20,7 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI_LLE_tuned(seed, targ
     rng(seed,'twister');
 
     %% Network
-    Lya_method = 'benettin'; %#ok<NASGU> % 'benettin', 'qr', or 'none'
+    Lya_method = 'benettin'; % 'benettin', 'qr', or 'none'
     use_Jacobian = false; %#ok<NASGU>
 
     scale = mean_weight/0.79782; % overall scaling factor of weights
@@ -41,7 +40,7 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI_LLE_tuned(seed, targ
 
     %% Time
     dt = 1/fs;
-    T = [-20 400];
+    T = [-20 1200]; % 600
     T_lya_1 = -10;
 
     nt = round((T(2)-T(1))*fs)+1;
@@ -63,7 +62,7 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI_LLE_tuned(seed, targ
     pWidth1 = 2;       % s
     pWidth2 = 2;       % s
     pAmp2   = 2.5;     % amplitude of pulse 2
-    ppISI   = pWidth1*2.25; % time from pulse1 start to pulse2 start
+    ppISI   = pWidth1*2.25; % *1.5 s, time from pulse1 start to pulse2 start
     repeatISI = 12;    % s, time between pair starts
     ch_in = 1;
 
@@ -116,21 +115,6 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI_LLE_tuned(seed, targ
     end
     F_STD = 1 * double(EI_vec == 1);
 
-    %% LLE tuner: scale M to target Λ_max
-    tuning_success = false;
-    scale_factor = NaN; LLE_analytic_hit = NaN; r0_analytic = [];
-    try
-        [scale_factor, LLE_analytic_hit, r0_analytic] = scale_M_to_target_LLE(M, target_LLE, DC, n, n_E, n_I, n_a_E, tau_a_E, c_SFA, n_b_E, tau_b_E, F_STD, tau_STD, tau_d);
-        if isfinite(scale_factor) && ~isnan(scale_factor)
-            M = scale_factor * M;
-            tuning_success = true;
-        else
-            warning('LLE tuner returned a non-finite scale. Proceeding without scaling.');
-        end
-    catch ME
-        warning(ME.identifier, 'LLE tuner failed: %s. Proceeding without scaling.', ME.message);
-    end
-
     params = package_params(n_E, n_I, E_indices, I_indices, n_a_E, n_a_I, n_b_E, n_b_I, ...
                             tau_a_E, tau_a_I, tau_b_E, tau_b_I, tau_d, n, M, c_SFA, F_STD, tau_STD, EI_vec);
 
@@ -155,11 +139,11 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI_LLE_tuned(seed, targ
 
     %% Phase 1: short stability pre-check
     LLE_phase1 = NaN; lya_results_phase1 = struct(); proceed_to_phase2 = false;
-    T_phase1 = [0 20];
+    T_phase1 = [0 5];
     idx_p1 = find(t >= T_phase1(1) & t <= T_phase1(2));
     t_p1 = t(idx_p1); u_ex_p1 = u_ex(:, idx_p1);
     [~, X_p1] = ode_solver(@(tt,XX) SRNN_NL(tt,XX,t_p1,u_ex_p1,params), t_p1, X_0, ode_options);
-    T_lya_1_p1 = 5; %#ok<NASGU>
+    T_lya_1_p1 = 0; %#ok<NASGU>
     lya_start_idx_p1 = find(t_p1 >= 0, 1, 'first');
     X_for_lya_p1 = X_p1(lya_start_idx_p1:end, :);
     t_for_lya_p1 = t_p1(lya_start_idx_p1:end);
@@ -170,15 +154,14 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI_LLE_tuned(seed, targ
 
     [a_E_p1, a_I_p1, b_E_p1, b_I_p1, u_d_p1] = unpack_SRNN_state(X_for_lya_p1, params);
     [r_p1, ~] = compute_dependent_variables(a_E_p1, a_I_p1, b_E_p1, b_I_p1, u_d_p1, params);
-    max_r_p1 = 0;
+    max_r_p1 = 0; 
     if ~isempty(r_p1)
-        max_r_p1 = max(r_p1(:));
+        max_r_p1 = max(r_p1(:)); 
     end
     lya_results_phase1.mean_rate = mean(r_p1(:), 'omitnan');
 
-    r_threshold = 3000; % Hz, screen runaway
-    proceed_to_phase2 = ~(isnan(max_r_p1) || max_r_p1 >= r_threshold) ...
-                        && isfinite(LLE) && (LLE >= 0.05) && (LLE <= 1.0);
+    r_threshold = 300; % Hz, screen runaway
+    proceed_to_phase2 = ~(isnan(max_r_p1) || max_r_p1 >= r_threshold);
 
     %% Phase 2: full run and MI if stable
     if proceed_to_phase2
@@ -249,10 +232,6 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI_LLE_tuned(seed, targ
 
     %% Package results
     result = struct();
-    result.target_LLE = target_LLE;
-    result.tuning_success = tuning_success;
-    result.scale_factor = scale_factor;
-    result.LLE_analytic_hit = LLE_analytic_hit;
     if exist('lya_results','var') && isfield(lya_results, 'LLE')
         result.LLE = lya_results.LLE;
     end
@@ -268,10 +247,6 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI_LLE_tuned(seed, targ
     if exist('lya_results','var') && isfield(lya_results, 'delay_vec')
         result.delay_vec = lya_results.delay_vec;
     end
-    result.proceed_to_phase2 = proceed_to_phase2;
-    if exist('r0_analytic','var')
-        result.r0_analytic = r0_analytic;
-    end
 
     sim_dur = toc;
     result.sim_dur = sim_dur;
@@ -281,7 +256,5 @@ function [result] = SRNN_caller_wrapped_for_paired_pulse_MI_LLE_tuned(seed, targ
         result.sim_t_dived_by_rt = NaN;
     end
 end
-
-
 
 
