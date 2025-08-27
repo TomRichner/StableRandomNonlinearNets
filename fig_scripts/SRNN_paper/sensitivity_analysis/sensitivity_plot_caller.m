@@ -306,6 +306,8 @@ function plot_single_metric(sp_ax, param_file, hist_bins, metric_name, y_label_m
             'YDir', get(temp_ax, 'YDir'), 'Colormap', get(temp_ax, 'Colormap'), ...
             'CLim', get(temp_ax, 'CLim'));
 
+        box(sp_ax, 'on'); % Make sure bounding box is on
+
         % Copy y-tick labels from the temporary figure
         set(sp_ax, 'YTick', get(temp_ax, 'YTick'), 'YTickLabel', get(temp_ax, 'YTickLabel'));
 
