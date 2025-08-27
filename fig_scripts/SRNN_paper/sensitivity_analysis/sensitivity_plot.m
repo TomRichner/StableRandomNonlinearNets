@@ -141,7 +141,8 @@ function fig_handle = sensitivity_plot(param_file, hist_edges_with_inf, variable
     ylabel(y_axis_label, 'Interpreter', 'latex', 'FontSize', 22);
     % title(sprintf('Distribution of %s vs %s', variable_to_plot, strrep(param_name, '_', '\\_')));
     axis xy; % Flip y-axis so smaller values are at bottom
-    colormap(hot);
+    % colormap(hot);
+    colormap(flipud(gray));
     % colormap(parula);
 
     % Add custom y-tick labels with a fixed set of intermediate values, plus

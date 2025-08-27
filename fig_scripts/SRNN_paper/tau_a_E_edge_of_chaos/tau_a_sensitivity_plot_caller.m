@@ -68,12 +68,12 @@ end
 
 % Define LLE histogram parameters
 lle_range = [-0.3, 0.1];
-n_bins = 25;
+n_bins = 35;
 lle_bins = [-inf, linspace(lle_range(1), lle_range(2), n_bins), inf];
 
 % Define Mean Firing Rate histogram parameters
 rate_range = [0, 5];
-n_bins_rate = 25;
+n_bins_rate = 35;
 rate_bins = [linspace(rate_range(1), rate_range(2), n_bins_rate), inf];
 
 %% Load summary file to get list of analyzed parameters and conditions
@@ -237,39 +237,39 @@ end
 
 %% Create separate colorbar figures
 % Create colorbar figure for LLE
-colorbar_fig_lle = figure('Name', 'LLE Colorbar', 'Position', [200, 200, 150, 400], 'Visible', 'on');
+colorbar_fig_lle = figure('Name', 'LLE Colorbar', 'Position', [200, 200, 200, 400], 'Visible', 'on');
 ax_cb_lle = axes('Position', [0.2, 0.1, 0.6, 0.8]);
 cb_lle = colorbar(ax_cb_lle, 'Location', 'west');
-colormap(ax_cb_lle, hot);
+colormap(ax_cb_lle, flipud(gray));
 caxis(ax_cb_lle, [0, n_reps]);
 % Set custom ticks and labels to show percentages
 cb_lle.Ticks = linspace(0, n_reps, 6);  % 6 tick marks from 0 to n_reps
-cb_lle.TickLabels = arrayfun(@(x) sprintf('%.0f%%', (x/n_reps)*100), cb_lle.Ticks, 'UniformOutput', false);
-cb_lle.Label.String = 'Percentage (%)';
+cb_lle.TickLabels = arrayfun(@(x) sprintf('%.1f', x/n_reps), cb_lle.Ticks, 'UniformOutput', false);
+cb_lle.Label.String = 'Probability';
 cb_lle.Label.FontSize = 20;
 axis(ax_cb_lle, 'off');
 
 % Create colorbar figure for Mean Rate  
-colorbar_fig_rate = figure('Name', 'Mean Rate Colorbar', 'Position', [250, 250, 150, 400], 'Visible', 'on');
+colorbar_fig_rate = figure('Name', 'Mean Rate Colorbar', 'Position', [250, 250, 200, 400], 'Visible', 'on');
 ax_cb_rate = axes('Position', [0.2, 0.1, 0.6, 0.8]);
 cb_rate = colorbar(ax_cb_rate, 'Location', 'west');
-colormap(ax_cb_rate, hot);
+colormap(ax_cb_rate, flipud(gray));
 caxis(ax_cb_rate, [0, n_reps]);
 % Set custom ticks and labels to show percentages
 cb_rate.Ticks = linspace(0, n_reps, 6);  % 6 tick marks from 0 to n_reps
-cb_rate.TickLabels = arrayfun(@(x) sprintf('%.0f%%', (x/n_reps)*100), cb_rate.Ticks, 'UniformOutput', false);
-cb_rate.Label.String = 'Percentage (%)';
+cb_rate.TickLabels = arrayfun(@(x) sprintf('%.1f', x/n_reps), cb_rate.Ticks, 'UniformOutput', false);
+cb_rate.Label.String = 'Probability';
 cb_rate.Label.FontSize = 20;
 axis(ax_cb_rate, 'off');
 
 %% add letter to each figure
-num_subplots = n_params * n_conditions;
+num_subplots = n_params *  n_conditions;
 if num_subplots > 0
     % Generate letters (A), (B), ... up to (Z)
     if num_subplots <= 26
-        letters = arrayfun(@(x) sprintf('(%c)', x), 'A':char('A'+num_subplots-1), 'UniformOutput', false);
-        AddLetters2Plots(main_fig_lle, letters, 'FontSize', 22, 'FontWeight', 'Normal', 'HShift', -0.05, 'VShift', -0.05, 'Location', 'NorthWest');
-        AddLetters2Plots(main_fig_rate, letters, 'FontSize', 22, 'FontWeight', 'Normal', 'HShift', -0.05, 'VShift', -0.05, 'Location', 'NorthWest');
+        letters = arrayfun(@(x) sprintf('%c', x), 'A':char('A'+num_subplots-1), 'UniformOutput', false);
+        AddLetters2Plots(main_fig_lle, letters, 'FontSize', 30, 'FontWeight', 'Normal', 'HShift', -0.05, 'VShift', -0.05, 'Location', 'NorthWest');
+        AddLetters2Plots(main_fig_rate, letters, 'FontSize', 30, 'FontWeight', 'Normal', 'HShift', -0.05, 'VShift', -0.05, 'Location', 'NorthWest');
     else
         error('more than 26 subplots, out of letters')
     end

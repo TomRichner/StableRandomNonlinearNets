@@ -230,7 +230,7 @@ end
 num_subplots = n_params * n_conditions;
 
 letters = cell(1, num_subplots);
-letter_char_code = 'a';
+letter_char_code = 'A';
 current_subplot_idx = 1;
 
 if n_conditions > 26
@@ -242,7 +242,7 @@ end
 for c_idx = 1:n_conditions
     for i = 1:n_params
         if i == 1 % Only add a letter to the first column
-            letters{current_subplot_idx} = sprintf('(%c)', letter_char_code);
+            letters{current_subplot_idx} = sprintf('%c', letter_char_code);
             letter_char_code = letter_char_code + 1;
         else
             letters{current_subplot_idx} = '';
@@ -251,8 +251,8 @@ for c_idx = 1:n_conditions
     end
 end
 
-AddLetters2Plots(main_fig_lle, letters, 'FontSize', 20, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.033, 'Location', 'NorthWest');
-AddLetters2Plots(main_fig_rate, letters, 'FontSize', 20, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.033, 'Location', 'NorthWest');
+AddLetters2Plots(main_fig_lle, letters, 'FontSize', 30, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.033, 'Location', 'NorthWest');
+AddLetters2Plots(main_fig_rate, letters, 'FontSize', 30, 'FontWeight', 'Normal', 'HShift', -0.033, 'VShift', -0.033, 'Location', 'NorthWest');
 
 
 % Save the combined figures
@@ -266,12 +266,11 @@ save_some_figs_to_folder_2([output_dir_base filesep 'rate_fig_v3'], 'sensitivity
 %% Create and save a separate figure for the colorbar
 cbar_fig = figure('Name', 'Colorbar', 'Position', [200, 200, 150, 400], 'Visible', 'on');
 ax = axes('Position', [0.1, 0.1, 0.2, 0.8], 'Visible', 'off');
-colormap(ax, hot);
+colormap(ax, flipud(gray));
 caxis(ax, [0 1]);
 cb = colorbar(ax, 'Position', [0.5, 0.1, 0.15, 0.8]);
 cb.Label.String = 'Probability';
 cb.Ticks = 0:0.2:1;
-cb.TickLabels = arrayfun(@(x) sprintf('%d%%', round(x*100)), cb.Ticks, 'UniformOutput', false);
 set(ax, 'CLim', [0, 1]); % Ensure color limits are set
 
 % Save the colorbar figure

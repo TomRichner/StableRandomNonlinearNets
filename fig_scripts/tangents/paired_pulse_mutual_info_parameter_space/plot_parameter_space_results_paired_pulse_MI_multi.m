@@ -24,7 +24,7 @@ n_bins_lle = 25;
 lle_bins = [-inf, linspace(lle_range(1), lle_range(2), n_bins_lle), inf];
 
 % LLE imagesc parameters
-imagesc_lle_range = [-10 3]; % LLE range for the imagesc plot
+imagesc_lle_range = [-10 1]; % LLE range for the imagesc plot
 n_bins_imagesc_lle_range = diff(imagesc_lle_range)+4;
 
 % Mean rate histogram parameters

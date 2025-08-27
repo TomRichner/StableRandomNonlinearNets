@@ -47,36 +47,27 @@
       /><line y2="48" style="fill:none;" x1="43" x2="43" y1="352"
     /></g
     ><g transform="matrix(0.5,0,0,0.5,34,48)" style="fill-opacity:0; fill:rgb(0,0,0); text-rendering:optimizeSpeed; image-rendering:optimizeSpeed; color-rendering:optimizeSpeed; shape-rendering:crispEdges; stroke:rgb(0,0,0); color-interpolation:sRGB; stroke-opacity:0;"
-    ><image x="0" y="0" width="18" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAJgCAIAAAAI2aTjAAAFT0lEQVR4Xr3bUedg
-ZRhF8U1F1BBTREVUDBVJkRQjxUiRFEmRFEmRFEmRSaKMmCTKGEqijKEkSqIkSqIk
-KqIiKqIiKp6c2/W/WWdfnON3s172N3hOpvrCB/f1s38L/ezvwuazPwv97PdCP/u1
-sPns50I/+7HQz74vbD77ttDPvi5sPvuy0M8+L/SzTwubzz4u9LMPC/3s/cLms3cL
-/eztwuazNwv97Gihn71e2Hz2aqGfvVzoZ4cLm89eLPSz5wubz54t9LNnCv3s6cLm
-sycL/ezxQj97rJCdT0Z2PhmZeaTQzx4qbD57oNDP7iv0s3sKm8/uKvSzOwr97LZC
-dj4Z2flkZOaWQj+7qbD57IZCP7uu0M+uKWw+21foZ1cW+tneQnY+Gdn5ZGTmskI/
-u6Sw+eyiQj+7oNDPzitsPttT6GdnF/rZmYXsfDKy88nIzOmFfnZqYfPZyYV+dlKh
-n51Y2Hx2fKGfHVvoZw22xJYy/zXYUuafBltiS1lOFdZjS5m/Gmwp80eDLbGlLPcU
-67GlzG8NtpT5pcGW2FKW64312FLmpwZbYkuZHxpsKcutyHpsKfNdgy2xpcw3DbaU
-5TJlPbaU+arBlthS5osGW8pyPrMeW2JLmc8abCnzSYMtZTnWWY8tsaXMRw22lPmg
-wZaynAatx5bYUua9BlvKvNNgS2wpy/3Semwp81aDLWXeaLAltpTlyGo9tpQ50mBL
-mdcabIktZTnpWo8tZV5psCW2lHmpwZayHJCtx5YyhxpsiS1lXmiwpSznauuxpcxz
-DbbEljIHG2wpy03demyJLWUONNhS5qkGW8pywbceW2JLmScabCmzv8GWstwLrseW
-2FLm0QZbyjzcYEtsKctR43psKfNggy1l7m+wJbaU5fJyPbaUubfBljJ3N9gSW8py
-57keW8rc2WBLbClze4MtZbkqXY8tZW5tsCW2lLm5wZay3LCux5YyNzbYElvKXN9g
-S1kObddjS2wpc22DLWWubrClLGe967EltpS5qsGWMlc02FKWI+L12BJbylzeYEuZ
-SxtsiS1luXRejy1lLm6wpcyFDbbElrKcY6/HljLnN9hS5twGW2JLWY6/12NLmXMa
-bIktZc5qsKUsp+brsaXMGQ22xJYypzXYUpbD9vXYUuaUBltiS5ndDbaU5fp+PbbE
-ljK7Gmwpc0KDLWW59V+PLbGlzHENtpQ5psGWsvxZsB5bYkv5r8KW8k+FLbGl/F1h
-S/mrwpbyR4UtsaX8XmFL+a3ClvJLhS2xpfxcYUv5qcKW2FJ+qLClfF9hS/muwpbY
-Ur6psKV8XWFL+arClthSvqiwpXxeYUtsKZ9V2FI+qbClfFxhS2wpH1XYUj6osKW8
-X2FLbCnvVdhS3qmwJbaUtytsKW9V2FLeqLAltpSjFbaUIxW2lNcqbIkt5dUKW8or
-FbbElvJShS3lcIUt5VCFLbGlvFBhS3m+wpbyXIUtsaUcrLClPFNhS2wpBypsKU9V
-2FKerLAltpQnKmwp+ytsKY9V2BJbyqMVtpSHK2yJLeWhClvKgxW2lPsrbIkt5b4K
-W8q9FbaUuytsiS3lrgpbyp0VtsSWcnuFLeW2ClvKrRW2xJZyc4Ut5aYKW8qNFbbE
-lnJ9hS3lugpbYku5tsKWcnWFLWVfhS2xpVxVYUu5osKWsrfClthSLq+wpVxaYUts
-KZdU2FIurrClXFhhS2wpF1TYUs6vsKWcW2FLbCl7Kmwp51TYElvKWRW2lDMrbCln
-VNgSW8ppFbaUUytsKadU2BJbyu4KW8pJFbbElrKrwpZyQoUt5fgKW2JLOa7ClnJM
-hS39D33d6IMx8qeEAAAAAElFTkSuQmCC" style="clip-path:url(#clipPath2);" height="608" preserveAspectRatio="none"
+    ><image x="0" y="0" width="18" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAJgCAIAAAAI2aTjAAADq0lEQVR4XtXLVxSQ
+cwCH4X9EVpSys0cKKZuQFbISZUsadvYmZa/KilBGihTZlFHIysgqO6PsUUY24f67
++s5z8TvHc/me85byf9CA6DYfCW/zE90aEt0WIOFtQaJbI6LbQiS8LUx0W4SEt0WJ
+bosR3RqT8LY40W0JolsTEt6aEt2WJOGtGdGtOdFtKRLelia6LUN0W5aEt+WIbsuT
+8LYC0a0F0W1FEt5WIrqtTHRbhZRqqKdUQz1lVaLbaiS8rU50W4PotiYJb2sR3VoS
+3dYm4a0V0a01CW/rEN3WJbqtR8JbG6Lb+kS3tiS8tSO6bUDC24ZEt42IbhuT8LYJ
+0W1TottmJLxtTnTbgoS39kS3LYluW5HwtjXRrQPRbRtSqqGeUg31lG2JbtuR8LY9
+0W0HoltHEt52JLrtRHTbmYS3TkS3XUh425XothvRbXcS3vYgunUmuu1JwlsXotte
+JLztTXTrSnTrRsLbPkS3fYlu+5Hwtj/R7QAS3g4kuh1EdDuYhLfuRLdDiG49SKmG
+eko11FMOJbr1JOGtF9GtN9GtDwlvhxHdDie6HUHC25FEt6NIeDua6HYM0a0vCW/H
+Et2OI7odT8LbCUS3E0l4O4nodjLR7RQS3k4lup1GdDudhLcziG5nkvB2FtHtbKJb
+PxLeziG69Se6DSClGuop1VBPOZfodh4Jb+cT3S4gul1IwttFRLeLiW6XkPB2KdHt
+MhLeLie6DSS6DSLhbTDR7Qqi25UkvF1FdLuahLdriG5DiG7XkvB2HdFtKNHtehLe
+biC63UjC2zCi23Ci200kvN1MdLuF6HYrKdVQT6mGesoIotttJLyNJLqNIrrdTsLb
+HUS30US3O0l4G0N0G0vC211Et7uJbuNIeLuH6HYv0e0+Et7uJ7o9QMLbg0S3h4hu
+D5Pw9gjRbTzRbQIJb48S3R4j4e1xotsTRLeJJLxNIro9SXR7ipRqqKdUQz3laaLb
+ZBLeniG6PUt0e46Et+eJbi8Q3aaQ8PYi0e0lEt5eJrq9QnSbSsLbq0S314hur5Pw
+9gbR7U0S3qYR3aYT3d4i4e1tots7RLd3SXh7j+j2PglvHxDdZhDdPiTh7SOi28dE
+t09IqYZ6SjXUU2YS3WaR8PYp0e0zotvnJLx9QXT7kuj2FQlvXxPdviHh7Vui23dE
+t9kkvM0hun1PdPuBhLcfiW4/kfA2l+j2M9HtFxLefiW6/UZ0+52Etz+Ibn+S8PYX
+0e1vots8Et7+Ibr9S3D7D/uAy/IEOyARAAAAAElFTkSuQmCC" style="clip-path:url(#clipPath2);" height="608" preserveAspectRatio="none"
     /></g
     ><g style="fill:rgb(38,38,38); text-rendering:geometricPrecision; image-rendering:optimizeQuality; color-rendering:optimizeQuality; stroke-linejoin:round; stroke:rgb(38,38,38); color-interpolation:linearRGB; stroke-width:0.5;"
     ><line y2="48" style="fill:none;" x1="43" x2="43" y1="352"
@@ -87,31 +78,31 @@ hS39D33d6IMx8qeEAAAAAElFTkSuQmCC" style="clip-path:url(#clipPath2);" height="608
       /><line y2="108.8" style="fill:none;" x1="43" x2="39.96" y1="108.8"
       /><line y2="48" style="fill:none;" x1="43" x2="39.96" y1="48"
     /></g
-    ><g transform="translate(47.61,352)" style="font-size:13.05px; fill:rgb(38,38,38); text-rendering:geometricPrecision; image-rendering:optimizeQuality; color-rendering:optimizeQuality; font-family:'Helvetica Neue'; stroke:rgb(38,38,38); color-interpolation:linearRGB;"
+    ><g transform="translate(47.88,352)" style="font-size:14.4px; fill:rgb(38,38,38); text-rendering:geometricPrecision; image-rendering:optimizeQuality; color-rendering:optimizeQuality; font-family:'Helvetica Neue'; stroke:rgb(38,38,38); color-interpolation:linearRGB;"
     ><text x="0" xml:space="preserve" y="5" style="stroke:none;"
       >0%</text
     ></g
-    ><g transform="translate(47.61,291.2)" style="font-size:13.05px; fill:rgb(38,38,38); text-rendering:geometricPrecision; image-rendering:optimizeQuality; color-rendering:optimizeQuality; font-family:'Helvetica Neue'; stroke:rgb(38,38,38); color-interpolation:linearRGB;"
+    ><g transform="translate(47.88,291.2)" style="font-size:14.4px; fill:rgb(38,38,38); text-rendering:geometricPrecision; image-rendering:optimizeQuality; color-rendering:optimizeQuality; font-family:'Helvetica Neue'; stroke:rgb(38,38,38); color-interpolation:linearRGB;"
     ><text x="0" xml:space="preserve" y="5" style="stroke:none;"
       >20%</text
     ></g
-    ><g transform="translate(47.61,230.4)" style="font-size:13.05px; fill:rgb(38,38,38); text-rendering:geometricPrecision; image-rendering:optimizeQuality; color-rendering:optimizeQuality; font-family:'Helvetica Neue'; stroke:rgb(38,38,38); color-interpolation:linearRGB;"
+    ><g transform="translate(47.88,230.4)" style="font-size:14.4px; fill:rgb(38,38,38); text-rendering:geometricPrecision; image-rendering:optimizeQuality; color-rendering:optimizeQuality; font-family:'Helvetica Neue'; stroke:rgb(38,38,38); color-interpolation:linearRGB;"
     ><text x="0" xml:space="preserve" y="5" style="stroke:none;"
       >40%</text
     ></g
-    ><g transform="translate(47.61,169.6)" style="font-size:13.05px; fill:rgb(38,38,38); text-rendering:geometricPrecision; image-rendering:optimizeQuality; color-rendering:optimizeQuality; font-family:'Helvetica Neue'; stroke:rgb(38,38,38); color-interpolation:linearRGB;"
+    ><g transform="translate(47.88,169.6)" style="font-size:14.4px; fill:rgb(38,38,38); text-rendering:geometricPrecision; image-rendering:optimizeQuality; color-rendering:optimizeQuality; font-family:'Helvetica Neue'; stroke:rgb(38,38,38); color-interpolation:linearRGB;"
     ><text x="0" xml:space="preserve" y="5" style="stroke:none;"
       >60%</text
     ></g
-    ><g transform="translate(47.61,108.8)" style="font-size:13.05px; fill:rgb(38,38,38); text-rendering:geometricPrecision; image-rendering:optimizeQuality; color-rendering:optimizeQuality; font-family:'Helvetica Neue'; stroke:rgb(38,38,38); color-interpolation:linearRGB;"
+    ><g transform="translate(47.88,108.8)" style="font-size:14.4px; fill:rgb(38,38,38); text-rendering:geometricPrecision; image-rendering:optimizeQuality; color-rendering:optimizeQuality; font-family:'Helvetica Neue'; stroke:rgb(38,38,38); color-interpolation:linearRGB;"
     ><text x="0" xml:space="preserve" y="5" style="stroke:none;"
       >80%</text
     ></g
-    ><g transform="translate(47.61,48)" style="font-size:13.05px; fill:rgb(38,38,38); text-rendering:geometricPrecision; image-rendering:optimizeQuality; color-rendering:optimizeQuality; font-family:'Helvetica Neue'; stroke:rgb(38,38,38); color-interpolation:linearRGB;"
+    ><g transform="translate(47.88,48)" style="font-size:14.4px; fill:rgb(38,38,38); text-rendering:geometricPrecision; image-rendering:optimizeQuality; color-rendering:optimizeQuality; font-family:'Helvetica Neue'; stroke:rgb(38,38,38); color-interpolation:linearRGB;"
     ><text x="0" xml:space="preserve" y="5" style="stroke:none;"
       >100%</text
     ></g
-    ><g transform="translate(85.61,199.9998) rotate(-90)" style="font-size:20px; fill:rgb(38,38,38); text-rendering:geometricPrecision; image-rendering:optimizeQuality; color-rendering:optimizeQuality; font-family:'Helvetica Neue'; stroke:rgb(38,38,38); color-interpolation:linearRGB;"
+    ><g transform="translate(89.38,199.9998) rotate(-90)" style="font-size:20px; fill:rgb(38,38,38); text-rendering:geometricPrecision; image-rendering:optimizeQuality; color-rendering:optimizeQuality; font-family:'Helvetica Neue'; stroke:rgb(38,38,38); color-interpolation:linearRGB;"
     ><text x="-69.5" xml:space="preserve" y="20" style="stroke:none;"
       >Percentage (%)</text
     ></g

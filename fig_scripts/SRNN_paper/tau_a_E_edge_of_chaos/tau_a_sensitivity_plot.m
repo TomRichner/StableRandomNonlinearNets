@@ -64,6 +64,17 @@ function fig_handle = tau_a_sensitivity_plot(param_file, hist_edges_with_inf, va
         end
     end
     
+    % Calculate median values for the line plot
+    median_values = NaN(n_levels, 1);
+    for level_idx = 1:n_levels
+        level_vals = all_values_by_level{level_idx};
+        % Filter out the large values assigned to NaNs for histogramming
+        valid_vals = level_vals(level_vals < 1e3); 
+        if ~isempty(valid_vals)
+            median_values(level_idx) = median(valid_vals);
+        end
+    end
+    
     % Calculate success rate
     total_success = sum(success_counts);
     total_attempts = n_levels * n_reps;
@@ -136,13 +147,17 @@ function fig_handle = tau_a_sensitivity_plot(param_file, hist_edges_with_inf, va
     % Create the main visualization
     fig_handle = figure('Position', [100, 100, 600, 600], 'Visible', 'off');
     imagesc(param_levels, y_coords_for_plot, histogram_matrix);
+    hold on;
+    yline(0, 'Color',[0 0.7 0], 'LineWidth', 3);
+    plot(param_levels, median_values, 'b-', 'LineWidth', 3);
     % colorbar;
     caxis([0 n_reps]); % Set colormap extents from 0 to n_reps
     xlabel(sprintf('%s', strrep(param_name, '_', '\\_')));
     ylabel(y_axis_label, 'Interpreter', 'latex', 'FontSize', 22);
     % title(sprintf('Distribution of %s vs %s', variable_to_plot, strrep(param_name, '_', '\\_')));
     axis xy; % Flip y-axis so smaller values are at bottom
-    colormap(hot);
+    % colormap(flipud(hot));
+    colormap(flipud(gray));
     % colormap(parula)
 
     % Add custom y-tick labels with a fixed set of intermediate values, plus
