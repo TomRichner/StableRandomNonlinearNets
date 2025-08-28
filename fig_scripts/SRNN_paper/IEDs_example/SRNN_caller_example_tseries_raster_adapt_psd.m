@@ -42,7 +42,7 @@ EI_vec = EI_vec(:); % make it a column
 %% Time
 fs = 1000; %Plotting sample frequency
 dt = 1/fs;
-T = [-30 150];
+T = [-30 1500];
 
 T_lya_1 = -15; % s, time to start Lyapunov calculation warmup
 % T_lya_1 = T(1); % s, time to start Lyapunov calculation warmup
@@ -82,9 +82,9 @@ u_dc_profile = ones(1, nt) * DC;
 u_dc_profile(ramp_indices) = ramp_profile;
 u_ex = u_ex + u_dc_profile;
 
-period0 = and(0<t, t<50);
-period1 = and(50<t, t<100);
-period2 = and(100<t, t<150);
+period0 = and(0<t, t<500);
+period1 = and(500<t, t<1000);
+period2 = and(1000<t, t<1500);
 u_ex(:,period1) = u_ex(:,period1)+0.08;
 u_ex(:,period2) = u_ex(:,period2)+0.48;
 
