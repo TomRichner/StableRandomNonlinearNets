@@ -148,8 +148,8 @@ function fig_handle = tau_a_sensitivity_plot(param_file, hist_edges_with_inf, va
     fig_handle = figure('Position', [100, 100, 600, 600], 'Visible', 'off');
     imagesc(param_levels, y_coords_for_plot, histogram_matrix);
     hold on;
-    yline(0, 'Color',[0 0.7 0], 'LineWidth', 3);
-    plot(param_levels, median_values, 'b-', 'LineWidth', 3);
+    yline(0, 'Color',[0 0.7 0], 'LineWidth', 4, 'Alpha', 0.5);
+    plot(param_levels, median_values, 'b-', 'LineWidth', 4, 'Color', [0 0 1 0.55]);
     % colorbar;
     caxis([0 n_reps]); % Set colormap extents from 0 to n_reps
     xlabel(sprintf('%s', strrep(param_name, '_', '\\_')));
