@@ -470,6 +470,8 @@ end
 
 figure(1)
 xlim([0 T(2)])
+subplot(6,1,6)
+xticks([0 15 30 45])
 
 % add subplots
 
@@ -486,8 +488,8 @@ num_subplots = numel(axes_in_fig);
 
 if num_subplots > 0
     if num_subplots <= 26
-        letters = arrayfun(@(x) sprintf('(%c)', x), 'a':char('a'+num_subplots-1), 'UniformOutput', false);
-        AddLetters2Plots(num2cell(axes_in_fig), letters, 'FontSize', 18, 'FontWeight', 'Normal', 'HShift', -0.01, 'VShift', -0.032, 'Location', 'NorthWest');
+        letters = arrayfun(@(x) sprintf('%c', x), 'A':char('A'+num_subplots-1), 'UniformOutput', false);
+        AddLetters2Plots(num2cell(axes_in_fig), letters, 'FontSize', 24, 'FontWeight', 'Normal', 'HShift', -0.01, 'VShift', -0.032, 'Location', 'NorthWest');
     else
         warning('More than 26 subplots in Figure 1, not adding letters.');
     end
@@ -495,12 +497,12 @@ end
 % AddLetters2Plots(fig1, {'(a)','(b)'}, 'FontSize', 18, 'FontWeight', 'Normal', 'HShift', -0.01, 'VShift', -0.032, 'Location', 'NorthWest');
 
 %% save the figs
-warning('not saving')
-% disp('Saving figures...');
-% save_folder = fullfile(fileparts(mfilename('fullpath')), 'paper_IED_figs_v2_raster');
-% save_name = ['raster_v2_IEDs_seed' num2str(seed)];
-% save_some_figs_to_folder_2(save_folder, save_name, [], []);
-% disp(['Figures saved to ' save_folder]);
+% warning('not saving')
+disp('Saving figures...');
+save_folder = fullfile(fileparts(mfilename('fullpath')), 'paper_IED_figs_v2_raster');
+save_name = ['raster_v2_IEDs_seed' num2str(seed)];
+save_some_figs_to_folder_2(save_folder, save_name, [], []);
+disp(['Figures saved to ' save_folder]);
 
 
 

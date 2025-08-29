@@ -42,7 +42,7 @@ EI_vec = EI_vec(:); % make it a column
 %% Time
 fs = 1000; %Plotting sample frequency
 dt = 1/fs;
-T = [-30 1500];
+T = [-30 1100];
 
 T_lya_1 = -15; % s, time to start Lyapunov calculation warmup
 % T_lya_1 = T(1); % s, time to start Lyapunov calculation warmup
@@ -84,7 +84,7 @@ u_ex = u_ex + u_dc_profile;
 
 period0 = and(0<t, t<500);
 period1 = and(500<t, t<1000);
-period2 = and(1000<t, t<1500);
+period2 = and(1000<t, t<1100);
 u_ex(:,period1) = u_ex(:,period1)+0.08;
 u_ex(:,period2) = u_ex(:,period2)+0.48;
 
@@ -479,31 +479,31 @@ sim_dur = toc
 sim_t_dived_by_rt = sim_dur./(T(2)-T(1))
 
 
-%% Power Spectral Density of Mean Firing Rate
-mean_r = mean(r, 1);
-mean_r_p0 = mean_r(period0) - mean(mean_r(period0));
-mean_r_p1 = mean_r(period1) - mean(mean_r(period1));
-mean_r_p2 = mean_r(period2) - mean(mean_r(period2));
+%% Power Spectral Density of Mean Dendritic Activity
+mean_u_d = mean(u_d_ts, 1);
+mean_u_d_p0 = mean_u_d(period0) - mean(mean_u_d(period0));
+mean_u_d_p1 = mean_u_d(period1) - mean(mean_u_d(period1));
+mean_u_d_p2 = mean_u_d(period2) - mean(mean_u_d(period2));
 
 win_len_s = 15;
 win = hamming(win_len_s * fs);
 noverlap = floor(0.75 * length(win));
 f_psd = logspace(log10(0.05), log10(100), 50);
 
-[pxx0, f0] = pwelch(mean_r_p0, win, noverlap, f_psd, fs);
-[pxx1, f1] = pwelch(mean_r_p1, win, noverlap, f_psd, fs);
-[pxx2, f2] = pwelch(mean_r_p2, win, noverlap, f_psd, fs);
+[pxx0, f0] = pwelch(mean_u_d_p0, win, noverlap, f_psd, fs);
+[pxx1, f1] = pwelch(mean_u_d_p1, win, noverlap, f_psd, fs);
+[pxx2, f2] = pwelch(mean_u_d_p2, win, noverlap, f_psd, fs);
 
-figure('Name', 'PSD of Mean Firing Rate');
+figure('Name', 'PSD of Mean Dendritic Activity');
 loglog(f0, pxx0, 'LineWidth', 1.5);
 hold on;
 loglog(f1, pxx1, 'LineWidth', 1.5);
 loglog(f2, pxx2, 'LineWidth', 1.5);
 hold off;
 xlabel('Frequency (Hz)');
-ylabel('SpikeRate^2/Hz');
-legend({'0-50s', '50-100s', '100-150s'});
-title('PSD of Mean Firing Rate');
+ylabel('Dendritic Potential^2/Hz');
+legend({'no stim', 'low stim', 'high stim'});
+title('PSD of Mean Dendritic Activity');
 grid on;
 
 
@@ -525,8 +525,8 @@ end
 
 %% save the figs
 disp('Saving figures...');
-save_folder = fullfile(fileparts(mfilename('fullpath')), 'paper_IED_figs_v2_raster_psd');
-save_name = ['raster_v2_IEDs_psd_seed' num2str(seed)];
+save_folder = fullfile(fileparts(mfilename('fullpath')), 'paper_IED_figs_v3_raster_psd');
+save_name = ['raster_v3_IEDs_psd_seed' num2str(seed)];
 save_some_figs_to_folder_2(save_folder, save_name, [], []);
 disp(['Figures saved to ' save_folder]);
 

@@ -20,8 +20,8 @@ n_bins_lle = 25;
 lle_bins = [-inf, linspace(lle_range(1), lle_range(2), n_bins_lle), inf];
 
 % LLE imagesc parameters
-imagesc_lle_range = [-10 3]; % LLE range for the imagesc plot
-n_bins_imagesc_lle_range = diff(imagesc_lle_range)+4;
+imagesc_lle_range = [-10 1]; % LLE range for the imagesc plot
+n_bins_imagesc_lle_range = diff(imagesc_lle_range)+1;
 % imagesc_lle_range = [-10 3]; % LLE range for the imagesc plot
 % n_bins_imagesc_lle_range = diff(imagesc_lle_range)-1;
 
@@ -521,8 +521,9 @@ for i = 1:num_conditions
             x_down_unique = x_down(ia_down);
             
             % Interpolate to find the x-coordinates at the median y-value
-            x1 = interp1(y_up_unique, x_up_unique, y_median, 'linear');
+            % x1 = interp1(y_up_unique, x_up_unique, y_median, 'linear');
             x2 = interp1(y_down_unique, x_down_unique, y_median, 'linear');
+            x1 = 1+(1-x2);
     
             if isfinite(x1) && isfinite(x2)
                 plot(ax_violin, [x1, x2], [y_median, y_median], 'k-', 'LineWidth', 2);
@@ -567,8 +568,12 @@ for i = 1:num_conditions
     box(ax_violin, 'off'); % Turn off the box for all subplots
     
     % Use condition names as xlabels instead of titles, and remove x-ticks
-    xlabel(ax_violin, condition_titles(condition_name));
     set(ax_violin, 'XTick', []);
+    set(ax_violin, 'XColor', 'none'); % Hides axis line
+
+    % Manually add label as text object since XColor='none' hides xlabel
+    text(0.5, -0.05, condition_titles(condition_name), 'Units', 'normalized', ...
+        'HorizontalAlignment', 'center', 'VerticalAlignment', 'top', 'Parent', ax_violin);
     
     if i == 1
         ylabel('Mutual Information (bits)');
@@ -581,7 +586,7 @@ for i = 1:num_conditions
 end
 if ~isempty(all_ax_violin)
     linkaxes(all_ax_violin, 'y');
-    ylim(all_ax_violin, [0 2.55]); % Set matching y-limits for all plots
+    ylim(all_ax_violin, [0 3]); % Set matching y-limits for all plots
 end
 
 

@@ -60,20 +60,20 @@
       >Mutual Information (bits)</text
     ></g
     ><g style="stroke-linecap:butt; text-rendering:geometricPrecision; color-rendering:optimizeQuality; image-rendering:optimizeQuality; stroke-linejoin:round; color-interpolation:linearRGB; stroke-width:1.5;"
-    ><line y2="243" style="fill:none;" x1="207.4203" x2="207.4203" y1="168.3346"
-      /><line y2="57.7951" style="fill:none;" x1="207.4203" x2="207.4203" y1="168.3346"
-      /><path d="M0 -2.25 C1.2426 -2.25 2.25 -1.2426 2.25 0 L2.25 0 C2.25 1.2426 1.2426 2.25 -0 2.25 C-1.2426 2.25 -2.25 1.2426 -2.25 -0 C-2.25 -1.2426 -1.2426 -2.25 0 -2.25 ZM0 -3.75 C-2.0711 -3.75 -3.75 -2.0711 -3.75 -0 C-3.75 2.0711 -2.0711 3.75 -0 3.75 C2.0711 3.75 3.75 2.0711 3.75 0 L3.75 0 C3.75 -2.0711 2.0711 -3.75 0 -3.75 Z" style="stroke:none;" transform="translate(207.4203,168.3346)"
+    ><line y2="201.4023" style="fill:none;" x1="207.4203" x2="207.4203" y1="142.6678"
+      /><line y2="33.2856" style="fill:none;" x1="207.4203" x2="207.4203" y1="142.6678"
+      /><path d="M0 -2.25 C1.2426 -2.25 2.25 -1.2426 2.25 0 L2.25 0 C2.25 1.2426 1.2426 2.25 -0 2.25 C-1.2426 2.25 -2.25 1.2426 -2.25 -0 C-2.25 -1.2426 -1.2426 -2.25 0 -2.25 ZM0 -3.75 C-2.0711 -3.75 -3.75 -2.0711 -3.75 -0 C-3.75 2.0711 -2.0711 3.75 -0 3.75 C2.0711 3.75 3.75 2.0711 3.75 0 L3.75 0 C3.75 -2.0711 2.0711 -3.75 0 -3.75 Z" style="stroke:none;" transform="translate(207.4203,142.6678)"
     /></g
-    ><g style="text-rendering:geometricPrecision; color-rendering:optimizeQuality; color-interpolation:linearRGB; image-rendering:optimizeQuality;" transform="translate(207.4203,243)"
+    ><g style="text-rendering:geometricPrecision; color-rendering:optimizeQuality; color-interpolation:linearRGB; image-rendering:optimizeQuality;" transform="translate(207.4203,201.4023)"
     ><path style="stroke:none;" d="M-2 0 L2 0"
     /></g
-    ><g transform="translate(207.4203,243)" style="stroke-linecap:butt; text-rendering:geometricPrecision; color-rendering:optimizeQuality; image-rendering:optimizeQuality; color-interpolation:linearRGB; stroke-width:1.5;"
+    ><g transform="translate(207.4203,201.4023)" style="stroke-linecap:butt; text-rendering:geometricPrecision; color-rendering:optimizeQuality; image-rendering:optimizeQuality; color-interpolation:linearRGB; stroke-width:1.5;"
     ><path style="fill:none;" d="M-2 0 L2 0"
     /></g
-    ><g style="text-rendering:geometricPrecision; color-rendering:optimizeQuality; color-interpolation:linearRGB; image-rendering:optimizeQuality;" transform="translate(207.4203,57.7951)"
+    ><g style="text-rendering:geometricPrecision; color-rendering:optimizeQuality; color-interpolation:linearRGB; image-rendering:optimizeQuality;" transform="translate(207.4203,33.2856)"
     ><path style="stroke:none;" d="M-2 0 L2 0"
     /></g
-    ><g transform="translate(207.4203,57.7951)" style="stroke-linecap:butt; text-rendering:geometricPrecision; color-rendering:optimizeQuality; image-rendering:optimizeQuality; color-interpolation:linearRGB; stroke-width:1.5;"
+    ><g transform="translate(207.4203,33.2856)" style="stroke-linecap:butt; text-rendering:geometricPrecision; color-rendering:optimizeQuality; image-rendering:optimizeQuality; color-interpolation:linearRGB; stroke-width:1.5;"
     ><path style="fill:none;" d="M-2 0 L2 0"
     /></g
   ></g
