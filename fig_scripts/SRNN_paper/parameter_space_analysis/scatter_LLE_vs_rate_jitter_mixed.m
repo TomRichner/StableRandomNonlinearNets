@@ -135,7 +135,7 @@ lles_jittered = all_lles_shuffled + jitter_std * randn(size(all_lles_shuffled));
 mean_rates_jittered = all_mean_rates_shuffled + jitter_std * randn(size(all_mean_rates_shuffled));
 
 % Plot all points in one go with specified colors
-scatter(lles_jittered, mean_rates_jittered, 10, all_colors_shuffled, 'filled', 'MarkerFaceAlpha', 0.6);
+scatter(lles_jittered, mean_rates_jittered, 14, all_colors_shuffled, 'filled', 'MarkerFaceAlpha', 0.4);
 
 % Create dummy plots for the legend
 plot_handles = gobjects(num_conditions, 1);
