@@ -109,7 +109,7 @@ for i = 1:num_conditions
     mean_rates = extracted_values.(condition_name).mean_rates;
     color = condition_colors(condition_name);
     
-    plot_handles(i) = scatter(lles, mean_rates, 36, color, 'filled', 'MarkerFaceAlpha', 0.5);
+    plot_handles(i) = scatter(lles, mean_rates, 36, color, 'filled', 'MarkerFaceAlpha', 0.25);
     condition_labels{i} = condition_titles(condition_name);
 end
 
@@ -169,7 +169,7 @@ output_dir_for_figs = fullfile(base_dir, 'analysis_plots');
 fprintf('\nSaving figure to: %s\n', output_dir_for_figs);
 % Assuming save_some_figs_to_folder_2 is on the path
 % If not, you might need to add its location to the path.
-save_some_figs_to_folder_2(output_dir_for_figs, 'LLE_vs_rate_scatter_v1', fig_scatter.Number, {'fig', 'svg', 'png'});
+save_some_figs_to_folder_2(output_dir_for_figs, 'LLE_vs_rate_scatter_v2', fig_scatter.Number, {'fig', 'svg', 'png'});
 
 fprintf('Plotting complete.\n');
 beep; pause(0.5); beep % wake up
