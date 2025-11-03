@@ -8,16 +8,21 @@ set(groot, 'DefaultLineLineWidth', 1.5);
 set(groot, 'DefaultAxesLineWidth', 1.5);
 
 n = 1000;
-b = 1;
+b = 1/sqrt(n);
 mu = 0;
+alpha = 1;
+f = 0.7; % fraction excitatory
 
-% % mean_in_out_degree = 500; % desired mean number of connections in and out
-mean_in_out_degree = 30; % desired mean number of connections in and out
+
+mean_in_out_degree = 500; % desired mean number of connections in and out
 density = mean_in_out_degree/(n) % each neuron can make up to n-1 connections with other neurons
 % density = 1;
 
 % disk_radius=b*sqrt(density)
-disk_radius = sqrt(n)*b*sqrt(density)
+% disk_radius = sqrt(density);
+% disk_radius = sqrt(density)
+disk_radius = sqrt(1-f+f/alpha)*sqrt(density)
+% disk_radius = 1;
 % disk_radius = sqrt(n)*b;
 % % disk_radius = b*sqrt(density);
 
@@ -30,11 +35,10 @@ A = b*randn(n,n) + mu;
 
 
 %% weakly enforce Dale's like Rajan 2006
-f = 0.7; % fraction excitatory
 isE = zeros(n,1,'logical'); % is excitatory logical vector
 isE(1:round(n*f),1) = true;
 
-mu_E = 0.7; % mean of excitatory 
+mu_E = 1/sqrt(n); % mean of excitatory 
 mu_I = -f*mu_E./(1-f) % mean of inhibitory, depends on mu_E to ensure f*mu_E+(1-f)*mu_I = 0 for "balance"
 
 A(:, isE) =  A(:, isE) + f*mu_E;   % shifts excitatory mean positive
@@ -56,12 +60,20 @@ actual_density = sum(abs(A(:))>0)/n^2
 %% enforce row sums
 
 % fix all rows
-for i_ro = 1:n % fix all
+% for i_ro = 1:n % fix all
+% 
+%     A(i_ro,:) = A(i_ro,:) - sum(A(i_ro,:))./n;
+% 
+% end
 
-    A(i_ro,:) = A(i_ro,:) - sum(A(i_ro,:))./n;
-
+for i_ro = 1:n % zero all rows, but obey the sparse mask, keep zeros at zero
+	allowed = ~sparse_mask(i_ro,:); % only adjust unmasked entries
+	num_allowed = sum(allowed);
+	if num_allowed > 0
+		row_sum_allowed = sum(A(i_ro,allowed));
+		A(i_ro,allowed) = A(i_ro,allowed) - row_sum_allowed./num_allowed;
+	end
 end
-
 
 %% Correct A onto edge of stability by shifting
 corrected_A = A-sigma*eye(size(A));

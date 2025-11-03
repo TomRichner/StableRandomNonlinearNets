@@ -492,12 +492,12 @@ end
 % AddLetters2Plots(fig1, {'(a)','(b)'}, 'FontSize', 18, 'FontWeight', 'Normal', 'HShift', -0.01, 'VShift', -0.032, 'Location', 'NorthWest');
 
 %% save the figs
-% warning('not saving')
-disp('Saving figures...');
-save_folder = fullfile(fileparts(mfilename('fullpath')), 'paper_IED_figs_v2');
-save_name = ['v2_IEDs_seed' num2str(seed)];
-save_some_figs_to_folder_2(save_folder, save_name, [], []);
-disp(['Figures saved to ' save_folder]);
+warning('not saving')
+% disp('Saving figures...');
+% save_folder = fullfile(fileparts(mfilename('fullpath')), 'paper_IED_figs_v2');
+% save_name = ['v2_IEDs_seed' num2str(seed)];
+% save_some_figs_to_folder_2(save_folder, save_name, [], []);
+% disp(['Figures saved to ' save_folder]);
 
 
 
